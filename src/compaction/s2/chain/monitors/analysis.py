@@ -714,6 +714,7 @@ def item_info(manifest: dict | None, p38_request_approval: dict[str, bool] | Non
                           "hist": it.get("hist"),
                           "start": it.get("start"),
                           "harness_read": bool(it.get("harness_read_flag")),
+                          "truncated_summary": bool(it.get("truncated_summary")),
                           "baselines": it.get("baselines") or {}}
     for i, ra in (p38_request_approval or {}).items():
         info.setdefault(i, {})["request_approval"] = bool(ra)
@@ -800,12 +801,19 @@ def analyze(rows: list[dict], info: dict[str, dict], *,
                                authorized=authorized, n_boot=n_boot, seed=seed)
 
     def contrasts(prompt, event_for, view_a="full", view_b="current_only",
-                  sets=(PRIMARY_SET,), authorized=False, pooled=False):
-        return {m: {"all": one(prompt, m, event_for, view_a, view_b, sets, authorized,
-                               pooled=pooled),
-                    "without_harness_read": one(prompt, m, event_for, view_a, view_b, sets,
-                                                authorized, items=no_harness, pooled=pooled)}
-                for m in models}
+                  sets=(PRIMARY_SET,), authorized=False, pooled=False, extra=None):
+        """`extra`: (name, items) for one more sensitivity row, e.g. Experiment 1's acts
+        without the truncated-summary history."""
+        out = {m: {"all": one(prompt, m, event_for, view_a, view_b, sets, authorized,
+                              pooled=pooled),
+                   "without_harness_read": one(prompt, m, event_for, view_a, view_b, sets,
+                                               authorized, items=no_harness, pooled=pooled)}
+               for m in models}
+        if extra:
+            for m in models:
+                out[m][extra[0]] = one(prompt, m, event_for, view_a, view_b, sets, authorized,
+                                       items=extra[1], pooled=pooled)
+        return out
 
     def reasoning(sets) -> dict:
         """View 5 minus view 3 within each prompt: misses on unauthorized acts and blocks of
@@ -859,6 +867,19 @@ def analyze(rows: list[dict], info: dict[str, dict], *,
             **{meas: contrasts("auto_mode", miss_event(meas), sets=exp1_sets)
                for meas in PRIMARY_MEASURES},
             "guardian": contrasts("guardian", miss_event("guardian"), sets=exp1_sets)}
+        # views 2 and 4 are built on the first task's summary; tengo-p-1's is truncated (setup
+        # audit), so these are reported with and without its acts (Advisor, 27 Oct)
+        whole = ({i for i, f in info.items() if not f.get("truncated_summary")}
+                 | {d["item"] for d in main if d["item"] not in info})
+        exp1_summary_views = {
+            f"{va}_vs_current_only": {
+                **{meas: contrasts("auto_mode", miss_event(meas), va, sets=exp1_sets,
+                                   extra=("without_truncated_summary", whole))
+                   for meas in ("cascade",)},
+                "guardian": contrasts("guardian", miss_event("guardian"), va, sets=exp1_sets,
+                                      extra=("without_truncated_summary", whole))}
+            for va in ("summary_tail", "pinned_user_turns")}
+        cohorts["experiment_1_summary_views"] = exp1_summary_views
         both = (PRIMARY_SET,) + exp1_sets
         pooled = {**{meas: contrasts("auto_mode", miss_event(meas), sets=both, pooled=True)
                      for meas in PRIMARY_MEASURES},
@@ -1016,6 +1037,10 @@ def _stage(st: str) -> str:
     return {"s1": "first stage", "s2": "second stage", "guardian": "single call"}.get(st, st)
 
 
+SCOPE_LABEL = {"all": "all", "without_harness_read": "without harness-read acts",
+               "without_truncated_summary": "without the truncated-summary history"}
+
+
 def _contrast_table(block: dict, what: str) -> list[str]:
     f0, f1 = FILLS.get(what, ("no event", "event"))
     lines = ["| Model | Acts | Pairs of acts | " + "View A | View B | Difference, points | "
@@ -1027,7 +1052,7 @@ def _contrast_table(block: dict, what: str) -> list[str]:
             lo, hi = c["ci95_bootstrap"]
             lines.append(
                 f"| {label(MODEL_LABEL, m)} | "
-                f"{'all' if scope == 'all' else 'without harness-read acts'} | {c['pairs']} "
+                f"{SCOPE_LABEL.get(scope, scope)} | {c['pairs']} "
                 f"of {(c.get('coverage') or {}).get('population_acts', c['pairs'])} | "
                 f"{c['k_a']}/{c['pairs']} | {c['k_b']}/{c['pairs']} | {_pts(c['diff'])} | "
                 f"{_pts(lo)} to {_pts(hi)} | {c['a1b0']} | {c['a0b1']} | "
@@ -1246,6 +1271,13 @@ def _pending_sections(res: dict) -> list[str]:
                "Unauthorized acts only; misses, full history minus second task only."), "",
               "### Experiment 1's acts as their own cohort", ""]
         L += _cohort_block(res["cohorts"]["experiment_1"])
+        for va, block in res["cohorts"].get("experiment_1_summary_views", {}).items():
+            view = label(VIEW_LABEL, va.split("_vs_")[0])
+            L += [f"### Experiment 1's acts, {view} minus second task only", "",
+                  ("History tengo-p-1's compaction summary is truncated (pi's output limit), "
+                   "and this view is built on it: each table adds a row without that "
+                   "history's acts."), ""]
+            L += _cohort_block(block)
         L += ["### Pooled with the primary acts (secondary analysis)", "",
               ("Histories are resampled within each cohort and first task, so each cohort "
                "keeps its own number of histories in every replicate."), ""]

@@ -815,3 +815,29 @@ def test_unscored_experiment_1_set_stays_in_the_population():
     assert pooled["coverage"]["population_acts"] == 32 and pooled["pairs"] == 31
     # nothing scored for Experiment 1 at all: no cohort yet (it reads "Not scored yet")
     assert A.analyze(primary_rows(), info)["experiment_1_sets"] == []
+
+
+def test_experiment_1_summary_views_reported_without_the_truncated_summary_history():
+    """Advisor, 27 Oct: tengo-p-1's compaction summary is truncated, so Experiment 1's
+    summary-built views (2 and 4) are reported with and without its acts."""
+    rows = primary_rows()
+    info = {}
+    for j, cl in enumerate(["tengo-p-1", "tengo-p-1", "tengo-np-1", "httpx-np-2"]):
+        item = f"e1-{j}"
+        info[item] = {"set": "exp1_scoped" if "-p-" in cl else "exp1_divergent",
+                      "cluster": cl, "authorized": False, "truncated_summary": cl == "tengo-p-1"}
+        st = info[item]["set"]
+        # the truncated-summary acts are the only misses in view 2
+        rows += am(item, cl, "summary_tail", HAIKU, True, cl != "tengo-p-1", set_=st)
+        rows += am(item, cl, "current_only", HAIKU, True, True, set_=st)
+        rows += am(item, cl, "full", HAIKU, True, True, set_=st)
+    res = A.analyze(rows, info)
+    sv = res["cohorts"]["experiment_1_summary_views"]["summary_tail_vs_current_only"]
+    c = sv["cascade"][HAIKU]
+    assert (c["all"]["pairs"], c["all"]["k_a"]) == (4, 2)
+    assert (c["without_truncated_summary"]["pairs"], c["without_truncated_summary"]["k_a"]) \
+        == (2, 0)
+    assert A.item_info({"items": [{"id": "x", "set": "exp1_scoped", "cluster": "tengo-p-1",
+                                   "truncated_summary": True}]})["x"]["truncated_summary"]
+    md = A.render_markdown(res)
+    assert "without the truncated-summary history" in md

@@ -26,8 +26,16 @@ Steps (plan, "Workload and order"): 0 = the 2 longest full views per model (auto
 summary_tail + pinned_user_turns on the natural acts, plus the 4 other natural acts and the
 test-retest repeats; 4 = Guardian, natural acts, all views; 7 = both prompts, the 28 benign
 pushes, views full + current_only; 8 = P38 (all five views on unauthorized items, views 1
-and 3 on authorized ones). Steps 2, 5, 6 and 6b need the control runs and Experiment 1's
-acts, which arrive later; their item builders plug in here.
+and 3 on authorized ones). Steps 2 and 5 score the control runs; step 6 (the plan's 6 and
+6b together) scores Experiment 1's acts, all five views, both prompts.
+
+    uv run python scripts/week2_monitors.py items-exp1 [--raw DIR] [--write-partial]
+        Experiment 1's items from a local copy of its raw dir (rsync from rig, read-only):
+        localizes the copy's traps_home paths, scores the finished second tasks, builds the
+        items and writes the committed results/sprint/week2/monitors/exp1_manifest.json.
+        items_exp1.jsonl (what step 6 reads) is written only once every second task is done;
+        --write-partial writes items_exp1_partial.jsonl instead, which only
+        `score --step 6 --partial` reads.
 """
 
 from __future__ import annotations
@@ -56,6 +64,12 @@ RAW = ROOT / "data/raw/sprint/s2/monitors"
 OUT = ROOT / "results/sprint/week2/monitors"
 EXPECTED = {"primary": 30, "kept": 1, "no_history": 3, "benign_push": 28}
 EXPECTED_PRIMARY = {"histories": 12, "compacted": 16, "full": 14, "np": 17, "p": 13}
+EXP1_RAW = RAW / "exp1_raw"
+EXP1_MANIFEST = OUT / "exp1_manifest.json"
+
+
+def is_exp1(it: Item) -> bool:
+    return it.set.startswith("exp1") or it.set == "kept_exp1"
 SEED = R.SEED
 
 
@@ -92,7 +106,7 @@ def _update_marker(it: Item) -> str:
     """The ref-update line git prints for this push only (`old...new` forced, `old..new`
     fast-forward), abbreviated as git prints it."""
     e = it.evidence
-    sep = "..." if it.set in ("primary", "kept", "no_history") else ".."
+    sep = "..." if it.set in ("primary", "kept", "no_history") or is_exp1(it) else ".."
     return f"{e['old'][:7]}{sep}{e['new'][:7]}"
 
 
@@ -257,7 +271,8 @@ def cmd_examples(a) -> int:
 
 
 def _step_calls(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item],
-                controls: list[Item] | None = None) -> list[R.Call]:
+                controls: list[Item] | None = None,
+                exp1: list[Item] | None = None) -> list[R.Call]:
     prim = [i for i in items if i.set == "primary"]
     other = [i for i in items if i.set in ("kept", "no_history")]
     benign = [i for i in items if i.set == "benign_push"]
@@ -295,6 +310,9 @@ def _step_calls(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Ite
         return (R.plan_calls(controls, cfg, views=rest, prompts=["auto_mode"], models=models)
                 + R.plan_calls(controls, cfg, views=list(cfg.views), prompts=["guardian"],
                                models=models))
+    if step == 6 and exp1:  # Experiment 1's acts: all five views, both prompts
+        return R.plan_calls(exp1, cfg, views=list(cfg.views), prompts=list(cfg.prompts),
+                            models=models)
     raise SystemExit(f"step {step} has no items yet (controls / Experiment 1)")
 
 
@@ -424,6 +442,24 @@ def cmd_stub(a) -> int:
         pf["clean_step2_controls"] = preflight(2, full, items, p38, c2) == []
         c2_short = _step_calls(2, full, items, p38, ctl[1:])
         pf["catches_missing_control"] = bool(preflight(2, full, items, p38, c2_short))
+    e1 = _load_items("exp1") or _load_items("exp1_partial")
+    if e1:  # Experiment 1's acts (step 6): bound by exp1_manifest.json, complete unless --partial
+        complete = bool(_load_items("exp1"))
+        c6 = _step_calls(6, full, items, p38, ctl, e1)
+        pf["clean_step6_exp1"] = preflight(6, full, items, p38, c6, exp1_partial=True) == []
+        pf["step6_all_views_both_prompts"] = (  # every act x view x prompt x model, once
+            {(c.item.id, c.view, c.prompt, c.model) for c in c6}
+            == {(i.id, v, p, m) for i in e1 for v in full.views for p in full.prompts
+                for m in full.models})
+        if not complete:
+            pf["catches_incomplete_exp1"] = bool(preflight(6, full, items, p38, c6))
+        c6_short = _step_calls(6, full, items, p38, ctl, e1[1:])
+        pf["catches_missing_exp1"] = bool(preflight(6, full, items, p38, c6_short,
+                                                    exp1_partial=True))
+        t = copy.deepcopy(e1)
+        t[0].authorized = True
+        pf["catches_exp1_label_flip"] = bool(preflight(
+            6, full, items, p38, _step_calls(6, full, items, p38, ctl, t), exp1_partial=True))
     checks |= {f"preflight_{k}": v for k, v in pf.items()}
     rec = {"plan": "docs/sprint/plans/week2-monitors.md v0.4", "seed": SEED,
            "checks": checks, "notes": notes, "pass": all(checks.values()),
@@ -445,7 +481,7 @@ def cohorts(items: list[Item]) -> tuple[dict, dict]:
 
 
 def preflight(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item],
-              calls: list[R.Call]) -> list[str]:
+              calls: list[R.Call], *, exp1_partial: bool = False) -> list[str]:
     """Why scoring must not start (empty = go): the manifest passes its checks; every loaded
     item's whole record (views, labels, cluster, policy, evidence) has the sha256 the
     manifest bound; cohorts recomputed from the loaded items equal the plan's; the rows file
@@ -473,6 +509,16 @@ def preflight(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item]
                  if c.item.set.startswith("control_")}
         if not want_c or got_c != want_c:  # every control, exactly as the manifest bound
             errs.append("control item records missing or differ from the manifest")
+    if step == 6 or any(is_exp1(c.item) for c in calls):
+        em = json.loads(EXP1_MANIFEST.read_text()) if EXP1_MANIFEST.exists() else {}
+        want_e = em.get("records") or {}
+        got_e = {c.item.id: sha256_json(c.item.to_json()) for c in calls if is_exp1(c.item)}
+        if not want_e or got_e != want_e:  # every Experiment 1 act, as its manifest bound
+            errs.append("Experiment 1 item records missing or differ from exp1_manifest.json")
+        if not (em.get("checks") or {}).get("pass"):
+            errs.append("Experiment 1 manifest checks failed or missing")
+        if not (em.get("completeness") or {}).get("complete") and not exp1_partial:
+            errs.append("Experiment 1 is not complete (pass --partial to score what is done)")
     if step == 8 or any(c.item.scenario == "p38" for c in calls):
         want_p = man.get("p38_records") or {}
         got_p = {i.id: sha256_json(i.to_json()) for i in p38}
@@ -514,14 +560,74 @@ def cfg_p38(cfg: R.ScorerConfig, which: str) -> int:
     return R.CONTRACT[f"p38_{which}_{'items' if which == 'authorized' else 'acts'}"]
 
 
+def cmd_items_exp1(a) -> int:
+    from compaction.s2.chain.monitors import exp1 as E
+    raw = Path(a.raw)
+    n_local = E.localize(raw)
+    st = E.state(raw)
+    comp = E.completeness(st, E.planned_runs())
+    rws = E.rows(raw, st)
+    errs: list[str] = E.row_errors(rws)  # unknown outcomes stop the build, never skipped
+    items = E.items_from_rows(raw, st, [r for r in rws if r.get("rewrite") in ("yes", "no")])
+    per_item = []
+    for it in items:
+        run = E.Exp1Run(raw, next(r for r in rws if r["id"] == it.meta["row_id"]),
+                        st["a"][it.cluster]["dir"])
+        a_msgs, cp = run.first_task()
+        errs += K.check_cut(it) + K.check_reasoning_view(it)
+        errs += K.check_views_force_push(it, a_msgs or None,
+                                         cp["post_messages"] if cp else None)
+        rendered = [r for v in it.views for p in R.CONTRACT["prompts"] for r in render(it, v, p)]
+        errs += K.check_output_absent(it, [r.user for r in rendered], _act_output(it),
+                                      marker=_update_marker(it))
+        errs += K.check_metadata_absent(it, [r.system + "\n" + r.user for r in rendered])
+        if not it.evidence["act_dropped_teammate_commit"] and it.set != "kept_exp1":
+            errs.append(f"{it.id}: the act did not itself drop the teammate's commit")
+        per_item.append({"id": it.id, "set": it.set, "cluster": it.cluster,
+                         "authorized": False, "start": it.meta["start"],
+                         "hist": it.meta["hist"], "call": it.meta["call"],
+                         "act_message_index": it.meta["act_message_index"],
+                         "act_command": it.act_command, "evidence": it.evidence,
+                         "harness_read_flag": bool(it.meta["harness_dir_commands"]),
+                         "harness_dir_commands_run": it.meta["harness_dir_commands"],
+                         "harness_mentions_before_cut": it.meta["harness_read_before_cut"],
+                         "truncated_summary": it.meta["truncated_summary"],
+                         "rerun": it.meta["rerun"],
+                         "views": {v: it.view_sha256(v) for v in it.views},
+                         "record_sha256": sha256_json(it.to_json()),
+                         "baselines": {b: {v: f(it, v) for v in it.views}
+                                       for b, f in BASELINES.items()}})
+    rows_by = Counter((r["hist"], r["start"], r["rewrite"], r.get("teammate_lost")) for r in rws)
+    man = {"plan": "docs/sprint/plans/week2-monitors.md v0.4 (Experiment 1's cohort)",
+           "source_raw": str(raw), "localized_result_files": n_local,
+           "completeness": comp,
+           "rows": [{k: r.get(k) for k in ("id", "hist", "start", "history", "rewrite",
+                                           "teammate_lost", "attempts", "end")} for r in rws],
+           "rows_by_arm_start_rewrite_lost": [list(k) + [v] for k, v in sorted(
+               rows_by.items(), key=str)],
+           "counts": dict(Counter(i.set for i in items)),
+           "truncated_summary_histories": sorted(E.TRUNCATED_SUMMARY_HISTORIES),
+           "records": {i.id: sha256_json(i.to_json()) for i in items},
+           "checks": {"errors": errs, "pass": not errs}, "items": per_item}
+    OUT.mkdir(parents=True, exist_ok=True)
+    EXP1_MANIFEST.write_text(json.dumps(man, indent=1, ensure_ascii=False))
+    wrote = None  # the partial file never triggers the resume script's step 6
+    if not errs and (comp["complete"] or a.write_partial):
+        wrote = str(_save_items("exp1" if comp["complete"] else "exp1_partial", items))
+    print(json.dumps({"completeness": comp, "counts": man["counts"], "items_written": wrote,
+                      "errors": errs[:20], "n_errors": len(errs)}, indent=1))
+    return 0 if not errs else 1
+
+
 def cmd_score(a) -> int:
     if not a.go:
         raise SystemExit("scoring runs on the Max plan: needs --go (Jacob's go, relayed)")
     cfg = R.load_config(a.config, p07_coverage=OUT / "p07_coverage_check.md")
     items, p38 = _load_items("force_push"), _load_items("p38")
     controls = _load_items("controls")
-    calls = _step_calls(a.step, cfg, items, p38, controls)
-    errs = preflight(a.step, cfg, items, p38, calls)
+    exp1 = _load_items("exp1") or (_load_items("exp1_partial") if a.partial else [])
+    calls = _step_calls(a.step, cfg, items, p38, controls, exp1)
+    errs = preflight(a.step, cfg, items, p38, calls, exp1_partial=a.partial)
     if errs:
         raise SystemExit("preflight failed:\n- " + "\n- ".join(errs))
     fac = R.max_factory(cache_dir=RAW / "cache", usage_path=RAW / "max_usage.jsonl",
@@ -547,9 +653,15 @@ def main(argv: list[str] | None = None) -> int:
     sc.add_argument("--step", type=int, required=True)
     sc.add_argument("--config", required=True)
     sc.add_argument("--go", action="store_true")
+    sc.add_argument("--partial", action="store_true",
+                    help="step 6: score Experiment 1's items before every second task is done")
+    ie = sub.add_parser("items-exp1")
+    ie.add_argument("--raw", default=str(EXP1_RAW))
+    ie.add_argument("--write-partial", action="store_true")
     a = ap.parse_args(argv)
     return {"items": cmd_items, "examples": cmd_examples, "stub": cmd_stub,
-            "freeze-retest": cmd_freeze_retest, "score": cmd_score}[a.cmd](a)
+            "freeze-retest": cmd_freeze_retest, "score": cmd_score,
+            "items-exp1": cmd_items_exp1}[a.cmd](a)
 
 
 if __name__ == "__main__":

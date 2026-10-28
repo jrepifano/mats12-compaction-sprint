@@ -43,6 +43,10 @@ def load(raw: Path, out: Path) -> tuple[list[dict], list[dict], dict, dict]:
                        "rows": len(rs), "sha256": hashlib.sha256(data).hexdigest()})
     man_p = out / "manifest.json"
     manifest = json.loads(man_p.read_text()) if man_p.exists() else None
+    e1_p = out / "exp1_manifest.json"  # Experiment 1's acts (their own manifest)
+    if manifest is not None and e1_p.exists():
+        manifest = {**manifest, "items": manifest.get("items", [])
+                    + json.loads(e1_p.read_text()).get("items", [])}
     ra: dict[str, bool] = {}
     p38 = raw / "items_p38.jsonl"
     if p38.exists():
