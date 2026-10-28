@@ -39,7 +39,7 @@ class PlanDrift(RuntimeError):
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
     "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
-                        "summary_refusal"),
+                        "summary_refusal", "user_no"),
                "stage": "str",
                "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
@@ -97,6 +97,11 @@ SCHEMA: dict[str, dict] = {
                 "target_histories": "int", "max_histories": "int", "topup_max_tasks": "int",
                 "topup_rep_start": "int", "summary_regenerations": "int",
                 "bootstrap_reps": "int", "crash_reruns": "int", "alpha": "float"},
+    # experiment 3c (user's "no", week2-build-c): the reply phase at the rejected-push
+    # checkpoint; the rest is 3b's [refusal] section (KIND_OVERRIDES["user_no"])
+    "user_no": {"inject_at": "str", "reply_max_calls": "int", "stop_kinds": "list[str]",
+                "defied_kinds": "list[str]", "text_reply_stops": "bool", "fidelity": "bool",
+                "confirm_by_reading": "bool"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int"},
@@ -104,9 +109,10 @@ SCHEMA: dict[str, dict] = {
 }
 KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent",
                  "monitor_controls": "monitors", "exploit": "exploit",
-                 "summary_refusal": "refusal"}  # design.kind -> its own section
+                 "summary_refusal": "refusal", "user_no": "user_no"}  # design.kind -> its own
 # A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the
-# section optional (validated against SCHEMA if present).
+# section optional (validated against SCHEMA if present). An override may also name another
+# kind's own section, which that kind then uses with these keys (3c reuses 3b's [refusal]).
 KIND_OVERRIDES: dict[str, dict] = {
     "exploit": {"caps": {"exploit_usd": "float"}, "parallelism": None},
     # 3b has no phases (design.n_phases left out) and its own caps and laptop/rig limits
@@ -119,6 +125,17 @@ KIND_OVERRIDES: dict[str, dict] = {
                         "laptop_agent_memory_mb": "int", "laptop_agent_cpus": "int",
                         "laptop_min_free_mem_frac": "float", "laptop_max_load1": "float",
                         "max_concurrent_histories": "int", "sandbox_label": "str"}}}
+# 3c: 3b's design and parallelism; its [refusal] without the top-up keys and with the pinned
+# sources; caps with the reply phase's per-history cap instead of the top-up's
+KIND_OVERRIDES["user_no"] = {
+    "design": KIND_OVERRIDES["summary_refusal"]["design"],
+    "parallelism": KIND_OVERRIDES["summary_refusal"]["parallelism"],
+    "refusal": {**{k: t for k, t in SCHEMA["refusal"].items()
+                   if k not in ("topup_deadline_et", "topup_repos", "target_histories",
+                                "topup_max_tasks", "topup_rep_start")},
+                "sources": "list[str]"},
+    "caps": {"stage_usd": "float", "reply_usd": "float", "run_usd": "float", "max_calls": "int",
+             "max_seconds": "int", "summary_usd": "float"}}
 # Keys a config may leave out (a later experiment's keys in a shared section); the plan check
 # still reports any the contract lists and the config lacks.
 OPTIONAL = {"chain": {"unrelated_chains", "within_task_chains", "within_task_auto_compact_tokens",
@@ -232,7 +249,7 @@ def validate(cfg: dict) -> None:
                 continue
             keys = overrides[sec] or keys
         own_kind = [k for k, s in KIND_SECTIONS.items() if s == sec]
-        if own_kind and kind != own_kind[0]:
+        if own_kind and kind != own_kind[0] and sec not in overrides:
             if sec in cfg:
                 errors.append(f"section [{sec}] not allowed when design.kind = {kind!r}")
             continue

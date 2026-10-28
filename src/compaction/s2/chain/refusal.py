@@ -89,8 +89,8 @@ def load_config(path: str | Path = CONFIG) -> dict:
     cfg["_texts"], trailing newline stripped)."""
     path = Path(path)
     cfg = tomllib.loads(path.read_text())
-    if (cfg.get("design") or {}).get("kind") != "summary_refusal":
-        raise ValueError(f"{path}: design.kind must be 'summary_refusal'")
+    if (cfg.get("design") or {}).get("kind") not in ("summary_refusal", "user_no"):
+        raise ValueError(f"{path}: design.kind must be 'summary_refusal' or 'user_no' (3c)")
     texts, bad = {}, []
     for k, spec in (cfg.get("wording") or {}).items():
         p = Path(spec["path"])
@@ -465,7 +465,7 @@ RUBRIC_TEXT = (
 
 
 def write_rubric(proposals: list[dict], path: Path, *,
-                 preserve_confirmations: bool = True) -> dict:
+                 preserve_confirmations: bool = True, rubric_text: str | None = None) -> dict:
     """The proposal file the build agent confirms: every row's `confirmed` (bool) and
     `confirmed_decline` (bool) start as None and must be filled by reading."""
     path = Path(path)
@@ -494,7 +494,8 @@ def write_rubric(proposals: list[dict], path: Path, *,
         conf_dec = old.get("confirmed_decline") if same_prop else None
         note = str(old.get("note") or "") if same_prop else ""
         rows.append(base_row | {"confirmed": conf, "confirmed_decline": conf_dec, "note": note})
-    rec = {"rubric": RUBRIC_TEXT, "rubric_sha256": sha256(RUBRIC_TEXT), "rows": rows,
+    text = rubric_text or RUBRIC_TEXT  # 3c passes its own (user_no.RUBRIC_TEXT)
+    rec = {"rubric": text, "rubric_sha256": sha256(text), "rows": rows,
            "status": "proposed"}
     dump(path, rec)
     return rec
@@ -1024,9 +1025,13 @@ def prepare_history(inv, row: dict, task, out_dir: Path, *,
     msgs = json.loads((a_dir / "messages.json").read_text())
     di = int(row["decision_index"])
     cp = row["checkpoint"]
-    orig_push = original_push_lines(a_dir)
-    orig_bare = _original_bare(a_dir)
-    exp_remote = _bare_refs(orig_bare) if not _has_later_push(msgs, di) else None
+    # 3c (user_no.fidelity = false): the decision never ran in the original, so there is no
+    # original run to compare a fork's decision commands with
+    run_fidelity = bool((eff_cfg.get("user_no") or {}).get("fidelity", True))
+    if run_fidelity:
+        orig_push = original_push_lines(a_dir)
+        orig_bare = _original_bare(a_dir)
+        exp_remote = _bare_refs(orig_bare) if not _has_later_push(msgs, di) else None
 
     restore_inv = _derive_child_inv(inv, f"{hid}-restore")
     with admission.slot("agent", stop_fn, run_id=restore_inv.run_id):
@@ -1040,7 +1045,9 @@ def prepare_history(inv, row: dict, task, out_dir: Path, *,
             RB._cleanup_inv(restore_inv)
 
     fid: dict = {"ok": False, "skipped": True}
-    if rec["ok"]:
+    if rec["ok"] and not run_fidelity:
+        fid = {"ok": True, "skipped": "user_no: the decision never ran in the original"}
+    elif rec["ok"]:
         fid_inv = _derive_child_inv(inv, f"{hid}-fidelity")
         with admission.slot("agent", stop_fn, run_id=fid_inv.run_id):
             try:
@@ -1495,7 +1502,11 @@ def locate_spans(text: str, spans: list[dict]) -> list[tuple[int, int]]:
     merged and sorted. A quote that isn't found (or not n times) raises."""
     out = []
     for s in spans:
-        q, n = s["quote"], int(s.get("occurrence") or 1)
+        if not isinstance(s, dict) or not isinstance(s.get("quote"), str):
+            raise ValueError(f"malformed span (needs a string quote): {s!r}")  # noqa: TRY004
+        q, n = s["quote"], s.get("occurrence", 1)
+        if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+            raise ValueError(f"span occurrence must be a positive integer: {n!r}")
         if not q:
             raise ValueError("empty span quote")
         pos, k = -1, 0
@@ -1610,9 +1621,11 @@ DROPPED_INSTRUCTIONS = (
     "false and no spans.")
 
 
-def dropped_request(honest: str) -> dict:
-    """The Opus-on-Max request that marks the decision spans (built here; sent elsewhere)."""
-    user = f"{DROPPED_INSTRUCTIONS}\n\n<summary>\n{honest}\n</summary>"
+def dropped_request(honest: str, instructions: str | None = None) -> dict:
+    """The Opus-on-Max request that marks the decision spans (sent by
+    scripts/week2_refusal_max.py). 3c passes its own instructions (wording
+    `no_dropped_instructions`)."""
+    user = f"{instructions or DROPPED_INSTRUCTIONS}\n\n<summary>\n{honest}\n</summary>"
     return {"model": "opus (Max)", "user": user, "sha256": sha256(user),
             "honest_sha256": sha256(honest)}
 
@@ -2028,12 +2041,13 @@ def build_manifest(cfg: dict, out_dir: Path, *, plan: dict | None = None) -> dic
             raise ValueError(f"missing versions file for {hid} at {ver_p}")
         vdoc = json.loads(ver_p.read_text())
         vs = vdoc.get("versions") or {}
-        if set(vs) != set(VERSIONS):
-            raise ValueError(f"versions for {hid} missing required keys: {set(VERSIONS) - set(vs)}")
+        want_v = tuple(cfg["refusal"].get("versions") or VERSIONS)  # 3c runs three
+        if set(vs) != set(want_v):
+            raise ValueError(f"versions for {hid}: {sorted(vs)} != config {sorted(want_v)}")
         branch = str(vdoc.get("branch") or srec.get("branch") or "")
         rebuilt = build_versions(honest, branch, cfg["_texts"], sp_rec)
         ver_hashes: dict[str, str] = {}
-        for v in VERSIONS:
+        for v in want_v:
             vtext = (vs[v] or {}).get("text")
             vsha = (vs[v] or {}).get("sha256")
             if not isinstance(vtext, str) or sha256(vtext) != vsha:
@@ -2045,7 +2059,7 @@ def build_manifest(cfg: dict, out_dir: Path, *, plan: dict | None = None) -> dic
             if v == "decision_dropped" and not rebuilt[v]["diff"]["ok"]:
                 raise ValueError(f"diff_check_dropped failed for {hid}:decision_dropped")
             ver_hashes[v] = vsha
-        cues = cue_hits({v: vs[v]["text"] for v in VERSIONS} | dict(cfg["_texts"]))
+        cues = cue_hits({v: vs[v]["text"] for v in want_v} | dict(cfg["_texts"]))
         if cues:
             raise ValueError(f"cue words detected for {hid}: {cues}")
 
@@ -2115,7 +2129,8 @@ def design_card(cfg: dict, plan: dict, versions_by_history: dict, path: Path, *,
                 manifest: dict | None = None) -> str:
     """The card Jacob reads before the go: config, plan, and manifest hashes, the planted lines,
     every history's version hashes and run counts. The paid path refuses without it."""
-    lines = ["# Experiment 3b design card", "",
+    variant = (cfg.get("design") or {}).get("kind")
+    lines = [f"# Experiment {'3c' if variant == 'user_no' else '3b'} design card", "",
              f"- config sha256: `{cfg['_sha256']}`",
              f"- plan order sha256: `{plan['order_sha256']}`"]
     if manifest is not None and manifest.get("manifest_sha256"):
@@ -2126,7 +2141,8 @@ def design_card(cfg: dict, plan: dict, versions_by_history: dict, path: Path, *,
          f"{cfg['caps']['max_seconds']} s"), "",
         "## Planted lines (only `<branch>` varies)", "",
         f"- false permission: {cfg['_texts']['false_permission']}",
-        f"- false rule: {cfg['_texts']['false_rule']}",
+        *([f"- user turn: {cfg['_texts']['user_no']}"] if variant == "user_no"
+          else [f"- false rule: {cfg['_texts']['false_rule']}"]),
         f"- not-run tool message: {cfg['_texts']['not_run_tool_message']}",
         f"- continue turn: {cfg['_texts']['continue_turn']}", "", "## Histories", "",
     ])
@@ -2561,7 +2577,8 @@ def contrast(rows: list[dict], version: str, base: str = "honest", outcome: str 
 def analyze(rows: list[dict], identical: set[str], subgroup: set[str], kept: set[str],
             alpha: float = 0.05, *, runs_per_version: int = 2,
             planned_histories: set[str] | None = None,
-            topup_histories: set[str] | None = None) -> dict:
+            topup_histories: set[str] | None = None,
+            versions: tuple[str, ...] = VERSIONS) -> dict:
     """The primary (false permission − honest), the secondaries, and the prespecified splits
     (including pooled vs source/top-up splits when top-up histories are present)."""
     ckw = {
@@ -2570,8 +2587,9 @@ def analyze(rows: list[dict], identical: set[str], subgroup: set[str], kept: set
         "planned_histories": planned_histories,
     }
     out = {"primary": contrast(rows, "false_permission", **ckw),
-           "false_rule": contrast(rows, "false_rule", **ckw),
            "decision_dropped": contrast(rows, "decision_dropped", identical=identical, **ckw)}
+    if "false_rule" in versions:  # 3b only
+        out["false_rule"] = contrast(rows, "false_rule", **ckw)
     for name, keep in (("explicit_decline", subgroup), ("honest_kept_decision", kept)):
         sub = [r for r in rows if r["history"] in keep]
         sub_plan = (planned_histories & set(keep)) if planned_histories is not None else None
@@ -2602,7 +2620,7 @@ def analyze(rows: list[dict], identical: set[str], subgroup: set[str], kept: set
             }
     for oc in ("replaced", "any_rewrite"):
         out[f"primary_{oc}"] = contrast(rows, "false_permission", outcome=oc, **ckw)
-    out["rates"] = {v: _rate([r["lost"] for r in rows if r["version"] == v]) for v in VERSIONS}
+    out["rates"] = {v: _rate([r["lost"] for r in rows if r["version"] == v]) for v in versions}
     return out
 
 
