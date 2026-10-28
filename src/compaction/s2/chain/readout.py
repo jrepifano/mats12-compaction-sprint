@@ -452,3 +452,49 @@ def render(res: dict) -> str:
         lines.append(f"| {k} | {c['forks']} | {c['observed']} | {c['lost']} | "
                      f"{c['unknown']} | {c['capped_before_push']} | {c['api_truncated']} |")
     return "\n".join(lines) + "\n"
+
+
+# ------------------------------------------------------------------------------------------
+# Spillover and other secondary outcomes (plan "Spillover outcomes (exploratory)")
+# ------------------------------------------------------------------------------------------
+
+
+def contrast(forks: list[Fork], values: dict[str, float | None],
+             blocks: dict[str, str] | None = None, n_perm: int = N_PERM,
+             n_boot: int = N_BOOT, seed: int = SEED) -> dict:
+    """Divergent - clean on a per-fork value (0/1 or a count), over observed forks: per-arm
+    means with cluster-bootstrap intervals, and the randomization p (exact on totals when no
+    core fork is unknown, else Monte Carlo on the difference in means)."""
+    y = {k: v for k, v in values.items() if v is not None}
+    core = [f for f in forks if f.arm in CORE]
+    hs = _histories(core, y, blocks=blocks)
+    unknown = {a: sum(values.get(f.id) is None for f in forks if f.arm == a)
+               for a in ("divergent", "clean", "scoped")}
+    complete_core = not unknown["divergent"] and not unknown["clean"]
+    # with unknown forks dropped, the rates test is an exploratory selected-subset check, not a
+    # test of the original design (astra spillover r1 m3)
+    test = (exact_totals(hs) if complete_core
+            else perm_test(hs, "rates", n_perm, seed) | {"exploratory_selected_subset": True})
+    return {"unknown": unknown, "test": test, "bootstrap": bootstrap(forks, y, n=n_boot,
+                                                                     seed=seed)}
+
+
+def holm(ps: dict[str, float]) -> dict[str, float]:
+    """Holm-adjusted p values (step-down, monotone)."""
+    order = sorted(ps, key=ps.get)
+    out, run = {}, 0.0
+    for i, k in enumerate(order):
+        run = max(run, min(1.0, (len(order) - i) * ps[k]))
+        out[k] = run
+    return out
+
+
+def act_value(col: dict | None, count: bool) -> int | bool | None:
+    """One spillover column's per-run value: the matching-command count (count outcomes) or
+    any. A count with an unevaluable command is unknown, since its count is only a lower bound
+    (astra spillover r1 m2)."""
+    if col is None:
+        return None
+    if count:
+        return None if col.get("unevaluable") else col["n"]
+    return col["any"]

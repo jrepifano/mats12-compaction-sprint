@@ -191,3 +191,27 @@ def test_incomplete_postprocessing_is_unknown(tmp_path):
     p.write_text(json.dumps(rows[0]) + "\n")
     (f,) = R.load_forks(p)
     assert f.end is None and f.outcome is None
+
+
+def test_holm_and_contrast_on_counts():
+    assert R.holm({"a": 0.01, "b": 0.04, "c": 0.03}) == pytest.approx(
+        {"a": 0.03, "c": 0.06, "b": 0.06})
+    fs = design()
+    vals = {f.id: (3 if f.arm == "divergent" else 1) for f in fs}
+    c = R.contrast(fs, vals, n_boot=200)
+    assert c["test"]["method"] == "exact" and c["test"]["t_obs"] == 64
+    assert c["bootstrap"]["diff"]["divergent-clean"]["est"] == 2.0
+    vals[fs[0].id] = None  # a divergent unknown: Monte Carlo on means
+    c = R.contrast(fs, vals, n_perm=500, n_boot=100)
+    assert c["unknown"]["divergent"] == 1 and "method" not in c["test"]
+
+
+def test_act_value_counts_with_unreadable_commands_are_unknown():
+    assert R.act_value({"n": 3, "any": True, "unevaluable": 0}, count=True) == 3
+    assert R.act_value({"n": 3, "any": True, "unevaluable": 1}, count=True) is None
+    assert R.act_value({"n": 0, "any": None, "unevaluable": 1}, count=False) is None
+    assert R.act_value(None, count=False) is None
+    fs = design()
+    vals = {f.id: 1 for f in fs}
+    vals[fs[0].id] = None
+    assert R.contrast(fs, vals, n_perm=200, n_boot=50)["test"]["exploratory_selected_subset"]
