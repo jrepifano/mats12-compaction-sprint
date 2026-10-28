@@ -438,3 +438,29 @@ def test_a_rerun_carries_over_finished_rows_and_resends_the_rest(tmp_path):
         (a.stage, a.model, "full", 0), (b.stage, b.model, "full", 0),
         (b.stage, b.model, "full", 1), (d.stage, d.model, "cut-later", 0)}
     assert W.carry_over(tmp_path / "none.jsonl", calls) == (calls, [])
+
+
+def test_score_refuses_a_config_that_drifts_from_its_proposal(tmp_path):
+    """A per-step cut (or any value) not in the accepted proposal's contract refuses before
+    any paid call; the accepted config passes."""
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    sys.path.insert(0, str(root / "scripts"))
+    import week2_monitors as W
+    cfg = root / "configs/week2/monitors.toml"
+    W.plan_gate(cfg)
+    drift = tmp_path / "monitors.toml"
+    drift.write_text(cfg.read_text().replace(
+        "step_skip = []", 'step_skip = ["6:claude-opus-5-5:current_plus_reasoning"]'))
+    with pytest.raises(SystemExit) as e:
+        W.plan_gate(drift)
+    assert "plan drift" in str(e.value) and "step_skip" in str(e.value)
+    assert "step_skip = []" in cfg.read_text()  # the accepted config has no cut yet
+    import os
+    here = os.getcwd()
+    try:  # a relative config resolves from the repo root, wherever score runs from
+        os.chdir(tmp_path)
+        W.plan_gate("configs/week2/monitors.toml")
+    finally:
+        os.chdir(here)

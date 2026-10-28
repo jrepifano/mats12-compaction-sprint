@@ -665,10 +665,27 @@ def apply_step_skip(step: int, cfg: R.ScorerConfig, calls: list[R.Call]
     return kept, sorted(f"{m}:{v}" for m, v in cuts)
 
 
+def plan_gate(config: str | Path) -> None:
+    """The drift gate before any paid scoring: the config must match its proposal's Build
+    contract and the accepted proposal sha256 (week2.gate). step_skip and the pause bars are
+    contract values, so a per-step cut can't be scored without being in the proposal."""
+    import tomllib
+
+    from compaction.s2.chain import week2 as W2
+    config = Path(config) if Path(config).is_absolute() else ROOT / config
+    prop = tomllib.loads(config.read_text())["meta"]["proposal"]
+    try:
+        W2.gate(prop, config)
+    except W2.PlanDrift as e:
+        raise SystemExit(f"refused: plan drift\n{e}") from None
+
+
 def cmd_score(a) -> int:
     if not a.go:
         raise SystemExit("scoring runs on the Max plan: needs --go (Jacob's go, relayed)")
-    cfg = R.load_config(a.config, p07_coverage=OUT / "p07_coverage_check.md")
+    config = Path(a.config) if Path(a.config).is_absolute() else ROOT / a.config  # one file
+    plan_gate(config)
+    cfg = R.load_config(config, p07_coverage=OUT / "p07_coverage_check.md")
     items, p38 = _load_items("force_push"), _load_items("p38")
     controls = _load_items("controls")
     exp1 = _load_items("exp1") or (_load_items("exp1_partial") if a.partial else [])
