@@ -38,7 +38,7 @@ class PlanDrift(RuntimeError):
 
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
-    "design": {"kind": ("two_phase", "chain", "precedent"), "stage": "str", "seed": "int",
+    "design": {"kind": ("two_phase", "chain", "precedent", "r7_planted"), "stage": "str", "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
     "two_phase": {"repos": "list[str]", "arms": "list[str]", "starts": "list[str]",
                   "projects": "list[str]", "histories_per_arm": "int", "a_retries": "int",
@@ -55,11 +55,16 @@ SCHEMA: dict[str, dict] = {
                   "second_tasks_after_gate": "bool", "spillover_acts": "list[str]",
                   "interim_after_second_tasks": "int"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
+    "replay": {"model": "str", "effort": "str", "source_root": "str",
+               "histories": "list[str]", "arms": "list[str]", "new_runs": "list[int]",
+               "existing_honest_runs": "int", "manifest": "file", "output_root": "str",
+               "ledger": "str"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int"},
     "wording": {"*": "file"},
 }
-KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent"}  # design.kind -> its own section
+KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent",
+                 "r7_planted": "replay"}  # design.kind -> its own section
 NOT_CONTRACT = ("meta", "_source")  # flatten skips these
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 FILE_KEYS = ("path", "sha256")
@@ -178,7 +183,7 @@ def validate(cfg: dict) -> None:
     n = cfg["design"]["n_phases"]
     if n < 2:
         errors.append(f"design.n_phases: must be >= 2, got {n}")
-    if kind in ("two_phase", "precedent") and n != 2:
+    if kind in ("two_phase", "precedent", "r7_planted") and n != 2:
         errors.append(f"design.n_phases: must be 2 for {kind}, got {n}")
     for name, spec in cfg["wording"].items():
         _check_file(f"wording.{name}", spec, errors)
@@ -188,6 +193,17 @@ def validate(cfg: dict) -> None:
             _check_orders(p, cfg, errors)
     if kind == "precedent":
         _check_file("precedent.assignment", cfg["precedent"]["assignment"], errors)
+    if kind == "r7_planted":
+        _check_file("replay.manifest", cfg["replay"]["manifest"], errors)
+        rp = cfg["replay"]
+        expected = {f"{repo}-np-{rep}" for repo in ("httpx", "tengo") for rep in range(1, 7)}
+        if len(rp["histories"]) != 12 or set(rp["histories"]) != expected:
+            errors.append("replay.histories: expected the 12 divergent Haiku histories")
+        if set(cfg["wording"]) != expected:
+            errors.append("wording: expected one edit spec per replay history")
+        if rp["arms"] != ["planted", "honest"] or rp["new_runs"] != [2, 1] \
+                or rp["existing_honest_runs"] != 1:
+            errors.append("replay: expected planted x2, honest x1 new plus x1 existing")
     if errors:
         raise ValueError("config invalid:\n  " + "\n  ".join(errors))
 
@@ -547,6 +563,12 @@ def design_card(cfg: dict, runs: list[dict], out_path: str | Path) -> str:
                 + ", ".join(f"{a} {n}" for a, n in zip(pr["arms"], pr["per_task"], strict=True))
                 + f"; {pr['rounds']} launch rounds; first-stage gate >= {pr['first_stage_min']} "
                 "divergent histories"]
+    if d["kind"] == "r7_planted":
+        rp = cfg["replay"]
+        out += ["", "36 new task-2 runs; 12 existing honest runs included in the 48-run readout.",
+                f"Sources: {rp['manifest']['path']} (sha256 {rp['manifest']['sha256']}).",
+                f"Model: {rp['model']}; effort: {rp['effort']}.",
+                "The two task-2 runs in each arm share a task-1 history; inference pairs by history."]
     out += ["", f"Reasoning text logged: {'yes' if d['log_reasoning'] else 'no'}"]
     out += ["", "## Caps and parallelism", "",
             (f"- stage ${_scalar(caps['stage_usd'])}, per run ${_scalar(caps['run_usd'])}, "
@@ -650,6 +672,24 @@ def precedent_rows(cfg: dict) -> list[dict]:
              "tasks": [h.a_task]} for h in hists]
     rows += [{"id": r.id, "arm": r.cell.hist, "start": r.cell.start, "project": r.cell.project,
               "tasks": [CC.REPOS[r.history.split("-")[0]].a_task, r.cell.b_task]} for r in runs]
+    return rows
+
+
+def r7_rows(cfg: dict) -> list[dict]:
+    """The new and reused task-2 runs, without opening raw sessions or launching a CLI."""
+    rows = []
+    rp = cfg["replay"]
+    for hid in rp["histories"]:
+        repo = hid.split("-")[0]
+        other = next(r for r in CC.REPOS if r != repo)
+        tasks = [CC.REPOS[repo].a_task, CC.REPOS[other].b_task]
+        for arm, count in zip(rp["arms"], rp["new_runs"], strict=True):
+            start = 2 if arm == "honest" else 1
+            rows += [{"id": f"{hid}-{arm}-{i}", "arm": arm, "start": "replayed",
+                      "project": "different", "tasks": tasks}
+                     for i in range(start, start + count)]
+        rows.append({"id": f"{hid}-honest-1", "arm": "honest", "start": "existing bulk",
+                     "project": "different", "tasks": tasks})
     return rows
 
 
