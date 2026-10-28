@@ -1,0 +1,792 @@
+{
+ "counts": {
+  "divergent/full": {
+   "forks": 16,
+   "histories": 16,
+   "observed": 16,
+   "lost": 8,
+   "unknown": 0,
+   "capped_before_push": 3,
+   "api_truncated": 0,
+   "ends": {
+    "submitted": 13,
+    "capped_cost": 3
+   }
+  },
+  "divergent/compacted": {
+   "forks": 16,
+   "histories": 16,
+   "observed": 16,
+   "lost": 8,
+   "unknown": 0,
+   "capped_before_push": 4,
+   "api_truncated": 0,
+   "ends": {
+    "submitted": 12,
+    "capped_cost": 2,
+    "capped_time": 2
+   }
+  },
+  "divergent/all": {
+   "forks": 32,
+   "histories": 16,
+   "observed": 32,
+   "lost": 16,
+   "unknown": 0,
+   "capped_before_push": 7,
+   "api_truncated": 0,
+   "ends": {
+    "submitted": 25,
+    "capped_cost": 5,
+    "capped_time": 2
+   }
+  },
+  "clean/full": {
+   "forks": 16,
+   "histories": 16,
+   "observed": 15,
+   "lost": 0,
+   "unknown": 1,
+   "capped_before_push": 0,
+   "api_truncated": 1,
+   "ends": {
+    "submitted": 15,
+    "failed": 1
+   }
+  },
+  "clean/compacted": {
+   "forks": 16,
+   "histories": 16,
+   "observed": 16,
+   "lost": 0,
+   "unknown": 0,
+   "capped_before_push": 1,
+   "api_truncated": 0,
+   "ends": {
+    "submitted": 14,
+    "capped_time": 2
+   }
+  },
+  "clean/all": {
+   "forks": 32,
+   "histories": 16,
+   "observed": 31,
+   "lost": 0,
+   "unknown": 1,
+   "capped_before_push": 1,
+   "api_truncated": 1,
+   "ends": {
+    "submitted": 29,
+    "capped_time": 2,
+    "failed": 1
+   }
+  },
+  "scoped/full": {
+   "forks": 8,
+   "histories": 8,
+   "observed": 8,
+   "lost": 2,
+   "unknown": 0,
+   "capped_before_push": 0,
+   "api_truncated": 0,
+   "ends": {
+    "submitted": 8
+   }
+  },
+  "scoped/compacted": {
+   "forks": 8,
+   "histories": 8,
+   "observed": 8,
+   "lost": 4,
+   "unknown": 0,
+   "capped_before_push": 3,
+   "api_truncated": 0,
+   "ends": {
+    "submitted": 5,
+    "capped_cost": 3
+   }
+  },
+  "scoped/all": {
+   "forks": 16,
+   "histories": 8,
+   "observed": 16,
+   "lost": 6,
+   "unknown": 0,
+   "capped_before_push": 3,
+   "api_truncated": 0,
+   "ends": {
+    "submitted": 13,
+    "capped_cost": 3
+   }
+  }
+ },
+ "primary": {
+  "lower": {
+   "test": {
+    "t_obs": 15.0,
+    "kind": "totals",
+    "p": 0.0007716049382716049,
+    "n_assignments": 1679616,
+    "method": "exact"
+   },
+   "test_monte_carlo": {
+    "t_obs": 15.0,
+    "kind": "totals",
+    "p": 0.0008299917000829991,
+    "n_perm": 100000,
+    "seed": 20261027
+   },
+   "bootstrap": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "clean": {
+      "est": 0.03125,
+      "ci": [
+       0.0,
+       0.09375
+      ]
+     },
+     "scoped": {
+      "est": 0.375,
+      "ci": [
+       0.125,
+       0.5625
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.46875,
+      "ci": [
+       0.28125,
+       0.65625
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.125,
+      "ci": [
+       -0.40625,
+       0.15625
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.34375,
+      "ci": [
+       0.09375,
+       0.5625
+      ]
+     }
+    }
+   }
+  },
+  "upper": {
+   "test": {
+    "t_obs": 16.0,
+    "kind": "totals",
+    "p": 0.00038580246913580245,
+    "n_assignments": 1679616,
+    "method": "exact"
+   },
+   "test_monte_carlo": {
+    "t_obs": 16.0,
+    "kind": "totals",
+    "p": 0.0004099959000409996,
+    "n_perm": 100000,
+    "seed": 20261027
+   },
+   "bootstrap": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.375,
+      "ci": [
+       0.125,
+       0.5625
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.125,
+      "ci": [
+       -0.40625,
+       0.15625
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.375,
+      "ci": [
+       0.125,
+       0.5625
+      ]
+     }
+    }
+   }
+  },
+  "observed_only": {
+   "test": {
+    "t_obs": 0.5,
+    "kind": "rates",
+    "p": 0.0004099959000409996,
+    "n_perm": 100000,
+    "seed": 20261027
+   },
+   "bootstrap": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.375,
+      "ci": [
+       0.125,
+       0.5625
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.125,
+      "ci": [
+       -0.40625,
+       0.15625
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.375,
+      "ci": [
+       0.125,
+       0.5625
+      ]
+     }
+    }
+   }
+  },
+  "significant": true
+ },
+ "per_start": {
+  "full": {
+   "lower": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.25,
+       0.75
+      ]
+     },
+     "clean": {
+      "est": 0.0625,
+      "ci": [
+       0.0,
+       0.1875
+      ]
+     },
+     "scoped": {
+      "est": 0.25,
+      "ci": [
+       0.0,
+       0.5
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.4375,
+      "ci": [
+       0.1875,
+       0.6875
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.25,
+      "ci": [
+       -0.5625,
+       0.0625
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.1875,
+      "ci": [
+       -0.0625,
+       0.4375
+      ]
+     }
+    }
+   },
+   "upper": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.25,
+       0.75
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.25,
+      "ci": [
+       0.0,
+       0.5
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.5,
+      "ci": [
+       0.25,
+       0.75
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.25,
+      "ci": [
+       -0.5625,
+       0.0625
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.25,
+      "ci": [
+       0.0,
+       0.5
+      ]
+     }
+    }
+   }
+  },
+  "compacted": {
+   "lower": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.5,
+      "ci": [
+       0.25,
+       0.75
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "scoped-divergent": {
+      "est": 0.0,
+      "ci": [
+       -0.375,
+       0.375
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.5,
+      "ci": [
+       0.25,
+       0.75
+      ]
+     }
+    }
+   },
+   "upper": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.5,
+      "ci": [
+       0.25,
+       0.75
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "scoped-divergent": {
+      "est": 0.0,
+      "ci": [
+       -0.375,
+       0.375
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.5,
+      "ci": [
+       0.25,
+       0.75
+      ]
+     }
+    }
+   }
+  }
+ },
+ "sensitivity": {
+  "without_capped_before_push": {
+   "forks_left_out": 11,
+   "test": {
+    "t_obs": 0.64,
+    "kind": "rates",
+    "p": 9.99990000099999e-06,
+    "n_perm": 100000,
+    "seed": 20261027,
+    "exploratory_selected_subset": true
+   },
+   "bootstrap": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.64,
+      "ci": [
+       0.43478260869565216,
+       0.8518518518518519
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.46153846153846156,
+      "ci": [
+       0.16666666666666666,
+       0.6923076923076923
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.64,
+      "ci": [
+       0.43478260869565216,
+       0.8518518518518519
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.17846153846153845,
+      "ci": [
+       -0.5362876254180602,
+       0.13334757834757824
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.46153846153846156,
+      "ci": [
+       0.16666666666666666,
+       0.6923076923076923
+      ]
+     }
+    }
+   }
+  },
+  "without_api_truncated": {
+   "forks_left_out": 1,
+   "test": {
+    "t_obs": 0.5,
+    "kind": "rates",
+    "p": 0.0004099959000409996,
+    "n_perm": 100000,
+    "seed": 20261027,
+    "exploratory_selected_subset": true
+   },
+   "bootstrap": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.375,
+      "ci": [
+       0.125,
+       0.5625
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.5,
+      "ci": [
+       0.3125,
+       0.6875
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.125,
+      "ci": [
+       -0.40625,
+       0.15625
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.375,
+      "ci": [
+       0.125,
+       0.5625
+      ]
+     }
+    }
+   }
+  },
+  "without_both": {
+   "forks_left_out": 12,
+   "test": {
+    "t_obs": 0.64,
+    "kind": "rates",
+    "p": 9.99990000099999e-06,
+    "n_perm": 100000,
+    "seed": 20261027,
+    "exploratory_selected_subset": true
+   },
+   "bootstrap": {
+    "n_boot": 2000,
+    "seed": 20261027,
+    "rate": {
+     "divergent": {
+      "est": 0.64,
+      "ci": [
+       0.43478260869565216,
+       0.8518518518518519
+      ]
+     },
+     "clean": {
+      "est": 0.0,
+      "ci": [
+       0.0,
+       0.0
+      ]
+     },
+     "scoped": {
+      "est": 0.46153846153846156,
+      "ci": [
+       0.16666666666666666,
+       0.6923076923076923
+      ]
+     }
+    },
+    "diff": {
+     "divergent-clean": {
+      "est": 0.64,
+      "ci": [
+       0.43478260869565216,
+       0.8518518518518519
+      ]
+     },
+     "scoped-divergent": {
+      "est": -0.17846153846153845,
+      "ci": [
+       -0.5362876254180602,
+       0.13334757834757824
+      ]
+     },
+     "scoped-clean": {
+      "est": 0.46153846153846156,
+      "ci": [
+       0.16666666666666666,
+       0.6923076923076923
+      ]
+     }
+    }
+   }
+  }
+ },
+ "blocks": "first task x launch round",
+ "compacted_minus_full": {
+  "core_observed": -0.008064516129032251,
+  "divergent": 0.0,
+  "clean": 0.0,
+  "scoped": 0.25,
+  "core_paired": {
+   "histories": 31,
+   "mean": 0.0,
+   "discordant": {
+    "0": 27,
+    "1": 2,
+    "-1": 2
+   }
+  }
+ },
+ "first_stage": {
+  "lost": 10,
+  "n": 16
+ },
+ "first_stage_split": {
+  "n_boot": 2000,
+  "seed": 20261027,
+  "overwrote": {
+   "histories": 10,
+   "forks": 20,
+   "lost": 15,
+   "rate": 0.75,
+   "histories_any_loss": 9
+  },
+  "kept": {
+   "histories": 6,
+   "forks": 12,
+   "lost": 1,
+   "rate": 0.08333333333333333,
+   "histories_any_loss": 1
+  },
+  "diff": {
+   "est": 0.6666666666666666,
+   "ci": [
+    0.43333333333333335,
+    0.9
+   ]
+  }
+ },
+ "predictions": [
+  {
+   "prediction": "First stage >= 8/16 divergent histories",
+   "prob": 0.7,
+   "outcome": "10/16",
+   "held": true
+  },
+  {
+   "prediction": "Divergent - clean >= +25 points",
+   "prob": 0.5,
+   "outcome": "+46.9 to +50.0",
+   "held": true
+  },
+  {
+   "prediction": "Randomization test p < 0.05",
+   "prob": 0.45,
+   "outcome": "p = 0.00077 / 0.00039",
+   "held": true
+  },
+  {
+   "prediction": "Clean arm <= 15%",
+   "prob": 0.65,
+   "outcome": "0.0%",
+   "held": true
+  },
+  {
+   "prediction": "Compacted - full within +/-15 points (paired by history)",
+   "prob": 0.6,
+   "outcome": "+0.0",
+   "held": true
+  }
+ ],
+ "source": {
+  "rows": "results/sprint/week2/precedent/rows.jsonl",
+  "rows_sha256": "c87e2a78688278d3bdaa8688f01f6a59b589b1923f30ae39d4111f527de94475",
+  "n_rows": 80,
+  "assignment_sha256": "913855b922a7c98252e3193a38018b36219d33d2f103f37767137eb8b4f7bb97",
+  "a_gate_sha256": "123cff5af5a434c30fe863a1343c0ae773fc5eb4caad9108937a2ee69d3e4dd2"
+ }
+}
