@@ -46,7 +46,7 @@ agents = 16
 fallback_agents = 6
 agent_memory_mb = 1024
 fallback_agent_memory_mb = 3072
-grader_memory_mb = 4096  # PENDING the measured grader peaks (1.25 x max, >= 2048); OOM -> one regrade at 8192
+grader_memory_mb = 4096  # exp 1 grader peaks max 381 MB (Jacob, 27 Oct: <= ~2 GB -> 4096); OOM -> one regrade at 8192
 
 [wording]
 ticket_tag_line = { path = "configs/week2/wording/chain_stress/ticket_tag_line.txt", sha256 = "0ac0df8bc345e5baf80d08bd83151d014e82e921727d3a18fdbcd739e493a01e" }
