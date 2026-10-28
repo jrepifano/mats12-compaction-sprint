@@ -35,8 +35,9 @@ arms S+R and S+I append their block to it.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 from compaction import s1_replay as RP
@@ -237,9 +238,14 @@ def post_context(policy: str, messages: list[dict], summary: str, kept_indices: 
 def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
             instruction_text: str | None, max_output_cap: int | None = None,
             previous_summary: str | None = None,
-            previous_summary_index: int | None = None) -> Compaction:
+            previous_summary_index: int | None = None,
+            custom_instructions: str | None = None) -> Compaction:
     """Summarize `messages` (the full pre-boundary history, messages[0] = system) with the
     policy's replayed request(s) on `model`, and build the post-compaction context.
+
+    `custom_instructions` (pi only) is pi's `/compact <instructions>`: appended to the history
+    summary's prompt as "\n\nAdditional focus: <instructions>", as pi-mono b06c1f2's
+    generateSummaryWithUsage does; the turn-prefix call doesn't get it (week 2, experiment 5).
 
     `previous_summary` (pi only) makes it a repeated compaction with pi's update prompt; the
     message at `previous_summary_index` (the one carrying that summary) is left out of the
@@ -250,6 +256,8 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         raise ValueError("previous_summary and previous_summary_index go together")
     if previous_summary is not None and policy != "pi":
         raise ValueError(f"no update prompt for policy {policy!r} (pi only)")
+    if custom_instructions and policy != "pi":
+        raise ValueError(f"no custom instructions for policy {policy!r} (pi only)")
     rmsgs = to_record_messages(messages)
     if previous_summary_index is not None:
         if not 0 < previous_summary_index < len(messages) or \
@@ -265,6 +273,8 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
     usage: list[dict] = []
     requests = []
     for c in req.calls:
+        if custom_instructions and c.label == "history":  # pi-mono: a truthiness check
+            c = replace(c, user=f"{c.user}\n\nAdditional focus: {custom_instructions}")
         mt = min(c.max_output_tokens, max_output_cap or c.max_output_tokens)
         requests.append({"label": c.label, "system": c.system, "user": c.user,
                          "max_output_tokens": mt})
@@ -275,6 +285,7 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
                                      purpose=f"summary:{policy}:{c.label}")
             except ModelError as e:
                 e.cost_usd += sum(u["cost_usd"] or 0.0 for u in usage)  # the earlier calls too
+                e.usage, e.requests = usage, requests  # each attempt so far, for the record
                 raise
             texts[c.label] = _text(rep.message.get("content"))
             u: Usage = rep.usage
@@ -289,9 +300,11 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         # spent its output cap on reasoning): fail it, charged, so the run restarts.
         # Each call is checked: pi's split-turn merge adds headings, so its merged text is
         # never empty even when a part is (review r1).
-        raise ModelError(f"empty summary from {policy} (empty: {empty}; finish: "
+        err = ModelError(f"empty summary from {policy} (empty: {empty}; finish: "
                          f"{[u['finish_reason'] for u in usage]})",
                          sum(u["cost_usd"] or 0.0 for u in usage))
+        err.usage, err.requests = usage, requests  # each attempt's tokens and finish reason
+        raise err
 
     kept = list(req.kept_messages)
     kept_idx = [m["_i"] for m in kept if "_i" in m]
@@ -304,7 +317,10 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         "truncated": [lb for lb in texts if [u for u in usage if u["label"] == lb][-1]
                       ["finish_reason"] == "length"],
         "empty_resends": sum(u.get("attempt", 1) > 1 for u in usage),
-        "prompt_sha256": req.prompt_sha256, "request_sha256": req.request_sha256,
+        "prompt_sha256": req.prompt_sha256,
+        # the requests as sent: with custom instructions they differ from the policy's own
+        "request_sha256": (hashlib.sha256(json.dumps(requests, sort_keys=True).encode())
+                           .hexdigest() if custom_instructions else req.request_sha256),
         "policy_version": RP.policy_version(policy) if policy in RP.REPLAY_ARMS else None,
         "update": previous_summary is not None,
         "update_prompt_sha256": pi_update_prompt_sha256() if previous_summary is not None
@@ -312,7 +328,7 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         "previous_summary_sha256": RP._sha(previous_summary) if previous_summary is not None
         else None,
         "previous_summary_index": previous_summary_index,
-        "instruction_text": instruction_text}
+        "instruction_text": instruction_text, "custom_instructions": custom_instructions}
     return Compaction(policy, requests, texts, summary, kept_idx, post, sidx, usage, info)
 
 

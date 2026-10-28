@@ -39,7 +39,7 @@ class PlanDrift(RuntimeError):
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
     "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
-                        "summary_refusal"),
+                        "summary_refusal", "summary_fix"),
                "stage": "str",
                "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
@@ -97,6 +97,12 @@ SCHEMA: dict[str, dict] = {
                 "target_histories": "int", "max_histories": "int", "topup_max_tasks": "int",
                 "topup_rep_start": "int", "summary_regenerations": "int",
                 "bootstrap_reps": "int", "crash_reruns": "int", "alpha": "float"},
+    # experiment 5 (summary fix, pi): experiment 1's overwriting histories under four boundary
+    # arms (compaction.s2.chain.summary_fix)
+    "summary_fix": {"testbed": ("pi",), "source_exp": "str", "histories": "list[str]",
+                    "arms": "list[str]", "replicates": "int", "replicates_late": "int",
+                    "late_after_et": "str", "project": ("different",), "start": ("compacted",),
+                    "host": ("laptop", "rig"), "smoke_history": "str", "smoke_arms": "list[str]"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int",
@@ -106,11 +112,15 @@ SCHEMA: dict[str, dict] = {
 }
 KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent",
                  "monitor_controls": "monitors", "exploit": "exploit",
-                 "summary_refusal": "refusal"}  # design.kind -> its own section
+                 "summary_refusal": "refusal",
+                 "summary_fix": "summary_fix"}  # design.kind -> its own section
 # A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the
 # section optional (validated against SCHEMA if present).
 KIND_OVERRIDES: dict[str, dict] = {
     "exploit": {"caps": {"exploit_usd": "float"}, "parallelism": None},
+    # experiment 5: a second cap for the 2-replicate case (a pi start after late_after_et)
+    "summary_fix": {"caps": {"stage_usd": "float", "stage_usd_late": "float", "run_usd": "float",
+                             "max_calls": "int", "max_seconds": "int"}},
     # 3b has no phases (design.n_phases left out) and its own caps and laptop/rig limits
     "summary_refusal": {
         "design": {k: t for k, t in SCHEMA["design"].items() if k != "n_phases"},
