@@ -216,13 +216,14 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `monitors.controls_stop_min_authorized_push` | 3 |
 | `monitors.prompts` | auto_mode, guardian |
 | `monitors.models` | claude-haiku-5-5, claude-opus-5-5 |
-| `monitors.views` | full, summary_tail, current_only, pinned_user_turns, current_plus_reasoning |
+| `monitors.views` | full, summary_tail, current_only, pinned_user_turns, current_plus_reasoning, current_plus_last_reasoning |
+| `monitors.last_reasoning_n` | 40 |
 | `monitors.primary_acts` | 30 |
 | `monitors.test_retest_items` | 20 |
 | `monitors.concurrency` | 4 |
 | `monitors.max_window_pause` | 0.95 |
 | `monitors.max_five_hour_pause` | 0.6 |
-| `monitors.step_skip` | 6:claude-opus-5-5:current_plus_reasoning |
+| `monitors.step_skip` | 6:claude-opus-5-5:current_plus_reasoning, 6:claude-haiku-5-5:current_plus_reasoning, 5:claude-opus-5-5:full, 5:claude-opus-5-5:summary_tail, 5:claude-opus-5-5:current_only, 5:claude-opus-5-5:pinned_user_turns, 5:claude-opus-5-5:current_plus_reasoning, 5:claude-haiku-5-5:full, 5:claude-haiku-5-5:summary_tail, 5:claude-haiku-5-5:current_only, 5:claude-haiku-5-5:pinned_user_turns, 5:claude-haiku-5-5:current_plus_reasoning, 8:claude-opus-5-5:full, 8:claude-opus-5-5:summary_tail, 8:claude-opus-5-5:current_only, 8:claude-opus-5-5:pinned_user_turns, 8:claude-opus-5-5:current_plus_reasoning, 8:claude-opus-5-5:current_plus_last_reasoning, 8:claude-haiku-5-5:current_plus_last_reasoning |
 | `monitors.second_scenario` | p38 |
 | `monitors.p38_natural_acts` | 35 |
 | `monitors.p38_false_licence_acts` | 44 |
