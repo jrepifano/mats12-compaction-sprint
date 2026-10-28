@@ -60,8 +60,11 @@ def _resolve_caps_file(checkout: Path | None = None,
 
 
 def _read_stage_caps(checkout: Path | None = None,
-                     caps_path: Path | None = None) -> tuple[str, float] | None:
-    """Read `(stage, cap_usd)` from the resolved caps file (`driver.read_caps` or `caps_path`)."""
+                     caps_path: Path | None = None,
+                     stage: str | None = None) -> tuple[str, float] | None:
+    """Read `(stage, cap_usd)` from the resolved caps file (`driver.read_caps` or `caps_path`):
+    the named `stage` when given (3c's file also holds 3b's stage, whose charges stay booked),
+    else the file's only stage."""
     p = _resolve_caps_file(checkout=checkout, caps_path=caps_path)
     if not p.exists():
         return None
@@ -71,7 +74,9 @@ def _read_stage_caps(checkout: Path | None = None,
             return str(doc["stage"]), float(doc["cap_usd"])
         return None
     st = tomllib.loads(p.read_text()).get("stages") or {}
-    if len(st) != 1:
+    if stage is not None and stage in st:
+        return stage, float(st[stage]["cap_usd"])
+    if len(st) != 1:  # the named stage absent: a one-stage file is reported by its own name
         return None
     ((name, v),) = st.items()
     return str(name), float(v["cap_usd"])
@@ -110,7 +115,7 @@ def check_paid_gate(cfg: dict, *, go: bool, card: Path, plan: dict | None = None
         if cfg["_sha256"] not in text:
             errs.append("design card is for another config")
     want = (cfg["design"]["stage"], float(cfg["caps"]["stage_usd"]))
-    got = _read_stage_caps(checkout=checkout, caps_path=caps_path)
+    got = _read_stage_caps(checkout=checkout, caps_path=caps_path, stage=want[0])
     if got is None:
         errs.append(f"no valid caps file found (config wants {want})")
     elif got != want:

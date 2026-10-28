@@ -316,3 +316,20 @@ def test_gated_call_has_its_usage_and_latency(monkeypatch, tmp_path):
     cut = calls[-1]
     assert cut["status"] == "decision_cut" and cut["commands_executed"] == 0
     assert cut["call"] == 2 and cut["prompt_tokens"] and cut["latency_s"] is not None
+
+
+def test_paid_gate_reads_the_configs_stage_from_a_two_stage_caps_file(tmp_path):
+    import week2_refusal as W
+    caps = tmp_path / "budget_caps.toml"
+    caps.write_text('[stages.SPRINT-S2-REFUSAL]\ncap_usd = 50.0\n\n'
+                    '[stages.SPRINT-S2-USERNO]\ncap_usd = 35.0\n')
+    assert W._read_stage_caps(caps_path=caps, stage="SPRINT-S2-USERNO") == (
+        "SPRINT-S2-USERNO", 35.0)
+    assert W._read_stage_caps(caps_path=caps, stage="OTHER") is None  # two stages, neither
+    assert W._read_stage_caps(caps_path=caps) is None  # no stage named: still one-stage only
+    cfg = UN.load_config(CFG_PATH)
+    card = tmp_path / "card.md"
+    card.write_text(cfg["_sha256"])
+    assert W.check_paid_gate(cfg, go=True, card=card, caps_path=caps, stage="reply") == []
+    caps.write_text('[stages.SPRINT-S2-USERNO]\ncap_usd = 30.0\n')
+    assert W.check_paid_gate(cfg, go=True, card=card, caps_path=caps, stage="reply")
