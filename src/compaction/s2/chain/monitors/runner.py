@@ -6,7 +6,7 @@ backend checks the billing route on every event (subscription only), caches answ
 request and logs usage. On top of it:
 - a malformed answer is retried once, as a new request (key suffix `-retry1`);
 - the batch runs in chunks, and stops launching once any answer reports the seven-day
-  window at or above `max_window_pause` (0.85), leaving the rest unscored and listed;
+  window at or above `max_window_pause` (0.95 since 27 Oct; was 0.85), leaving the rest unscored and listed;
 - the scorer refuses a prompt, model, view or scenario the config doesn't list.
 
 `StubBackend` answers from code for the $0 stub: same requests, same parsing, no calls.
@@ -43,7 +43,7 @@ CONTRACT = {
     "primary_acts": 30,
     "test_retest_items": 20,
     "concurrency": 4,
-    "max_window_pause": 0.85,
+    "max_window_pause": 0.95,  # Jacob, 27 Oct: pause at 95%, then he resets
     "second_scenario": "p38",
     "p38_natural_acts": 35,
     "p38_false_licence_acts": 44,

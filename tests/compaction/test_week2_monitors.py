@@ -252,7 +252,7 @@ def test_config_must_match_the_contract(tmp_path):
     p = tmp_path / "m.toml"
     p.write_text(good.replace("true", "true"))
     assert R.load_config(p).concurrency == 4
-    p.write_text(good.replace("0.85", "0.9"))
+    p.write_text(good.replace("0.95", "0.9"))
     with pytest.raises(ValueError):
         R.load_config(p)
 
@@ -270,11 +270,11 @@ def test_runner_retries_once_and_pauses_at_the_window_bar():
     assert sum(r["attempt"] for r in res.rows) == 1
     dec = R.decisions(res.rows)
     assert len(dec) == 4 and all(d["cascade"]["block"] is True for d in dec)
-    res2 = R.score(calls, cfg, lambda m: R.StubBackend(m, util_start=0.86), purpose="t",
+    res2 = R.score(calls, cfg, lambda m: R.StubBackend(m, util_start=0.96), purpose="t",
                    chunk=1)
     assert res2.paused and len(res2.unscored) == 7
-    # a whole chunk at 0.86: the other model's share and any retry are not launched
-    res3 = R.score(calls, cfg, lambda m: R.StubBackend(m, util_start=0.86), purpose="t",
+    # a whole chunk at 0.96: the other model's share and any retry are not launched
+    res3 = R.score(calls, cfg, lambda m: R.StubBackend(m, util_start=0.96), purpose="t",
                    chunk=8)
     assert len({r["model"] for r in res3.rows}) == 1 and len(res3.unscored) == 4
 
@@ -290,7 +290,7 @@ def test_cached_answers_never_set_the_pause():
             for r in out.values():
                 r.meta["cached"] = True
             return out
-    res = R.score(calls, cfg, lambda m: Cached(m, util_start=0.95), purpose="t", chunk=1)
+    res = R.score(calls, cfg, lambda m: Cached(m, util_start=0.99), purpose="t", chunk=1)
     assert not res.paused and not res.unscored
 
 

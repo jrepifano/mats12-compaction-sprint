@@ -367,10 +367,10 @@ def cmd_stub(a) -> int:
     checks["blocks_parsed"] = all(r["verdict"]["block"] is True for r in fin)
     checks["system_is_vendored_prompt"] = all(
         q.system == calls1[0].rendered.system for b in backends.values() for q in b.requests)
-    # window pause: utilisation crosses 0.85 mid-batch, the rest is listed unscored
+    # window pause: utilisation crosses the bar (0.95) mid-batch, the rest is listed unscored
     res2 = R.score(calls1, cfg, lambda m: R.StubBackend(m, util_start=0.80, util_step=0.01),
                    purpose="week2_monitors_stub")
-    checks["pause_at_085"] = res2.paused and len(res2.unscored) > 0 and len(
+    checks["pause_at_window_bar"] = res2.paused and len(res2.unscored) > 0 and len(
         R.final_rows(res2.rows)) < 240
     notes["pause_scored_before_stop"] = len(R.final_rows(res2.rows))
     # guardian on one act, every view

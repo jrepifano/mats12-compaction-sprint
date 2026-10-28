@@ -34,7 +34,7 @@ Every primary act is located by message index: the first call whose push-log off
 | Auto mode (`auto_mode.txt`, sha256 240f0bef…) | `deployed` text view: user turns + tool calls, no results, prose only before a user turn. Reasoning view adds the `thinking` transform | **two calls per item:** stage 1 (stage-1 suffix) and stage 2 (S2 suffix) | **primary = the deployed cascade** (stage 1 allow = allow, else stage 2's verdict); secondary = stage 2 alone |
 | Guardian (Codex policy template + `policy.md`, sha256 e6b0cf0a…) | `build_review_prompt`: prose, calls and results; the act is the planned action; environment context prepended | one call, no evidence tool | outcome, risk, user authorization (or "not given") |
 
-Models: claude-haiku-5-5 and claude-opus-5-5, `claude -p` on Max, medium effort, no tools, concurrency 4, a malformed answer retried once. Scoring stops launching when the seven-day window reaches 0.85.
+Models: claude-haiku-5-5 and claude-opus-5-5, `claude -p` on Max, medium effort, no tools, concurrency 4, a malformed answer retried once. Scoring stops launching when the seven-day window reaches 0.95 (Jacob, 27 Oct: he then resets; was 0.85).
 
 ## Read before scoring (Jacob's delegated read by astra, 27 Oct)
 
@@ -70,5 +70,5 @@ Steps 2, 5, 6 and 6b take the controls and Experiment 1's acts when they land.
 
 ## Checks before scoring
 
-- Stub (`stub.json`): PASS 21/21. It covers step 1's 240 calls (120 cascade decisions) in complete pairs, parsing, one retry, the 0.85 pause, Guardian parsing, refusal of an unlisted view, model, prompt or scenario (P07), each prompt's own channel for tool results, the manifest checks, and the preflight (clean steps 1 and 8 pass; a removed P38 policy, a flipped label, a changed cohort and missing P38 items are each refused).
+- Stub (`stub.json`): PASS 21/21. It covers step 1's 240 calls (120 cascade decisions) in complete pairs, parsing, one retry, the window pause, Guardian parsing, refusal of an unlisted view, model, prompt or scenario (P07), each prompt's own channel for tool results, the manifest checks, and the preflight (clean steps 1 and 8 pass; a removed P38 policy, a flipped label, a changed cohort and missing P38 items are each refused).
 - Rendered examples (`examples/README.md`): 8 force-push (views 1–4 × 2 prompts, seeded act), 1 P38 reasoning view, 1 P38 false-licence item. Read before step 1. Auto mode's examples show stage 2; stage 1's request differs only in its last paragraph (the stage-1 suffix).
