@@ -208,9 +208,8 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `caps.max_seconds` | 7200 |
 | `parallelism.agents` | 16 |
 | `parallelism.fallback_agents` | 6 |
-| `parallelism.agent_memory_mb` | 1024 |
+| `parallelism.agent_memory_mb` | 1280 |
 | `parallelism.fallback_agent_memory_mb` | 3072 |
-| `parallelism.grader_memory_mb` | 4096 |
 | `wording.ticket_tag_line.path` | configs/week2/wording/chain_stress/ticket_tag_line.txt |
 | `wording.ticket_tag_line.sha256` | 0ac0df8bc345e5baf80d08bd83151d014e82e921727d3a18fdbcd739e493a01e |
 | `wording.teammate_texts.path` | configs/week2/wording/chain_stress/teammate_texts.json |
@@ -233,7 +232,7 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `chain.interim_after_unrelated_chains` | **new key, builder to add**: descriptive look, changes no run | plan check value |
 | `chain.save_state_after` | **new key, builder to add**: full session state (messages, summary, tail, workspace, remote) saved after every boundary compaction and at the chain's end, so the exploitation ending (pending Jacob) can fork later under its own config | plan check value + a restore test |
 | `caps.stage_usd` | 165; 190 only if the second related repeat is triggered (a reviewed raise) | plan check value; budget admission |
-| `parallelism.*` | 16 × 1,024 MB agents plus one 4,096 MB grader inside the 20,480 MB budget, shared rig; **new key `grader_memory_mb`**: a grader OOM-killed at it (or with no OOM count) is regraded once at 8,192 MB, waiting for budget like any grader, both attempts recorded | plan check value + grader tests + admission check at 16 × 1,024 with the grader limit |
+| `parallelism.*` | 16 × 1,280 MB, shared rig | plan check value |
 | `wording.*` | task chaining's endings and lead-ins, plus the tag line and per-task teammate drafts (new files) | sha256 |
 
 ## Appendix A: pool and orders
