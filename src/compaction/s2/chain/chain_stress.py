@@ -25,6 +25,7 @@ import collections
 import hashlib
 import itertools
 import json
+import math
 import random
 import re
 import statistics
@@ -78,10 +79,72 @@ PRELAUNCH_GATES = ("stub_chain_stress", "push_check_all", "live_smoke_chain_stre
 # M6). 2 = after astra r1/r2: the 5-task stub with scorers, placebo and installed-file scan;
 # push-check with token lists; the live smoke with state checks. Bump on any change to what a
 # smoke checks.
-SMOKE_VERSIONS = {"stub_chain_stress": 3, "push_check_all": 2, "live_smoke_chain_stress": 3}
+SMOKE_VERSIONS = {"stub_chain_stress": 3, "push_check_all": 2, "live_smoke_chain_stress": 3,
+                  "grader_peaks": 1}
 # 3 (live smoke, astra r3): scorer completeness via nchain.scorer_unknown, provenance bound.
 # 3 (stub, laptop 27 Oct): the opening's cue scan stops where the instance template resumes;
 # leftover containers are the smoke's own run ids only.
+
+
+# The grader limit's rule (Jacob, 27 Oct, relayed): from the max grader peak over experiment 4's
+# task images (and experiment 1's measured peaks). At most 2 GB: 4,096 MB; up to 3.2 GB: 1.25 x
+# the max, rounded up to 256 MB, if it fits beside the agents in the budget; else today's 8,192
+# MB grader with 1,280 MB agents. A grader OOM-killed at its limit is regraded once at 8,192 MB.
+GRADER_RULE_LOW_MB, GRADER_RULE_HIGH_MB = 2048, 3.2 * 1024
+GRADER_DEFAULT_MB, GRADER_FALLBACK_AGENT_MB = 8192, 1280
+
+
+def grader_rule(max_peak_mb: float, agents: int, agent_mb: int,
+                budget_mb: int = CC.BUDGET_MB) -> tuple[int, int]:
+    """(grader limit, agent limit) the rule gives for a measured max grader peak."""
+    if max_peak_mb <= GRADER_RULE_LOW_MB:
+        return 4096, agent_mb
+    if max_peak_mb <= GRADER_RULE_HIGH_MB:
+        g = math.ceil(1.25 * max_peak_mb / 256) * 256
+        if agents * agent_mb + g <= budget_mb:
+            return g, agent_mb
+    return GRADER_DEFAULT_MB, GRADER_FALLBACK_AGENT_MB
+
+
+def grader_peaks_verdict(rows: list[dict], cfg: dict, other_max_mb: float | None) -> dict:
+    """The rig's grader-peak check (gate `grader_peaks`): every task graded once with its gold
+    patch at the config's grader limit. Passes when every grade finished (the gold patch scored
+    1, no grade error: a peak from an unfinished grade proves nothing), its peak and OOM count
+    were read, none was OOM-killed, every container's cleanup was confirmed, and the rule on the
+    max (with `other_max_mb`, experiment 1's, required) gives the config's own (grader, agent)
+    limits; else `why` says what to change."""
+    par = cfg["parallelism"]
+    if other_max_mb is None or not math.isfinite(other_max_mb) or other_max_mb < 0:
+        raise ValueError(f"experiment 1's max grader peak must be a finite MB value, got "
+                         f"{other_max_mb!r}")
+    bad = [r["task"] for r in rows if r.get("oom_kills") != 0 or r.get("memory_peak_mb") is None
+           or r.get("reward") != 1 or r.get("grade_error") or r.get("cleanup_unconfirmed")]
+    peaks = [r["memory_peak_mb"] for r in rows if r.get("memory_peak_mb") is not None]
+    mx = max(peaks + ([other_max_mb] if other_max_mb is not None else []), default=None)
+    if any(r.get("oom_kills") for r in rows):  # killed: the peak reached the limit itself
+        mx = max(mx or 0, par.get("grader_memory_mb") or GRADER_DEFAULT_MB)
+    rule = grader_rule(mx, par["agents"], par["agent_memory_mb"]) if mx is not None else None
+    want = (par.get("grader_memory_mb") or GRADER_DEFAULT_MB, par["agent_memory_mb"])
+    ok = bool(rows) and not bad and rule == want
+    why = None if ok else ("no rows" if not rows else
+                           f"unfinished, unread, OOM-killed or not cleaned up: {bad}" if
+                           bad else
+                           f"the rule gives (grader, agent) = {rule} MB, the config has {want}: "
+                           "change the config and the contract, then re-accept the plan")
+    return {"pass": ok, "max_peak_mb": mx, "other_max_mb": other_max_mb,
+            "rule": list(rule) if rule else None, "config": list(want),
+            "unread_or_killed": bad, "why": why}
+
+
+def grader_gate_problems(gates: dict, fingerprint: dict) -> list[str]:
+    """Gate `grader_peaks` as chain-go requires it: passed under this design and version, and
+    recorded on the rig itself (never a laptop or imported record)."""
+    out = gate_problems(gates, ("grader_peaks",), fingerprint)
+    r = gates.get("grader_peaks") or {}
+    if not out and (r.get("host") != "rig" or r.get("imported")):
+        out.append(f"grader_peaks: recorded on host {r.get('host')!r}"
+                   + (" and imported" if r.get("imported") else "") + ", not on the rig")
+    return out
 
 
 def gate_problems(gates: dict, names, fingerprint: dict, *,

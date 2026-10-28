@@ -230,6 +230,8 @@ class _Box:
 
     def exec(self, cmd, timeout_s=None, workdir=None):
         assert not self.closed, "read after the container was removed"
+        if cmd == D.PEAK_CMD:
+            return SimpleNamespace(rc=0, stdout=f"{400 * 2**20}\n", stderr="")
         if cmd == D.OOM_CMD:
             return SimpleNamespace(rc=0 if self.oom is not None else 1,
                                    stdout=f"{self.oom}\n" if self.oom is not None else "",
@@ -260,12 +262,12 @@ def test_real_grade_patch_reads_the_oom_count_before_removal(oom, timed_out, rew
     r = D.grade_patch(Inv(), task, b"diff", memory_mb=4096, read_ooms=True)
     box = boxes[-1]
     assert box.limits["memory_mb"] == 4096 and box.closed
-    assert r["memory_mb"] == 4096 and r["oom_kills"] == oom
+    assert r["memory_mb"] == 4096 and r["oom_kills"] == oom and r["memory_peak_mb"] == 400.0
     assert r["reward"] == want[0]
     if want[1]:
         assert want[1] in r["grade_error"]
     plain = D.grade_patch(Inv(), task, b"diff")  # unset: no OOM read, no new keys
-    assert "oom_kills" not in plain and "memory_mb" not in plain
+    assert not {"oom_kills", "memory_mb", "memory_peak_mb"} & set(plain)
     assert boxes[-1].limits["memory_mb"] == CC.GRADE_MEMORY_MB
 
 
@@ -288,3 +290,75 @@ def test_an_unreadable_patch_is_a_retried_grade_error(tmp_path, monkeypatch, gra
     _raising(monkeypatch, [{"reward": 1, "grade_error": None, "oom_kills": 0}])
     g = D.grade_run(out, SimpleNamespace(), None, tries=2)
     assert g["tip"]["reward"] == 1 and reads["n"] == 2
+
+
+
+@pytest.mark.parametrize("peak,want", [(381, (4096, 1024)), (2048, (4096, 1024)),
+                                       (2048.1, (2816, 1024)), (2500, (3328, 1024)),
+                                       (3072, (3840, 1024)), (3072.1, (4096, 1024)),
+                                       (3200, (4096, 1024)), (3276.8, (4096, 1024)),
+                                       (3276.9, (8192, 1280)), (6000, (8192, 1280))])
+def test_grader_rule(peak, want):
+    from compaction.s2.chain import chain_stress as CS
+    assert CS.grader_rule(peak, 16, 1024) == want
+
+
+def test_a_rule_value_that_doesnt_fit_beside_the_agents_falls_back():
+    from compaction.s2.chain import chain_stress as CS
+    assert CS.grader_rule(3000, 16, 1024) == (3840, 1024)  # 16 x 1,024 + 3,840 fits
+    assert CS.grader_rule(3000, 16, 1280) == (8192, 1280)  # 16 x 1,280 + 3,840 > 20,480
+
+
+def _cfg4096():
+    return {"parallelism": {"agents": 16, "agent_memory_mb": 1024, "grader_memory_mb": 4096}}
+
+
+def _row(t, peak, ooms=0, **kw):
+    return {"task": t, "memory_peak_mb": peak, "oom_kills": ooms, "reward": 1,
+            "grade_error": None, "cleanup_unconfirmed": [], **kw}
+
+
+def test_grader_peaks_verdict():
+    from compaction.s2.chain import chain_stress as CS
+    ok = CS.grader_peaks_verdict([_row("a", 300.0), _row("b", 1900.0)], _cfg4096(), 381)
+    assert ok["pass"] and ok["max_peak_mb"] == 1900.0 and ok["rule"] == [4096, 1024]
+    hi = CS.grader_peaks_verdict([_row("a", 2500.0)], _cfg4096(), 381)
+    assert not hi["pass"] and hi["rule"] == [3328, 1024] and "re-accept" in hi["why"]
+    other = CS.grader_peaks_verdict([_row("a", 300.0)], _cfg4096(), 2600)  # exp 1's max counts
+    assert not other["pass"] and other["max_peak_mb"] == 2600
+    killed = CS.grader_peaks_verdict([_row("a", 4000.0, ooms=1)], _cfg4096(), 381)
+    assert not killed["pass"] and killed["rule"] == [8192, 1280] and killed["unread_or_killed"]
+    unread = CS.grader_peaks_verdict([_row("a", None)], _cfg4096(), 381)
+    assert not unread["pass"] and unread["unread_or_killed"] == ["a"]
+    assert not CS.grader_peaks_verdict([], _cfg4096(), 381)["pass"]
+    for bad in ({"reward": None, "grade_error": "verifier timed out after 1800 s"},
+                {"reward": None, "grade_error": "reading the reward failed rc=1"},
+                {"reward": 0}, {"cleanup_unconfirmed": ["s2-chaining-x"]}):
+        v = CS.grader_peaks_verdict([_row("a", 300.0, **bad), _row("b", 300.0)], _cfg4096(), 381)
+        assert not v["pass"] and v["unread_or_killed"] == ["a"], bad
+    for other in (None, float("nan"), float("inf"), -1.0):
+        with pytest.raises(ValueError, match="experiment 1"):
+            CS.grader_peaks_verdict([_row("a", 300.0)], _cfg4096(), other)
+
+
+def test_chain_go_needs_the_grader_peaks_gate_under_this_design():
+    from compaction.s2.chain import chain_stress as CS
+    fp = {"exp": "chain_stress", "config_sha256": "c", "proposal_sha256": "p"}
+    gates = {"grader_peaks": {"pass": True, "fingerprint": fp,
+                              "version": CS.SMOKE_VERSIONS["grader_peaks"], "host": "rig"}}
+    assert CS.grader_gate_problems(gates, fp) == []
+    assert CS.grader_gate_problems(gates, {**fp, "config_sha256": "d"})
+    assert CS.grader_gate_problems({}, fp) == ["grader_peaks: not passed"]
+    for host, imported in (("laptop", True), (None, False), ("desktop", False)):
+        g = {"grader_peaks": {**gates["grader_peaks"], "host": host, "imported": imported}}
+        assert CS.grader_gate_problems(g, fp), (host, imported)
+    stale = {"grader_peaks": {**gates["grader_peaks"], "version": 0}}
+    assert "smoke version" in CS.grader_gate_problems(stale, fp)[0]
+
+
+def test_grader_peaks_cli_requires_exp1s_max():
+    with pytest.raises(SystemExit):
+        _cli().main(["grader-peaks", "--week2-config", "configs/week2/chain_stress.toml"])
+    with pytest.raises(SystemExit, match="finite"):
+        _cli().main(["grader-peaks", "--week2-config", "configs/week2/chain_stress.toml",
+                     "--other-max-mb", "nan"])

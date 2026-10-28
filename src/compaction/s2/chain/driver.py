@@ -305,6 +305,10 @@ GRADER_OOM_REGRADE = False
 OOM_CMD = ("cat /sys/fs/cgroup/memory.events /sys/fs/cgroup/memory/memory.oom_control "
            "2>/dev/null | awk '$1 == \"oom_kill\" {print $2; found = 1} END {exit !found}'")
 
+# the container's peak memory in bytes (cgroup v2 memory.peak, else v1's max usage)
+PEAK_CMD = ("cat /sys/fs/cgroup/memory.peak 2>/dev/null || "
+            "cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes")
+
 
 def set_grader_memory(mb: int) -> None:
     """A week-2 config's reduced grader limit (above): the graders' hard limit and what
@@ -607,7 +611,8 @@ def grade_patch(inv: Invocation, task: TaskInfo, patch: bytes, timeout_s: int = 
     `memory_mb` overrides CC.GRADE_MEMORY_MB; with `read_ooms` the result also has the limit
     and the container's OOM-kill count (None when it can't be read), read before removal."""
     mem = memory_mb or CC.GRADE_MEMORY_MB
-    extra: dict = {"memory_mb": mem, "oom_kills": None} if read_ooms else {}
+    extra: dict = ({"memory_mb": mem, "oom_kills": None, "memory_peak_mb": None} if read_ooms
+                   else {})
     try:
         with inv.start(task.image, platform=C.PLATFORM or None, cpus=CC.GRADE_CPUS,
                        memory_mb=mem, lifetime_s=timeout_s + 300) as v:
@@ -621,6 +626,10 @@ def grade_patch(inv: Invocation, task: TaskInfo, patch: bytes, timeout_s: int = 
                 first = o.stdout.split()[:1]
                 extra["oom_kills"] = int(first[0]) if o.rc == 0 and first and \
                     first[0].isdigit() else None
+                pk = v.exec(PEAK_CMD, timeout_s=30, workdir="/")
+                words = pk.stdout.split()[:1]
+                extra["memory_peak_mb"] = round(int(words[0]) / 2**20, 1) if pk.rc == 0 and \
+                    words and words[0].isdigit() else None
         if r.timed_out:
             raise VerifierError(f"verifier timed out after {r.seconds:.0f} s")
         if rawr.rc != 0:
@@ -688,8 +697,8 @@ def grade_run(out: Path, task: TaskInfo, bonly_status: str | None, tries: int = 
                         res["oom_kills"] else f"OOM count unreadable at {res['memory_mb']} MB "
                         "(infrastructure)")}
                 res = {**res, "attempts": [  # an exception's attempt keeps no oom_kills key
-                    {k: a[k] for k in ("memory_mb", "oom_kills", "reward", "grade_error")
-                     if k in a} for a in attempts]}
+                    {k: a[k] for k in ("memory_mb", "oom_kills", "memory_peak_mb", "reward",
+                                       "grade_error") if k in a} for a in attempts]}
             g[name] = res
             if res.get("reward") is not None:
                 break
