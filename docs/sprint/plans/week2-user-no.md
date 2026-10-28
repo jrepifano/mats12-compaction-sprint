@@ -24,8 +24,7 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table and compar
 
 | parameter | value |
 |---|---|
-| `design.kind` | summary_refusal |
-| `design.variant` | user_no |
+| `design.kind` | user_no |
 | `design.stage` | SPRINT-S2-USERNO |
 | `design.seed` | 20261027 |
 | `design.log_reasoning` | true |
