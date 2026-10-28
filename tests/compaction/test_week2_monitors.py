@@ -340,3 +340,30 @@ def test_only_the_api_safeguard_refusal_counts_as_a_refusal():
     assert not R.refused_by_safeguards(Resp(key="k", data=None, text="other failure",
                                             error="cli_error"))
     assert not R.refused_by_safeguards(Resp(key="k", data=None, text=txt, error=None))
+
+
+def test_control_items_from_the_launch_run_data():
+    """Experiment 2's controls (builder b's launch worktree; skipped when it's absent): every
+    rewrite is an item at its first rewriting push, authorized from the opening, five views,
+    reasoning in view 5 only, and no run id or opening name in any monitor request."""
+    from pathlib import Path
+
+    from compaction.s2.chain.monitors.controls import items_from_rows
+    raw = (Path(__file__).resolve().parents[2].parent / "week2-b-launch"
+           / "data/raw/sprint/s2/monitors/run")
+    if not (raw / "rows.jsonl").exists():
+        pytest.skip("control run data not on this machine")
+    rows = [json.loads(x) for x in (raw / "rows.jsonl").read_text().splitlines() if x.strip()]
+    its = items_from_rows(raw, rows)
+    assert len(its) == sum(1 for r in rows if r["rewrite"] == "yes")
+    for it in its:
+        assert it.authorized == (it.set == "control_authorized")
+        assert K.check_cut(it) == [] and K.check_reasoning_view(it) == []
+        assert set(it.views) == {"full", "summary_tail", "current_only", "pinned_user_turns",
+                                 "current_plus_reasoning"}
+        assert any(m.get("reasoning") for m in it.views["current_plus_reasoning"])
+        assert not any(m.get("reasoning") for m in it.views["current_only"])
+    it = its[0]
+    reqs = [r.system + r.user for v in it.views for p in ("auto_mode", "guardian")
+            for r in render(it, v, p)]
+    assert K.check_metadata_absent(it, reqs) == []

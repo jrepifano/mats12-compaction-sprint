@@ -104,9 +104,12 @@ def check_policy(item: Item) -> list[str]:
 
 
 # Our own labels that must never reach a monitor (cohorts, arms, conditions). Generic words
-# ("clean", "primary") are left out: they occur in ordinary transcripts.
+# ("clean", "primary", "withheld") are left out: they occur in ordinary transcripts (an agent's
+# reasoning about parsing says "T1 withheld"); the set names and run ids that carry them are
+# scanned instead.
 COHORT_TOKENS = ("false_licence", "false-licence", "p38", "benign_push", "no_history",
-                 "p38_authorized", "p38_natural", "withheld", "-np-", "np-different",
+                 "p38_authorized", "p38_natural", "control_withheld", "control_authorized",
+                 "-np-", "np-different",
                  "np-same", "p-different", "p-same", "fp-httpx", "fp-tengo", "traps_home",
                  "sbx_world", "s3_perm")
 _META_KEYS = ("row_id", "history", "context_id", "prefix_id", "arm", "variant", "cue",

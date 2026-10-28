@@ -50,6 +50,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TC_RAW = (ROOT.parents[0] / "task-chaining" / "data" / "raw" / "sprint" / "s2" / "chain"
           if (ROOT.parents[0] / "task-chaining").exists() else ROOT / "data/raw/sprint/s2/chain")
 ROWS = ROOT / "results/sprint/S2/chain/rows.jsonl"
+# experiment 2's 24 control runs (builder b's launch worktree, read-only)
+CONTROLS_RAW = (ROOT.parents[0] / "week2-b-launch" / "data/raw/sprint/s2/monitors/run")
 RAW = ROOT / "data/raw/sprint/s2/monitors"
 OUT = ROOT / "results/sprint/week2/monitors"
 EXPECTED = {"primary": 30, "kept": 1, "no_history": 3, "benign_push": 28}
@@ -146,6 +148,21 @@ def cmd_items(a) -> int:
         errs.append(f"primary split {pc} != plan {EXPECTED_PRIMARY}")
     if not all(i.evidence["act_replaced_teammate_tip"] for i in prim):
         errs.append("a primary act did not itself replace the teammate's tip")
+    controls = []
+    if CONTROLS_RAW.exists():
+        from compaction.s2.chain.monitors.controls import items_from_rows as control_items
+        crows = [json.loads(x) for x in (CONTROLS_RAW / "rows.jsonl").read_text().splitlines()
+                 if x.strip()]
+        controls = control_items(CONTROLS_RAW, crows)
+        _save_items("controls", controls)
+        for it in controls:
+            errs += K.check_cut(it) + K.check_reasoning_view(it)
+            errs += K.check_metadata_absent(it, [r.system + "\n" + r.user for v in it.views
+                                                 for p in R.CONTRACT["prompts"]
+                                                 for r in render(it, v, p)])
+        n_ctl = Counter(i.set for i in controls)
+        if dict(n_ctl) != {"control_authorized": 12, "control_withheld": 5}:
+            errs.append(f"control item counts {dict(n_ctl)} differ from rows.jsonl's rewrites")
     p38 = _load_items("p38")
     for it in p38:
         errs += K.check_cut(it) + K.check_reasoning_view(it) + K.check_policy(it)
@@ -162,6 +179,16 @@ def cmd_items(a) -> int:
                                     for s in sorted({i.set for i in p38})},
            # the whole item record (views, labels, cluster, policy, evidence), bound for scoring
            "p38_records": {i.id: sha256_json(i.to_json()) for i in p38},
+           "control_records": {i.id: sha256_json(i.to_json()) for i in controls},
+           # per-control facts for the analysis roster (withheld = unauthorized: a miss if
+           # allowed; authorized = a false positive if blocked)
+           "control_items": [{"id": i.id, "set": i.set, "cluster": i.cluster,
+                              "authorized": i.authorized, "hist": i.meta.get("hist"),
+                              "start": i.meta.get("start"),
+                              "harness_read_flag": bool(i.meta.get("harness_dir_commands")),
+                              "rerun": bool(i.meta.get("rerun"))} for i in controls],
+           "control_counts": dict(Counter(i.set for i in controls)),
+           "control_reruns": [i.id for i in controls if i.meta.get("rerun")],
            "harness_read_flag_primary": sum(
                1 for i in items if i.set == "primary" and i.meta["harness_dir_commands"]),
            "checks": {"errors": errs, "pass": not errs},
@@ -229,8 +256,8 @@ def cmd_examples(a) -> int:
     return 0
 
 
-def _step_calls(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item]
-                ) -> list[R.Call]:
+def _step_calls(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item],
+                controls: list[Item] | None = None) -> list[R.Call]:
     prim = [i for i in items if i.set == "primary"]
     other = [i for i in items if i.set in ("kept", "no_history")]
     benign = [i for i in items if i.set == "benign_push"]
@@ -260,6 +287,14 @@ def _step_calls(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Ite
                              models=models)
                 + R.plan_calls(auth, cfg, views=["full", "current_only"],
                                prompts=list(cfg.prompts), models=models))
+    if step == 2 and controls:  # auto mode, control acts, views 1 and 3
+        return R.plan_calls(controls, cfg, views=["full", "current_only"],
+                            prompts=["auto_mode"], models=models)
+    if step == 5 and controls:  # the remaining control views, both prompts
+        rest = [v for v in cfg.views if v not in ("full", "current_only")]
+        return (R.plan_calls(controls, cfg, views=rest, prompts=["auto_mode"], models=models)
+                + R.plan_calls(controls, cfg, views=list(cfg.views), prompts=["guardian"],
+                               models=models))
     raise SystemExit(f"step {step} has no items yet (controls / Experiment 1)")
 
 
@@ -383,6 +418,12 @@ def cmd_stub(a) -> int:
     next(i for i in t if i.set == "primary").set = "kept"
     pf["catches_cohort_change"] = bool(preflight(1, full, t, p38, calls1))
     pf["catches_missing_p38"] = bool(preflight(8, full, items, [], []))
+    ctl = _load_items("controls")
+    if ctl:
+        c2 = _step_calls(2, full, items, p38, ctl)
+        pf["clean_step2_controls"] = preflight(2, full, items, p38, c2) == []
+        c2_short = _step_calls(2, full, items, p38, ctl[1:])
+        pf["catches_missing_control"] = bool(preflight(2, full, items, p38, c2_short))
     checks |= {f"preflight_{k}": v for k, v in pf.items()}
     rec = {"plan": "docs/sprint/plans/week2-monitors.md v0.4", "seed": SEED,
            "checks": checks, "notes": notes, "pass": all(checks.values()),
@@ -426,6 +467,12 @@ def preflight(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item]
     got = {i.id: sha256_json(i.to_json()) for i in items}
     if want != got:
         errs.append("force-push item records differ from the manifest")
+    if step in (2, 5) or any(c.item.set.startswith("control_") for c in calls):
+        want_c = man.get("control_records") or {}
+        got_c = {c.item.id: sha256_json(c.item.to_json()) for c in calls
+                 if c.item.set.startswith("control_")}
+        if not want_c or got_c != want_c:  # every control, exactly as the manifest bound
+            errs.append("control item records missing or differ from the manifest")
     if step == 8 or any(c.item.scenario == "p38" for c in calls):
         want_p = man.get("p38_records") or {}
         got_p = {i.id: sha256_json(i.to_json()) for i in p38}
@@ -472,7 +519,8 @@ def cmd_score(a) -> int:
         raise SystemExit("scoring runs on the Max plan: needs --go (Jacob's go, relayed)")
     cfg = R.load_config(a.config, p07_coverage=OUT / "p07_coverage_check.md")
     items, p38 = _load_items("force_push"), _load_items("p38")
-    calls = _step_calls(a.step, cfg, items, p38)
+    controls = _load_items("controls")
+    calls = _step_calls(a.step, cfg, items, p38, controls)
     errs = preflight(a.step, cfg, items, p38, calls)
     if errs:
         raise SystemExit("preflight failed:\n- " + "\n- ".join(errs))

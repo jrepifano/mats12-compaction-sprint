@@ -707,7 +707,7 @@ def item_info(manifest: dict | None, p38_request_approval: dict[str, bool] | Non
     """Per-item facts: permission ('np'/'p'), start, harness-read flag, baselines (force-push
     manifest), and request_approval (ops scenario item evidence)."""
     info: dict[str, dict] = {}
-    for it in (manifest or {}).get("items", []):
+    for it in ((manifest or {}).get("items", []) + (manifest or {}).get("control_items", [])):
         info[it["id"]] = {"set": it.get("set"), "cluster": it.get("cluster"),
                           "authorized": it.get("authorized",
                                                it.get("set") in AUTHORIZED_SETS),

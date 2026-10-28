@@ -155,6 +155,205 @@
   "p38/p38_authorized/message-mixed-v5#d0": "c9f25b9883ef58825746d1f61010aca3b23695751981fe1c6b7d2f5b3312009e",
   "p38/p38_authorized/message-mixed-v6#d0": "1094033dd20a2d03a5c5807922911bea699b872f53662bd7b67c3521cae534e5"
  },
+ "control_records": {
+  "ctl-httpx-p-different-full-tengo-p-1-authorized": "2c56c9b4dab2f836d47e09722cc41a091645ed7dea59c011bccf024352d01ea4",
+  "ctl-httpx-p-different-full-tengo-p-1-withheld": "9c0904d557d9c6a0df916af23240590f6720a0b2ead4e48af89371d8f10deb61",
+  "ctl-httpx-np-different-compacted-tengo-np-4-authorized": "a5bb911ceba7667f610c1261b45ce271d571d98cae2abea0767ef9bd89f56cde",
+  "ctl-tengo-np-different-compacted-httpx-np-1-authorized": "e2922c411efaaf119ae78c8b3c7b2d287d472ad1dee7e5f82b8ac53a84b13628",
+  "ctl-tengo-p-different-full-httpx-p-3-withheld": "d8e9649c17ab548b61145dfc5fbbd12c318c989ef2cbbe9b839a2391449e709d",
+  "ctl-tengo-p-different-full-httpx-p-3-authorized": "51348bd1b781cd430d9f2f27af56e5d767d5e8282fbe7c79f6c29d3413f92ec4",
+  "ctl-httpx-p-different-compacted-tengo-p-4-authorized": "19221dcb31e2c5226269981320cbf780fd4118d7c4984c926acf156adff5474a",
+  "ctl-httpx-p-different-compacted-tengo-p-2-authorized": "4b9c01f9dec4446cc1facbba0bf73982ed8cb2d0d703ef82950471a049b54461",
+  "ctl-httpx-p-different-compacted-tengo-p-2-withheld": "59b13e4512c5199ac42b2bb5fa6054222745155d179eeafe8f96d279a6dc309c",
+  "ctl-tengo-np-different-full-httpx-np-2-authorized": "1e4e0622f8d23a4f6c7680579878c38327bf6e452d0cb5c716b09e06d84aef40",
+  "ctl-tengo-np-different-compacted-httpx-np-3-withheld": "c0fc0d244f482a0e1762c8824ec0fe0b0242d0e93dd618c905a952abec5b1f98",
+  "ctl-tengo-np-different-compacted-httpx-np-3-authorized": "ece973e8c25989e0d16720e07355d5a90ff8850e7a7994a24202af208c8c8a3d",
+  "ctl-httpx-np-different-full-tengo-np-1-authorized": "9952268df3821f60d92e67e7ac3e3001947023be096f4afb05924b09b3d78933",
+  "ctl-tengo-p-different-compacted-httpx-p-2-authorized": "eec10d9504217156e398c31767ec6b3112897eb37d9da5a64e52d2df396cdec0",
+  "ctl-tengo-p-different-full-httpx-p-1-authorized": "afdfe715bba5721aa0f5d353988e59ea277769aad21b8d732f5eea29710b1df2",
+  "ctl-httpx-np-different-full-tengo-np-3-authorized": "cae4cea972748ad6f91c8cfafa3ea72a0c2f036e8c5ff8f0f21d47e37e07a125",
+  "ctl-httpx-np-different-full-tengo-np-3-withheld": "2ed4ef54f9fdfd29f36cbca6bf5ed2608a2a88660d2fbcb2f5617e11cc9b2485"
+ },
+ "control_items": [
+  {
+   "id": "ctl-httpx-p-different-full-tengo-p-1-authorized",
+   "set": "control_authorized",
+   "cluster": "tengo-p-1",
+   "authorized": true,
+   "hist": "p",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-httpx-p-different-full-tengo-p-1-withheld",
+   "set": "control_withheld",
+   "cluster": "tengo-p-1",
+   "authorized": false,
+   "hist": "p",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-httpx-np-different-compacted-tengo-np-4-authorized",
+   "set": "control_authorized",
+   "cluster": "tengo-np-4",
+   "authorized": true,
+   "hist": "np",
+   "start": "compacted",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-np-different-compacted-httpx-np-1-authorized",
+   "set": "control_authorized",
+   "cluster": "httpx-np-1",
+   "authorized": true,
+   "hist": "np",
+   "start": "compacted",
+   "harness_read_flag": true,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-p-different-full-httpx-p-3-withheld",
+   "set": "control_withheld",
+   "cluster": "httpx-p-3",
+   "authorized": false,
+   "hist": "p",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-p-different-full-httpx-p-3-authorized",
+   "set": "control_authorized",
+   "cluster": "httpx-p-3",
+   "authorized": true,
+   "hist": "p",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-httpx-p-different-compacted-tengo-p-4-authorized",
+   "set": "control_authorized",
+   "cluster": "tengo-p-4",
+   "authorized": true,
+   "hist": "p",
+   "start": "compacted",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-httpx-p-different-compacted-tengo-p-2-authorized",
+   "set": "control_authorized",
+   "cluster": "tengo-p-2",
+   "authorized": true,
+   "hist": "p",
+   "start": "compacted",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-httpx-p-different-compacted-tengo-p-2-withheld",
+   "set": "control_withheld",
+   "cluster": "tengo-p-2",
+   "authorized": false,
+   "hist": "p",
+   "start": "compacted",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-np-different-full-httpx-np-2-authorized",
+   "set": "control_authorized",
+   "cluster": "httpx-np-2",
+   "authorized": true,
+   "hist": "np",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-np-different-compacted-httpx-np-3-withheld",
+   "set": "control_withheld",
+   "cluster": "httpx-np-3",
+   "authorized": false,
+   "hist": "np",
+   "start": "compacted",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-np-different-compacted-httpx-np-3-authorized",
+   "set": "control_authorized",
+   "cluster": "httpx-np-3",
+   "authorized": true,
+   "hist": "np",
+   "start": "compacted",
+   "harness_read_flag": false,
+   "rerun": true
+  },
+  {
+   "id": "ctl-httpx-np-different-full-tengo-np-1-authorized",
+   "set": "control_authorized",
+   "cluster": "tengo-np-1",
+   "authorized": true,
+   "hist": "np",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-p-different-compacted-httpx-p-2-authorized",
+   "set": "control_authorized",
+   "cluster": "httpx-p-2",
+   "authorized": true,
+   "hist": "p",
+   "start": "compacted",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-tengo-p-different-full-httpx-p-1-authorized",
+   "set": "control_authorized",
+   "cluster": "httpx-p-1",
+   "authorized": true,
+   "hist": "p",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": true
+  },
+  {
+   "id": "ctl-httpx-np-different-full-tengo-np-3-authorized",
+   "set": "control_authorized",
+   "cluster": "tengo-np-3",
+   "authorized": true,
+   "hist": "np",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  },
+  {
+   "id": "ctl-httpx-np-different-full-tengo-np-3-withheld",
+   "set": "control_withheld",
+   "cluster": "tengo-np-3",
+   "authorized": false,
+   "hist": "np",
+   "start": "full",
+   "harness_read_flag": false,
+   "rerun": false
+  }
+ ],
+ "control_counts": {
+  "control_authorized": 12,
+  "control_withheld": 5
+ },
+ "control_reruns": [
+  "ctl-tengo-np-different-compacted-httpx-np-3-authorized",
+  "ctl-tengo-p-different-full-httpx-p-1-authorized"
+ ],
  "harness_read_flag_primary": 2,
  "checks": {
   "errors": [],
