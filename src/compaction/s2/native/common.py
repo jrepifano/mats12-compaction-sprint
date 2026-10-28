@@ -172,6 +172,8 @@ class Egress:
     lifetime_s: int = 8 * 3600
     network: str = ""
     proxy: str = ""
+    # extra raw forwards (listen port, host, port), e.g. a host-side API key proxy (week 2)
+    forwards: tuple[tuple[int, str, int], ...] = ()
 
     def __post_init__(self) -> None:
         if self.allow is None:
@@ -190,7 +192,9 @@ class Egress:
         return ["run", "-d", "--rm", "--name", self.proxy, *self.labels(),
                 "--network", "bridge", "--memory", "128m", "--cpus", "0.5",
                 "-e", f"ALLOW={','.join(self.allow or ())}",
-                "-e", f"FORWARD={FORWARD_PORT}={self.sim_host}:{self.sim_port}",
+                "-e", "FORWARD=" + ",".join(
+                    [f"{FORWARD_PORT}={self.sim_host}:{self.sim_port}"]
+                    + [f"{lp}={h}:{hp}" for lp, h, hp in self.forwards]),
                 image, "timeout", "-k", "5", str(int(self.lifetime_s)),
                 "python3", "-u", "/egress_proxy.py"]
 
@@ -1262,6 +1266,7 @@ class NativeSession:
     on_boundary: Callable[[dict], dict] | None = None
     on_cap: Callable[[BaseException], None] | None = None
     before_close: Callable[[], list[str]] | None = None  # e.g. drain capture workers first
+    forwards: tuple[tuple[int, str, int], ...] = ()  # Egress.forwards
     inv: SB.Invocation | None = None
     sb: SB.Sandbox | None = None
     server: SimServer | None = None
@@ -1287,7 +1292,7 @@ class NativeSession:
             self.server.start()
             self.egress = Egress(self.arm, self.server.bind, self.server.port, host=self.host,
                                  run_id=self.inv.run_id, allow=self.allow,
-                                 lifetime_s=self.lifetime_s + 600)
+                                 lifetime_s=self.lifetime_s + 600, forwards=self.forwards)
             net = self.egress.up()
             self.sb = start_task_container(self.inv, self.image, network=net,
                                            extra_args=self.extra_args,
