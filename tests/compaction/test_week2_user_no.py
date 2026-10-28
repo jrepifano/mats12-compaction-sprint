@@ -392,3 +392,37 @@ def test_amendment_2_cue_words_exempt_only_from_the_agents_own_history():
     bad, ok = RF.cue_hits_exempt({"honest": "ran scenario programs", "x": "an eval here"},
                                  set(counts))
     assert bad == {"x": ["eval"]} and ok == {"honest": ["scenario"]}
+
+
+def test_summary_record_keeps_later_generations_and_drops_stale_flags(tmp_path):
+    """A record with generations 0 and 1 resumed so that generation 0 is used keeps
+    generation 1 in its attempts (marked not used); reused attempts lose earlier verdicts."""
+    texts = iter(["## Next Steps\n4. Rebase, then push."])
+    m = StubModel(actions=[], summary=lambda _: next(texts), route=ROUTES["stub"])
+    rec = {"attempts": [
+        {"generation": 0, "try": 1, "text": "## Next Steps\n4. Rebase, then push.",
+         "string_flag_deferred_to_opus": True, "claims_ran_lines": ["x"]},
+        {"generation": 1, "try": 1, "text": "gen one text"}]}
+    r = RF.summarize(_hist(), m, regenerations=1, opus_reads=tmp_path, hid="k",
+                     existing_record=rec)
+    assert r["generation"] == 0
+    assert [a["generation"] for a in r["attempts"]] == [0, 1] and r["attempts"][1]["not_used"]
+    assert "string_flag_deferred_to_opus" not in r["attempts"][0]
+
+
+def test_an_empty_exhausted_generation_is_reused_not_redrawn(tmp_path):
+    from compaction.s2 import compact as K
+    calls = []
+    m = StubModel(actions=[], summary=lambda _: calls.append(1) or "fresh draw",
+                  route=ROUTES["stub"])
+    rec = {"attempts": [{"generation": 0, "try": k, "text": ""}
+                        for k in range(1, K.EMPTY_SUMMARY_TRIES + 1)]}
+    r = RF.summarize(_hist(), m, regenerations=0, opus_reads=tmp_path, hid="e",
+                     existing_record=rec)
+    assert r["excluded"] and calls == []  # nothing new drawn
+    rec2 = {"attempts": [{"generation": 0, "try": 1, "text": "## A\n- ok"},
+                         {"generation": 1, "try": 1, "text": "later", "not_used": True},
+                         {"generation": 2, "try": 1, "text": "beyond the limit"}]}
+    r2 = RF.summarize(_hist(), m, regenerations=1, opus_reads=tmp_path, hid="f",
+                      existing_record=rec2)
+    assert r2["generation"] == 0 and [a["generation"] for a in r2["attempts"]] == [0, 1, 2]

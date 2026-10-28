@@ -952,7 +952,8 @@ def cmd_summarize(args: argparse.Namespace, cfg: dict) -> int:
         deferred = [{"generation": a.get("generation"), "hits": a.get("claims_ran"),
                      "lines": a.get("claims_ran_lines"),
                      "opus_verdict": (a.get("opus_read") or {}).get("verdict")}
-                    for a in s_res["attempts"] if a.get("string_flag_deferred_to_opus")]
+                    for a in s_res["attempts"]
+                    if a.get("string_flag_deferred_to_opus") and not a.get("not_used")]
         if deferred:
             _amendment_log(out, hid, claims_ran_attempts=deferred)
         rec = {
@@ -1061,7 +1062,8 @@ def _amendment_log(out: Path, hid: str, **fields) -> None:
 def _log_deferred_claims(out: Path, hid: str, rec: dict) -> None:
     """Amendment 1's record for a history whose used summary had string flags."""
     att = next((a for a in reversed(rec.get("attempts") or [])
-                if a.get("summary_sha256") == rec.get("summary_sha256")), None)
+                if a.get("summary_sha256") == rec.get("summary_sha256")
+                and a.get("generation") == rec.get("generation") and not a.get("not_used")), None)
     if att and att.get("string_flag_deferred_to_opus"):
         _amendment_log(out, hid, claims_ran={
             "generation": att.get("generation"), "hits": att.get("claims_ran"),

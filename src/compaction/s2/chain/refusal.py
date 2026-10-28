@@ -1369,9 +1369,15 @@ def summarize(history: list[dict], model, regenerations: int = 1, *,
 
     last_opus: dict | None = None
     for gen in range(1 + regenerations):
-        if gen in prev_by_gen and prev_by_gen[gen] and prev_by_gen[gen][-1].get("text", "").strip():
-            for att in prev_by_gen[gen]:
-                attempts.append(dict(att))
+        stored = prev_by_gen.get(gen) or []
+        if stored and (str(stored[-1].get("text") or "").strip()
+                       or len(stored) >= K.EMPTY_SUMMARY_TRIES):
+            # a stored generation (answered, or empty after every try) is reused, never redrawn;
+            # it is re-judged below: its earlier verdicts and markers don't carry over
+            for att in stored:
+                attempts.append({k: v for k, v in att.items() if k not in (
+                    "string_flag_deferred_to_opus", "claims_ran_lines", "opus_read",
+                    "opus_flagged", "not_used")})
             text = str(attempts[-1].get("text") or "")
         else:
             text = ""
@@ -1405,9 +1411,12 @@ def summarize(history: list[dict], model, regenerations: int = 1, *,
         if op_rec is not None and op_rec.get("verdict") == "claims_ran":
             attempts[-1]["opus_flagged"] = True
             continue
+        # later generations already on record are kept (never dropped from the record), marked
+        later = [dict(a) | {"not_used": True} for g, atts in sorted(prev_by_gen.items())
+                 if g > gen for a in atts]
         return {
             "request": req,
-            "attempts": attempts,
+            "attempts": attempts + later,
             "summary": text,
             "summary_sha256": s_sha,
             "generation": gen,
@@ -1420,9 +1429,11 @@ def summarize(history: list[dict], model, regenerations: int = 1, *,
                 "claims_ran": None,
             },
         }
+    later = [dict(a) | {"not_used": True} for g, atts in sorted(prev_by_gen.items())
+             if g > regenerations for a in atts]  # beyond today's limit: kept, not redrawn
     return {
         "request": req,
-        "attempts": attempts,
+        "attempts": attempts + later,
         "summary": None,
         "summary_sha256": None,
         "generation": None,
