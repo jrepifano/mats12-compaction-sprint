@@ -64,7 +64,7 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table and compar
 | `caps.run_usd` | 1.0 |
 | `caps.max_calls` | 120 |
 | `caps.max_seconds` | 1800 |
-| `caps.summary_usd` | 0.1 |
+| `caps.summary_usd` | 0.25 |
 | `parallelism.laptop_agents` | 8 |
 | `parallelism.laptop_ramp` | 4, 8 |
 | `parallelism.laptop_ramp_after_s` | 120.0 |
