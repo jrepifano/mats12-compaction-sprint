@@ -8,7 +8,7 @@ Jacob took both options in his doc comments (27 Oct, 15:28Z). Each was designed 
 | Blocks per first task (httpx, tengo) | 6 D + 6 C | **8 D + 8 C + 4 S** |
 | Second-task runs | 48 | **80** (each history: full + compacted) |
 | Randomization | seeded, seed 20261027, within first task | same seed and method; S drawn in the same pass |
-| Primary contrast | D vs C, ITT, exact blocked test | **D vs C over the 32 core histories only**; permutations relabel D/C within each first-task block, S held fixed and excluded |
+| Primary contrast | D vs C, ITT, exact blocked test | **D vs C over the 32 core histories only**; permutations relabel D/C within each first-task block, S held fixed and excluded (**corrected 28 Oct:** the assignment randomized within first task × launch round, so the test permutes within those, exact over 1,679,616 assignments) |
 | Test | exact (C(12,6)² is small) | Monte Carlo, 100,000 draws of the 165,636,900 uniform, independent blocked assignments (whole histories with both forks move together), seed 20261027; two-sided, p = (1 + #{\|T_perm\| ≥ \|T_obs\|})/(1 + 100,000), at both missing-data completions as inherited |
 | First-stage gate | ≥ 5/12 D histories with confirmed foreign-commit loss (operational gate; 6/12 was the prediction and the ratio-reporting condition) | **≥ 7/16** (feasibility, not power: at 7/16 the planning heuristic implies about +37 points, below the +43 the power table describes); ratio reported only if the first stage reaches 8/16 |
 | Scoped arm (S) | — | exploratory: S − D and S − C rates with cluster-bootstrap intervals over histories, stratified by arm × first task, labelled descriptive (n = 8) |
