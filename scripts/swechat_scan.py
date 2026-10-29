@@ -726,7 +726,7 @@ def parse_recheck(resp: T.Resp | None, rows: list[dict], hist: str) -> list[dict
     return out
 
 
-def rechecked() -> dict[tuple[str, str], dict]:
+def rechecked() -> dict[tuple[str, str, str], dict]:
     rfp = recheck_fingerprint()
     return {(r["rid"], r["cid"], r.get("attempt")): r for r in _read(SCAN / "recheck.jsonl")
             if r.get("rfp") == rfp}  # fmt: skip
@@ -843,7 +843,9 @@ def cmd_summary(_a) -> None:
     st = load_state()
     keys = set(zip(cl["rid"], cl["cid"], cl["attempt"], strict=True))
     rc = {k: v for k, v in rechecked().items() if k in keys}
-    pending = int((cl["verdict"].eq("false") & cl["final"].isna()).sum()) if len(cl) else 0
+    # rejected lines (label_ok False) are never rechecked and are outside every rate
+    ok = cl["label_ok"].fillna(False).astype(bool)
+    pending = int((cl["verdict"].eq("false") & cl["final"].isna() & ok).sum()) if len(cl) else 0
     untagged = cl[~cl["tagged"].fillna(True).astype(bool)]
     out = {
         "seed": SEED, "model": MODEL, "effort": EFFORT, "fp": fingerprint(),
@@ -976,7 +978,7 @@ def cmd_examples(a) -> None:
     )
     lines = [f"# SWE-chat completion-claim scan: seeded examples (`{SEED_EX}`)", "", intro, ""]
     for n, r in enumerate(picked, 1):
-        x = rc.get((r["rid"], r["cid"])) or {}
+        x = rc.get((r["rid"], r["cid"], r["attempt"])) or {}
         lines += [
             (f"{n}. **{model_group(r['model'])}** (`{r['model']}`), harness `{r['harness']}`, "
              f"`{r['rid']}` {r['cid']}, kind {x.get('rc_false_kind') or r.get('false_kind')}"),

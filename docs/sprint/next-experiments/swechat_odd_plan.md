@@ -121,3 +121,47 @@ Count the other patterns in the 21 odd cases from their Opus notes and quotes: i
 **Open, accepted as limitations:**
 - The digest can still miss evidence. This is mitigated by the recheck, which covers false calls only. A true or can't-tell call made on the digest isn't rechecked, so false lines can be missed, and the rate is a floor on what Opus would find with the full history.
 - No human precision: Jacob chose Opus's read.
+
+## Run log (UTC)
+
+- **03:55Z, pilot (6 compactions).** All 6 complete. 49 completion lines: 0 false, 42 true, 7 can't tell. Five-hour usage 0.10 → 0.12; weekly 0.31.
+- **03:57Z, first pass started** with target 928.
+- **04:20Z, first pass paused** at five-hour 0.75, with 390 of 928 compactions done.
+  - **Weekly window:** 0.31 → 0.42.
+  - **Interim counts (first pass, tagged lines):** 59 false, 2,118 true, 538 can't tell. 37 compactions have at least one false line; 42 when untagged lines are included.
+- **04:21Z, design change: stopped the sleeping first pass, and start the recheck first.**
+  - **Why:** at ~0.0003 weekly per compaction, the first pass alone would reach the +0.20 weekly stop at about 700 compactions, leaving no budget for the recheck.
+  - **New order:** recheck the 42 compactions first (it waits for the 08:50Z reset), measure its cost, then extend the seeded prefix with what is left of the +0.20, keeping a reserve for the new lines' recheck.
+  - **Effect on the sample:** the prefix stays a seeded random sample, and the report gives the n reached.
+  - **Not changed:** the 0.20 cap.
+- **08:52–08:56Z, recheck of the 42 compactions (67 lines).**
+  - **Verdicts:** 53 false lines confirmed with a found quote, 10 overturned to true, 3 can't tell, and 1 false whose quote wasn't found (so it is finalised as can't tell).
+  - **Cost:** weekly 0.42 → 0.43, five-hour 0.00 → 0.01; about 0.06 notional per call, against 0.33 for a first-pass call.
+- **08:57Z, first pass extended to target 620.**
+  - **Budget left:** 0.08 of the +0.20, at ~0.0003 weekly per compaction.
+  - **Projection:** 230 more compactions, about +0.07, leaving ~0.01 for their recheck.
+- **08:56–09:12Z, first pass to 620.**
+  - **Usage:** weekly 0.43 → 0.46 for 230 compactions (~0.00013 each); five-hour 0.01 → 0.18.
+  - **Why this matters:** the 0.11 counted for the first 384 compactions included other sessions' use.
+- **09:13Z, chain started:** recheck the new false lines, extend the first pass to 928, recheck again.
+  - **Projection:** about +0.05 weekly in all, ending near 0.51, under the +0.20 stop.
+  - **If the stop comes first:** the report gives the n reached, and the bounds stay PROVISIONAL for any lines not rechecked.
+- **09:15–09:38Z, chain finished.**
+  - **Steps:** recheck (37 compactions), first pass to 928, recheck (41 compactions).
+  - **Result:** all 928 compactions settled; every label-ok first-pass false rechecked.
+  - **Usage at the end:** weekly 0.49 (+0.18 over the 0.31 baseline), five-hour 0.42.
+  - **Cost:** 93 ledger rows, all $0 on the Max route.
+- **Headline** (`results/sprint/swechat_odd/scan_summary.md`; Opus 5.5's read, not hand-checked):
+  - **Per compaction:** 93/928 = 10.0% [8.3, 12.1] have at least one false completion line; 11.1% on the first pass.
+  - **Per line:** 152/6,994 = 2.2% [1.9, 2.5].
+  - **Recheck:** confirmed 179 of 199 first-pass false lines; 15 became true and 5 can't tell. Under the decision line (overturned > 1/2), no over-call hedge is needed.
+- **Fixes after the run (astra r1 PASS on the banner fix; r2 on the combined diff: no BLOCKING, one MINOR, OSC sequences, fixed with a test):**
+  - **Summary banner:** it counted 7 rejected untagged lines (label_ok False) as pending, so it showed PROVISIONAL. No rate changes.
+  - **Examples:** `cmd_examples` used the old recheck key, so the quote and reason were empty.
+  - **Decks:** Deck A and Deck B are now disjoint by session, not just by compaction. Two Deck A picks were swapped:
+    - e5367972:0 → 7a40230e:0 C8;
+    - loss-mining 4a364c97:1 → d6e9f817:0 C6.
+  - **History text:** the builder now strips ANSI escapes and control bytes and maps U+FFFD to "?", because the publisher refused both.
+  - **Deck A:** 10 cards (5 scan lines, 5 loss-mining cases).
+  - **Deck B:** 30 cards, seeded and blind: 20 final false from a pool of 152, 10 final true from a pool of 5,495.
+  - **Leak check:** in code and by a separate grep, both clean.

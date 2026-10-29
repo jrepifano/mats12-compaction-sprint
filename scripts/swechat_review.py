@@ -61,10 +61,21 @@ def card_id(seed: str, key: str) -> str:
     return O.card_id(seed, key)
 
 
+ANSI = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-Z\\-_]")
+CTRL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def clean(text: str) -> str:
+    """Drops terminal colour codes and other control bytes, which the Artifact publisher refuses
+    in a published text file (an ESC byte in one history, 29 Oct), and shows U+FFFD (bytes the
+    source had already lost) as "?", which the publisher also refuses."""
+    return CTRL.sub("", ANSI.sub("", text)).replace("\ufffd", "?")
+
+
 def base_card(cid: str, deck: str, rid: str, claim: str, msg: int | None) -> tuple[dict, str]:
     rec = s1_data.load(rid)
     msgs = s1_judge.history_messages(rec)
-    hist = S.full_text(msgs)
+    hist = clean(S.full_text(msgs))
     entry = next(e for e in S.population() if e["id"] == rid)
     card = {
         "id": cid, "deck": deck, "n": 0, "source": SOURCE_NAME,
@@ -129,7 +140,8 @@ def cmd_deckb(_a) -> None:
 def cmd_decka(_a) -> None:
     """Deck A from the picks file; refuses a pick from a Deck B compaction."""
     picks = json.loads(PICKS.read_text())
-    deck_b = {k["rid"] for k in json.loads((OUT / "key_B.private.json").read_text())["cards"].values()}
+    deck_b = {session(k["rid"])
+              for k in json.loads((OUT / "key_B.private.json").read_text())["cards"].values()}
     mining = {r["label_id"]: r for r in map(json.loads, O.MINING.open())}
     draw = {x["item_id"]: x for x in json.loads(O.DRAW.read_text())["picked"]}
     lines = {(r["rid"], r["cid"]): r for r in scan_lines()}
@@ -147,8 +159,8 @@ def cmd_decka(_a) -> None:
             r = lines[(rid, p["cid"])]
             claim = r["line"]
             msg = cited_msg(r, rc, s1_judge.history_messages(s1_data.load(rid)))
-        if rid in deck_b:
-            raise SystemExit(f"pick {p} is from a Deck B compaction")
+        if session(rid) in deck_b:
+            raise SystemExit(f"pick {p} is from a Deck B session")
         cid = card_id("swechat-odd:review-deckA", f"{rid}#{p.get('cid') or p.get('label_id')}")
         card, hist = base_card(cid, "A", rid, claim, msg)
         card |= {"n": n, "why": p["why"]}
@@ -186,9 +198,15 @@ def leaks(html: str, cards: list[dict], hist_files: list[Path], keys: list[dict]
     return out
 
 
+def session(rid: str) -> str:
+    """swe-chat-v1:<session>:<n> -> swe-chat-v1:<session>."""
+    return rid.rsplit(":", 1)[0]
+
+
 def check_decks(a: list[dict], b: list[dict], key_a: dict, key_b: dict) -> list[str]:
     """Both decks present and the right size, card ids matching their keys, and Deck A sharing
-    no compaction with Deck B (a Deck A reason must not hint at a Deck B verdict)."""
+    no session with Deck B (a Deck A reason must not hint at a Deck B verdict, and two
+    compactions of one session share most of their history)."""
     out = []
     if not 6 <= len(a) <= 10:
         out.append(f"Deck A has {len(a)} cards (want 6-10)")
@@ -198,10 +216,9 @@ def check_decks(a: list[dict], b: list[dict], key_a: dict, key_b: dict) -> list[
     for name, cards, key in (("A", a, key_a), ("B", b, key_b)):
         if {c["id"] for c in cards} != set(key):
             out.append(f"Deck {name}: card ids don't match the key")
-    rid_a = {k["rid"] for k in key_a.values()}
-    both = rid_a & {k["rid"] for k in key_b.values()}
+    both = {session(k["rid"]) for k in key_a.values()} & {session(k["rid"]) for k in key_b.values()}
     if both:
-        out.append(f"Decks A and B share compactions: {sorted(both)}")
+        out.append(f"Decks A and B share sessions: {sorted(both)}")
     return out
 
 

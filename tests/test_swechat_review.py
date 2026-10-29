@@ -79,10 +79,17 @@ def test_deck_b_cited_message_is_a_leak(tmp_path):
 
 def test_check_decks():
     a = [{"id": f"a{i}"} for i in range(6)]
-    key_a = {f"a{i}": {"rid": f"r{i}"} for i in range(6)}
-    key_b = {f"b{i}": {"rid": f"q{i}", "arm": "false" if i < 20 else "true"} for i in range(30)}
+    key_a = {f"a{i}": {"rid": f"src:r{i}:0"} for i in range(6)}
+    key_b = {f"b{i}": {"rid": f"src:q{i}:0", "arm": "false" if i < 20 else "true"}
+             for i in range(30)}  # fmt: skip
     b = [{"id": k} for k in key_b]
     assert R.check_decks(a, b, key_a, key_b) == []
-    key_a["a0"]["rid"] = "q3"
-    assert any("share compactions" in x for x in R.check_decks(a, b, key_a, key_b))
+    key_a["a0"]["rid"] = "src:q3:2"  # another compaction of a Deck B session
+    assert any("share sessions" in x for x in R.check_decks(a, b, key_a, key_b))
     assert any("Deck A has 5" in x for x in R.check_decks(a[:5], b, dict(list(key_a.items())[:5]), key_b))
+
+
+def test_clean_drops_terminal_codes():
+    assert R.clean("\x1b[31mFAIL\x1b[0m ok\ttab\nline\x07") == "FAIL ok\ttab\nline"
+    assert R.clean("caf\ufffd") == "caf?"
+    assert R.clean("\x1b]0;title\x07seen \x1b]2;t\x1b\\[m3]") == "seen [m3]"  # OSC (astra r2)
