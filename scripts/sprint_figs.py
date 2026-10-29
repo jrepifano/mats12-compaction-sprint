@@ -14,8 +14,11 @@ Every number is read from a result file at run time; nothing is typed in. Charts
 7. Hand labels per check: the table in docs/sprint/progress.md.
 
 Writes PNG and SVG to docs/sprint/figs/ plus docs/sprint/figs/README.md (claim, source, numbers).
-Style follows AGENTS.md "Figures": seaborn whitegrid, default (deep) palette with one colour per
-bar category, vertical bars with 95% error bars, footer text, dpi 200.
+Style follows AGENTS.md "Figures" (29 Oct): sns.set_theme(style="whitegrid") with every other
+setting at seaborn's default (fonts, text sizes and colours), the default (deep) palette with one
+colour per bar category, plain vertical bars with 95% error bars drawn as sns.barplot draws them,
+dpi 200. No captions inside the images (Jacob, 29 Oct): each chart carries a one-line title and
+its labels only; the notes and source lines go in the README.
 Run: uv run python scripts/sprint_figs.py
 """
 
@@ -35,19 +38,19 @@ import seaborn as sns
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "sprint" / "figs"
-sns.set_theme(
-    style="whitegrid",
-    rc={"font.size": 12, "svg.fonttype": "none", "axes.spines.top": False,
-        "axes.spines.right": False},
-)
+sns.set_theme(style="whitegrid")
 PAL = sns.color_palette()  # seaborn "deep": one colour per bar category
-INK, MUTED = "#0b0b0b", "#52514e"
+# Seaborn's own defaults, named for the helpers (and the scripts that import them): the theme's text
+# colour, and the error-bar colour and width sns.barplot draws (seaborn 0.13).
+INK = MUTED = plt.rcParams["text.color"]
+ERR, ERR_LW = ".26", 1.5 * plt.rcParams["lines.linewidth"]
 MODEL = {"deepseek": "DeepSeek", "claude-haiku-5-5": "Claude Haiku 5.5"}  # display names only
 LOST = ("dropped", "misstated")  # a requirement grade that counts as lost (interact_reqs.GRADES)
 
 CHARTS = []  # one dict per chart, for README.md
 STATS = {}  # computed values the README compares with the brief
 SKIPPED = []  # (chart function, reason) for charts whose data couldn't be found
+FOOT = {}  # chart name -> the note and source line kept out of the image, for README.md
 BRIEF = "logs/s2/briefs/sprint-figs.md"
 
 
@@ -92,9 +95,8 @@ def bars(ax, rows, pct=True, ymax=None, value_fmt=None):
                 v,
                 yerr=[[v - lo], [hi - v]],
                 fmt="none",
-                ecolor=INK,
-                elinewidth=1.4,
-                capsize=5,
+                ecolor=ERR,
+                elinewidth=ERR_LW,
                 zorder=3,
             )
             top = hi
@@ -106,37 +108,33 @@ def bars(ax, rows, pct=True, ymax=None, value_fmt=None):
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=11.5,
-            color=INK,
         )
     ax.set_xticks(list(xs))
     depth = max(r["label"].count("\n") for r in rows)  # pad so every n line sits at one height
     ax.set_xticklabels(
         [r["label"] + "\n" * (depth - r["label"].count("\n") + 2) + r["n_text"] for r in rows],
-        fontsize=11,
-        linespacing=1.15,
     )
-    ax.grid(axis="x", visible=False)
-    ax.tick_params(axis="x", length=0)
+    ax.grid(axis="x", visible=False)  # as sns.barplot does: no grid on the categorical axis
     if ymax is not None:
         ax.set_ylim(0, ymax)
 
 
+def title_above(fig, title, gap_pt=8):
+    """A default suptitle on one line, just above everything drawn in the axes (so the figure has
+    no empty band under the title once saved with bbox_inches="tight")."""
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    y1 = max(ax.get_tightbbox(r).y1 for ax in fig.axes)
+    fig.suptitle(" ".join(title.split()), y=(y1 + gap_pt * fig.dpi / 72) / fig.bbox.height,
+                 va="bottom")
+
+
 def finish(fig, name, title, foot, sources):
-    fig.suptitle(title, x=0.01, ha="left", fontsize=15, fontweight="bold", color=INK)
-    src = "Source: " + "; ".join(sources)
-    width = int(fig.get_figwidth() * 15.5)  # characters per footer line at 8.6 pt
-    fig.text(
-        0.01,
-        0.012,
-        "\n".join(textwrap.wrap(foot, width) + textwrap.wrap(src, width)),
-        fontsize=8.6,
-        color=MUTED,
-        va="bottom",
-    )
+    title_above(fig, title)
+    FOOT[name] = foot  # kept out of the image; README.md carries it with the sources
     OUT.mkdir(parents=True, exist_ok=True)
-    fig.savefig(OUT / f"{name}.png", dpi=200)
-    fig.savefig(OUT / f"{name}.svg")
+    fig.savefig(OUT / f"{name}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(OUT / f"{name}.svg", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -151,6 +149,35 @@ def record(name, title, claim, sources, rows, notes):
             "notes": notes,
         }
     )
+
+
+MINING = "results/sprint/S1/loss_mining/labels.jsonl"
+
+
+def consequential_by_source(rel, reps=2000, seed=20261026):
+    """Share of Experiment 1's labelled lost items that Opus judged consequential, per source,
+    with a 95% percentile bootstrap over sampled compactions (rid). 'unclear' counts as no;
+    rows whose label failed are left out."""
+    import random
+
+    by = {}
+    for line in (ROOT / rel).read_text().splitlines():
+        r = json.loads(line)
+        if r["pool"] != "experiment1" or not r["label_ok"]:
+            continue
+        by.setdefault(r["source"], {}).setdefault(r["rid"], []).append(r["consequential"] == "yes")
+    rng, out = random.Random(seed), {}
+    for src, groups in sorted(by.items()):
+        g = list(groups.values())
+        k, n = sum(map(sum, g)), sum(map(len, g))
+        boots = []
+        for _ in range(reps):
+            pick = [g[rng.randrange(len(g))] for _ in g]
+            boots.append(sum(map(sum, pick)) / sum(map(len, pick)))
+        boots.sort()
+        out[src] = {"k": k, "n": n, "point": k / n, "lo": boots[int(0.025 * reps)],
+                    "hi": boots[int(0.975 * reps) - 1]}
+    return out
 
 
 # 1. Items lost by source ---------------------------------------------------------------------------
@@ -207,36 +234,52 @@ def chart_loss_by_source():
         r["prec"] = p_sw if r["src"] == "swe-chat-v1" else p_pool
         r["corr"] = r["value"] * r["prec"]
         r["num"] += f"; corrected x {r['prec']:.2f} = {100 * r['corr']:.1f}%"
-    fig, ax = plt.subplots(figsize=(10, 6.4))
-    w, xs = 0.36, list(range(len(rows)))
-    ax.bar([x - w / 2 for x in xs], [100 * r["value"] for r in rows], width=w, color=PAL[0], zorder=2,
+    # Third bar (26 Oct): the corrected rate times the share of lost items Opus 5.5 judged
+    # consequential (would change the agent's next action), from the loss-mining labels.
+    cons = consequential_by_source(MINING)
+    for r in rows:
+        c = cons[r["src"]]
+        r["matters"], r["m_lo"], r["m_hi"] = (r["corr"] * c[f] for f in ("point", "lo", "hi"))
+        r["num"] += (f"; x consequential {c['k']}/{c['n']} = {100 * r['matters']:.1f}% "
+                     f"[{100 * r['m_lo']:.1f}, {100 * r['m_hi']:.1f}]")
+    fig, ax = plt.subplots(figsize=(10, 7.0))
+    w, xs = 0.27, list(range(len(rows)))
+    ax.bar([x - w for x in xs], [100 * r["value"] for r in rows], width=w, color=PAL[0], zorder=2,
            label="Judge's raw rate")
-    ax.bar([x + w / 2 for x in xs], [100 * r["corr"] for r in rows], width=w, color=PAL[1], zorder=2,
+    ax.bar(xs, [100 * r["corr"] for r in rows], width=w, color=PAL[1], zorder=2,
            label="Corrected for the judge's precision")
+    ax.bar([x + w for x in xs], [100 * r["matters"] for r in rows], width=w, color=PAL[3],
+           zorder=2, label="Corrected, and would change the agent's next action")
     for x, r in zip(xs, rows):
         top = 100 * r["value"]
         if r.get("lo") is not None:
             lo, hi = 100 * r["lo"], 100 * r["hi"]
-            ax.errorbar(x - w / 2, top, yerr=[[top - lo], [hi - top]], fmt="none", ecolor=INK,
-                        elinewidth=1.4, capsize=4, zorder=3)
+            ax.errorbar(x - w, top, yerr=[[top - lo], [hi - top]], fmt="none", ecolor=ERR,
+                        elinewidth=ERR_LW, zorder=3)
             top = hi
-        ax.annotate(f"{100 * r['value']:.1f}%", (x - w / 2, top), xytext=(0, 4),
-                    textcoords="offset points", ha="center", va="bottom", fontsize=10.5, color=INK)
-        ax.annotate(f"{100 * r['corr']:.1f}%", (x + w / 2, 100 * r["corr"]), xytext=(0, 4),
-                    textcoords="offset points", ha="center", va="bottom", fontsize=10.5,
-                    color=INK, fontweight="bold")
+        ax.annotate(f"{100 * r['value']:.1f}%", (x - w, top), xytext=(0, 4),
+                    textcoords="offset points", ha="center", va="bottom")
+        ax.annotate(f"{100 * r['corr']:.1f}%", (x, 100 * r["corr"]), xytext=(0, 4),
+                    textcoords="offset points", ha="center", va="bottom")
+        m, lo, hi = 100 * r["matters"], 100 * r["m_lo"], 100 * r["m_hi"]
+        ax.errorbar(x + w, m, yerr=[[m - lo], [hi - m]], fmt="none", ecolor=ERR,
+                    elinewidth=ERR_LW, zorder=3)
+        ax.annotate(f"{m:.1f}%", (x + w, hi), xytext=(0, 4), textcoords="offset points",
+                    ha="center", va="bottom")
     depth = max(r["label"].count("\n") for r in rows)
     ax.set_xticks(xs)
     ax.set_xticklabels([r["label"] + "\n" * (depth - r["label"].count("\n") + 2) + r["n_text"]
-                        for r in rows], fontsize=11, linespacing=1.15)
-    ax.grid(axis="x", visible=False)
-    ax.tick_params(axis="x", length=0)
+                        for r in rows])
+    ax.grid(axis="x", visible=False)  # as sns.barplot does: no grid on the categorical axis
     ax.set_ylim(0, 30)
-    ax.legend(frameon=False, loc="upper right", fontsize=10.5)
+    ax.legend(loc="upper right")
     ax.set_ylabel("Actionable items lost (%)")
-    fig.subplots_adjust(left=0.09, right=0.98, top=0.86, bottom=0.30)
+    fig.subplots_adjust(left=0.09, right=0.98, top=0.88, bottom=0.35)
     lo_c, hi_c = min(r["corr"] for r in rows), max(r["corr"] for r in rows)
-    title = f"Summaries lose about {100 * lo_c:.0f}–{100 * hi_c:.0f}% of actionable items (judge-corrected)"
+    lo_m, hi_m = min(r["matters"] for r in rows), max(r["matters"] for r in rows)
+    kn = ", ".join(f"{cons[r['src']]['k']}/{cons[r['src']]['n']}" for r in rows)
+    title = (f"Summaries lose about {100 * lo_c:.0f}–{100 * hi_c:.0f}% of actionable items "
+             f"(judge-corrected); {100 * lo_m:.0f}–{100 * hi_m:.0f}% in a way that matters")
     foot = (
         "Share of actionable items (rules, permissions, decisions, commitments, task state) that the "
         "summary dropped or misstated and the agent can't get back another way. Blue: as called by the "
@@ -244,7 +287,10 @@ def chart_loss_by_source():
         f"precision ({swp['k']}/{swp['n']} on SWE-chat; {e1['n_hits']}/{e1['n']} pooled, assumed for "
         "the other sources). The correction ignores the judge's misses (recall unmeasured), so orange is "
         f"not a bound in either direction. SWE-chat: 95% session-bootstrap interval on the raw rate, "
-        f"weighted to all {n_all} eligible compactions; other sources as sampled, no interval."
+        f"weighted to all {n_all} eligible compactions; other sources as sampled, no interval. "
+        "Red: orange times the share of lost items Opus 5.5 judged would change the agent's next "
+        f"action ({kn} lost items, in chart order; 'unclear' counts as no); its 95% interval is a "
+        "compaction bootstrap over those labels only. Not hand-checked."
     )
     finish(
         fig,
@@ -256,6 +302,7 @@ def chart_loss_by_source():
             s_rel,
             "results/sprint/S1/judge_precision.json",
             "results/sprint/judge_compare/summary.json",
+            MINING,
         ],
     )
     record(
@@ -269,6 +316,7 @@ def chart_loss_by_source():
             s_rel + " (sets.population_estimate.pooled.lost_rate)",
             "results/sprint/S1/judge_precision.json (haiku-max.lost; footer)",
             "results/sprint/judge_compare/summary.json (metrics.by_set.swechat_ext.haiku; footer)",
+            MINING + " (experiment1 pool, consequential by source; red bars)",
         ],
         [(r["label"].replace("\n", " "), r["num"]) for r in rows],
         [
@@ -404,8 +452,8 @@ def chart_judge():
     bars(a1, left, ymax=110)
     bars(a2, right, ymax=110)
     a1.set_ylabel('Judge\'s "lost" calls Jacob confirmed (%)')
-    a1.set_title("By labelled set (Haiku judge)", fontsize=12, color=MUTED, loc="left")
-    a2.set_title(f"Same {n_cards} cards, judge swapped", fontsize=12, color=MUTED, loc="left")
+    a1.set_title("By labelled set (Haiku judge)")
+    a2.set_title(f"Same {n_cards} cards, judge swapped")
     fig.subplots_adjust(left=0.08, right=0.99, top=0.84, bottom=0.29, wspace=0.12)
     h = jc["overall"]["haiku"]["precision_lost"]
     title = f'The judge, checked by hand: about {round(10 * h["k"] / h["n"])} in 10 "lost" calls are right'
@@ -635,17 +683,13 @@ def chart_interact():
     fig, ax = plt.subplots(figsize=(11, 6.4))
     bars(ax, rows, pct=False, ymax=max(lost.values()) + 2.5)
     ax.set_ylabel(f"Requirements lost (of {n_req})")
-    ax.axvline(0.5, color="#b0afa9", lw=1)
-    ax.annotate(
-        "written in the run", (0, ax.get_ylim()[1]), ha="center", va="top", fontsize=10, color=MUTED
-    )
+    ax.axvline(0.5, color=plt.rcParams["axes.edgecolor"])
+    ax.annotate("written in the run", (0, ax.get_ylim()[1]), ha="center", va="top")
     ax.annotate(
         "replayed afterwards on the same history",
         (3, ax.get_ylim()[1]),
         ha="center",
         va="top",
-        fontsize=10,
-        color=MUTED,
     )
     fig.subplots_adjust(left=0.08, right=0.98, top=0.86, bottom=0.27)
     title = "Simulated maintainer: requirements in clear messages mostly survive"
@@ -722,7 +766,7 @@ def chart_labels():
             }
         )
     assert sum(r["value"] for r in rows) == total, (sum(r["value"] for r in rows), total)
-    fig, ax = plt.subplots(figsize=(14, 6.6))
+    fig, ax = plt.subplots(figsize=(17, 6.6))  # wider: default-size tick labels
     bars(ax, rows, pct=False, ymax=max(r["value"] for r in rows) * 1.15)
     ax.set_ylabel("Cards Jacob labelled")
     fig.subplots_adjust(left=0.06, right=0.99, top=0.86, bottom=0.30)
@@ -774,6 +818,8 @@ def write_readme():
         ]
         out += ["", "| Bar | Numbers plotted |", "|---|---|"]
         out += [f"| {lab.replace('- ', '-')} | {num} |" for lab, num in c["rows"]]
+        if c["name"] in FOOT:
+            out += ["", f"**Note (not on the chart):** {FOOT[c['name']]}"]
         if c["notes"]:
             out += [""] + [f"- {n}" for n in c["notes"]]
         out.append("")
@@ -799,8 +845,10 @@ def write_readme():
             "only\" rule. The script reads them as named and records each file's sha256 above."
         ),
         (
-            "- **Style:** AGENTS.md \"Figures\" (25 Oct): seaborn whitegrid, default palette, one colour "
-            "per bar category, vertical bars with 95% error bars."
+            "- **Style:** AGENTS.md \"Figures\" (29 Oct): `sns.set_theme(style=\"whitegrid\")` with "
+            "every other setting at seaborn's default, default (deep) palette, one colour per bar "
+            "category, plain vertical bars with 95% error bars. No captions inside the images "
+            "(29 Oct): each chart's note and sources are here, not on the chart."
         ),
         "",
     ]
