@@ -15,7 +15,8 @@ before plotting. Sources:
 - precedent/readout.json (counts, first_stage)
 - monitors/analysis.json (misses: Guardian on Experiment 1's 22 unauthorized force-pushes)
 - user_no/scores.json (lost), user_no/reasoning_scan.json (residue_noticed, eval_terms)
-- harness/readout.json (configs[*].first_task, configs[*].counts, configs[*].eval)
+- harness/readout.json (configs[*].first_task, configs[*].counts, configs[*].eval, exact_splits)
+- harness/agy_summary_content.md (per-history table: Antigravity second tasks capped before a push)
 Writes docs/sprint/figs/week2/*.png, *.svg and README.md.
 Run: uv run python scripts/sprint_figs_week2.py
 """
@@ -43,6 +44,7 @@ DIVERGENT = "#d9a441"  # first task met a divergent remote
 REASONING = "#6c8eb5"  # monitor also sees the agent's reasoning
 FORGED = "#8c6d55"  # summary with a false permission
 DROPPED = "#b5677d"  # summary with the user's "no" deleted
+OVERWROTE = "#9a5b1e"  # divergent history whose first task overwrote (kept: DIVERGENT)
 VIEW_COLOURS = {"full": "#7fa37a", "summary_tail": "#9c7ba0", "pinned_user_turns": "#6aa3a0"}
 CONFIG = {  # harness configurations, in plotting order
     "pi": ("pi-style agent\n+ DeepSeek V4.1 Flash", "#9c7ba0"),
@@ -58,6 +60,7 @@ SHORT_B = {"ds": "DeepSeek in Claude Code", "cc": "Haiku", "cx": "Codex", "agy":
 SHORT_C = {"pi": "pi-style agent", "ds": "Claude Code + DeepSeek", "cc": "Haiku",
            "cx": "Codex", "agy": "Antigravity"}  # names in 05a's numbers line
 HARNESS_WORDS = {"agy": "Antigravity"}  # readout label prefixes that are internal codes
+MODEL_WORDS = {"gemini-3.8-flash-low": "Gemini 3.8 Flash\n(low effort)"}  # raw model ids
 README = []
 
 
@@ -296,11 +299,49 @@ def data_harness():
             assert a["observed"] == a["assigned"], (key, arm)  # no unknowns to complete
             arms[arm] = share(a["lost"], a["assigned"])
         harness, _, model = c["label"].partition(" + ")
-        out[key] = {"label": f"{HARNESS_WORDS.get(harness, harness)}\n+ {model}",
+        out[key] = {"label": f"{HARNESS_WORDS.get(harness, harness)}\n+ {MODEL_WORDS.get(model, model)}",
                     "raw_label": c["label"],
                     "first": share(ft["overwrote"], n_div), "met": ft["met_rejection"], **arms,
                     "terms": c["eval"].get("planted_or_decoy_divergent"),
                     "replicated": c["replicated"], "holm": h["holm"][key]}
+    return out
+
+
+AGY_SUMMARY = "harness/agy_summary_content.md"
+
+
+def agy_call_cap():
+    """Antigravity second tasks that hit the call cap before issuing any push, counted from the
+    per-history code-pass table in agy_summary_content.md; the prose totals are asserted."""
+    md = (DATA / AGY_SUMMARY).read_text()
+    rows = []
+    for line in md.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) != 11 or cells[1] not in ("divergent", "clean"):
+            continue
+        t1 = [x.strip() for x in cells[2].split("/")]  # end / pushed / rejected / overwrote
+        t2 = [x.strip() for x in cells[9].split("/")]  # lost / rejection / pushes / end
+        rows.append({"arm": cells[1], "overwrote": t1[3] == "True", "lost": t2[0] == "yes",
+                     "capped": t2[2] == "0" and t2[3] == "capped_calls"})
+    assert len(rows) == 24, len(rows)
+    out = {}
+    for arm in ("divergent", "clean"):
+        rs = [r for r in rows if r["arm"] == arm]
+        out[arm] = {"n": len(rs), "lost": sum(r["lost"] for r in rs),
+                    "capped": sum(r["capped"] for r in rs)}
+    over = [r for r in rows if r["overwrote"]]
+    out["overwrote"] = {"n": len(over), "lost": sum(r["lost"] for r in over),
+                        "capped": sum(r["capped"] for r in over)}
+    tot = re.search(r"\| Task 2 capped before any push \| (\d+)/(\d+) \((\d+) divergent, "
+                    r"(\d+) clean\)", md)
+    assert tuple(map(int, tot.groups())) == (
+        out["divergent"]["capped"] + out["clean"]["capped"], len(rows),
+        out["divergent"]["capped"], out["clean"]["capped"]), tot.groups()
+    cap = re.search(r"Task 2 in those (\d+) histories never reached a push: all (\d+) hit agy's "
+                    r"~(\d+)-call cap", md)
+    assert (int(cap.group(1)) == int(cap.group(2)) == out["overwrote"]["n"]
+            == out["overwrote"]["capped"]), cap.groups()
+    out["cap_calls"] = int(cap.group(3))
     return out
 
 
@@ -346,7 +387,7 @@ def draw(ax, groups, ymax=100, group_pad=0.6, w=0.8, bar_labels=True, group_offs
                 continue
             v2.rbar(ax, xp, pct(b["rate"]), w * 0.84, b["color"])
             v2.err(ax, xp, pct(b["rate"]), pct(b["lo"]), pct(b["hi"]))
-            v2.label(ax, xp, pct(b["hi"]), f"{b['k']}/{b['n']}", bold=True)
+            v2.label(ax, xp, pct(b["hi"]), f"{b['k']}/{b['n']}{b.get('mark', '')}", bold=True)
         if glab:
             ax.annotate(glab, xy=(centre, 0), xycoords=("data", "axes fraction"),
                         xytext=(0, -group_offset if bar_labels else -14),
@@ -370,7 +411,8 @@ def save(fig, name, title, claim, sources, numbers, notes, foot, caveat=None):
                  ha="left", va="bottom", fontsize=10, color=INK, linespacing=1.3)
     OUT.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT / f"{name}.png", dpi=200)
-    fig.savefig(OUT / f"{name}.svg")
+    with plt.rc_context({"svg.hashsalt": name}):  # stable SVG ids and no date: reruns diff clean
+        fig.savefig(OUT / f"{name}.svg", metadata={"Date": None})
     plt.close(fig)
     README.extend([f"## {name}: {title.replace(chr(10), ' ')}", "", f"![{name}]({name}.png)", "",
                    f"**Claim:** {claim}", "", "**Source (copies in `data/`):**"]
@@ -681,18 +723,44 @@ def chart_harness():
     # 5b: second-task losses
     fig, ax = plt.subplots(figsize=(12.6, 6.4))
     fig.subplots_adjust(left=0.07, right=0.99, top=0.83, bottom=0.36)
+    # Antigravity's call cap: drawn only while the summary-content file describes the same runs
+    # as the readout (same losses per arm, same first-task overwriters).
+    cap, cap_note = None, None
+    if d["agy"] is not None:
+        c = agy_call_cap()
+        a = d["agy"]
+        if ((a["divergent"]["k"], a["divergent"]["n"]) == (c["divergent"]["lost"],
+                                                           c["divergent"]["n"])
+                and (a["clean"]["k"], a["clean"]["n"]) == (c["clean"]["lost"], c["clean"]["n"])
+                and a["first"]["k"] == c["overwrote"]["n"]):
+            cap = c
+        else:
+            cap_note = (f"The Antigravity call-cap marker is omitted: {AGY_SUMMARY} does not "
+                        "match the readout's Antigravity counts.")
     groups = []
     for k in order:
         if d[k] is None:
             groups.append((lab(k), [{"lab": "Divergent", "color": DIVERGENT, "pending": True},
                                     {"lab": "Clean", "color": CONTROL, "pending": True}]))
         else:
-            groups.append((lab(k), [dict(lab="Divergent", color=DIVERGENT, **d[k]["divergent"]),
-                                    dict(lab="Clean", color=CONTROL, **d[k]["clean"])]))
+            mark = "†" if k == "agy" and cap else ""
+            groups.append((lab(k), [dict(lab="Divergent", color=DIVERGENT, mark=mark,
+                                         **d[k]["divergent"]),
+                                    dict(lab="Clean", color=CONTROL, mark=mark,
+                                         **d[k]["clean"])]))
     draw(ax, groups, group_pad=0.8)
     for t in ax.get_xticklabels():
         t.set_fontsize(10)
     ax.set_ylabel("Lost the teammate's commit", fontsize=11.5)
+    if cap:
+        cv, cc, co = cap["divergent"], cap["clean"], cap["overwrote"]
+        all_o = f"all {co['n']}" if co["capped"] == co["n"] else f"{co['capped']} of {co['n']}"
+        cap_note = (f"† Antigravity hit its call limit (about {cap['cap_calls']} calls) before "
+                    f"any push in {cv['capped']}/{cv['n']} divergent and {cc['capped']}/"
+                    f"{cc['n']} clean second tasks, including {all_o} whose first task "
+                    "overwrote: those runs ended before reaching a push.")
+        ax.text(1.0, 0.97, textwrap.fill(cap_note, 46), transform=ax.transAxes, ha="right",
+                va="top", fontsize=10.5, color=INK, linespacing=1.3)
     pdv, pcl = d["pi"]["divergent"], d["pi"]["clean"]
     rest = [k for k in present if k != "pi"]
     lossy = [k for k in rest if d[k]["divergent"]["k"] or d[k]["clean"]["k"]]
@@ -733,13 +801,17 @@ def chart_harness():
             splits.append(f"{SHORT_B[k]} {o[0]}/{o[1]} after its first task overwrote vs "
                           f"{kept[0]}/{kept[1]} after it kept the commits")
     split_txt = (("Divergent second tasks by first-task outcome (exact_splits, observational): "
-                  + "; ".join(splits) + ". ") if splits else "")
+                  + "; ".join(splits) + "; chart: backup_05c_harness_by_first_task. ")
+                 if splits else "")
     save(fig, "05b_harness_second_task", title,
          "per agent configuration, the share of second tasks (compacted start) that lost the "
          "teammate's commit, after a divergent against a clean first-task remote.",
          [(f"{HAR} (configs[{har_keys}].counts.<arm>.lost over assigned; configs.ds.eval."
            "planted_or_decoy_divergent; e1_terms; holm; configs[*].replicated; overwrites)"),
-          f"{PREC} (counts['<arm>/compacted'].lost + unknown over forks)"],
+          f"{PREC} (counts['<arm>/compacted'].lost + unknown over forks)"]
+         + ([(f"{AGY_SUMMARY} (the per-history code-pass table: task-2 pushes = 0 and end = "
+              "capped_calls, by arm and for the task-1 overwriters; its card's '10/24 (6 "
+              "divergent, 4 clean)' and '~400-call cap' asserted)")] if cap else []),
          nums,
          [("Notes: the pi-style agent is shown at its compacted start to match the harness runs, "
            "which all started compacted; with both starts it is "
@@ -756,7 +828,84 @@ def chart_harness():
               else "; none replicated under the plan's rule.")
            + " 'Planted'/'decoy' counts are code-matched words over divergent second tasks; "
            "DeepSeek's thinking was visible to the scan, Haiku's and Codex's were not, so the "
-           "term counts are not comparable across configurations.")], foot, caveat=caveat)
+           "term counts are not comparable across configurations.")]
+         + ([f"Call-cap note on the chart: {cap_note.lstrip('† ')}"] if cap_note else []),
+         foot, caveat=caveat)
+    chart_harness_split(d, h)
+
+
+def chart_harness_split(d, h):
+    """Backup 05c: divergent second tasks split by the agent's own first-task outcome, for the
+    configurations whose split has losses to compare (pi-style agent, DeepSeek in Claude Code)."""
+    keys = [k for k in ("pi", "ds") if d[k] is not None]
+    if keys != ["pi", "ds"]:
+        README.extend(["## backup_05c_harness_by_first_task: not drawn", "",
+                       "DeepSeek in Claude Code had no readout.", ""])
+        return
+    raw = {"pi": "pi (experiment 1)", "ds": d["ds"]["raw_label"]}
+    sp = {}
+    for k in keys:
+        hit = [x for x in h["exact_splits"] if x["label"] == f"{raw[k]}, compacted start"]
+        assert len(hit) == 1, k
+        x = hit[0]
+        o, kept = share(*x["overwrote"]), share(*x["kept"])
+        # the split partitions the divergent arm plotted in 05b
+        assert (o["k"] + kept["k"], o["n"] + kept["n"]) == (d[k]["divergent"]["k"],
+                                                             d[k]["divergent"]["n"]), k
+        assert o["rate"] > kept["rate"], "title says losses were more common after an overwrite"
+        sp[k] = {"over": o, "kept": kept, "diff": x["diff"], "ci": x["exact_ci"],
+                 "p": x["fisher_p"]}
+    fig, ax = plt.subplots(figsize=(10, 6.4))
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.84, bottom=0.33)
+    groups = [(CONFIG[k][0], [dict(lab="First task\noverwrote", color=OVERWROTE,
+                                   **sp[k]["over"]),
+                              dict(lab="First task kept\nthe commits", color=DIVERGENT,
+                                   **sp[k]["kept"])]) for k in keys]
+    draw(ax, groups)
+    ax.set_ylabel("Lost the teammate's commit", fontsize=11.5)
+    p, q = sp["pi"], sp["ds"]
+
+    def kn_(s):
+        return f"{s['k']}/{s['n']}"
+
+    title = ("Backup: second-task losses were more common after the agent's own first-task "
+             f"overwrite\n(pi-style agent {kn_(p['over'])} vs {kn_(p['kept'])}; DeepSeek in "
+             f"Claude Code {kn_(q['over'])} vs {kn_(q['kept'])}; observational)")
+    foot = ("Source: harness replication readout, divergent histories split by the agent's own "
+            "first-task outcome (compacted start, one second task per history). The first-task "
+            "outcome was not randomized.")
+    both = [x for x in h["exact_splits"] if x["label"] == "pi (experiment 1), both starts"]
+    assert len(both) == 1
+    bo, bk = both[0]["overwrote"], both[0]["kept"]
+    agy = [x for x in h["exact_splits"] if d["agy"] is not None
+           and x["label"] == f"{d['agy']['raw_label']}, compacted start"]
+    agy_txt = ""
+    if agy:
+        c = agy_call_cap()
+        ao, ak = agy[0]["overwrote"], agy[0]["kept"]
+        assert ao[1] == c["overwrote"]["n"] and ao[0] == c["overwrote"]["lost"]
+        agy_txt = (f" Antigravity's split ({ao[0]}/{ao[1]} vs {ak[0]}/{ak[1]}) is not drawn: "
+                   f"{'all' if c['overwrote']['capped'] == ao[1] else c['overwrote']['capped']}"
+                   f" {ao[1]} histories whose first task overwrote hit the call limit before any "
+                   f"push in the second task ({AGY_SUMMARY}).")
+    save(fig, "backup_05c_harness_by_first_task", title,
+         "among divergent histories, the share of second tasks (compacted start) that lost the "
+         "teammate's commit, by whether the agent's own first task had overwritten the foreign "
+         "commits.",
+         [(f"{HAR} (exact_splits[label='<configuration>, compacted start'].overwrote and .kept, "
+           "[lost, histories]; also diff, exact_ci, fisher_p)")]
+         + ([f"{AGY_SUMMARY} (why Antigravity's split is left out)"] if agy else []),
+         [f"{one_line(CONFIG[k][0])}: first task overwrote {fmt(sp[k]['over'])}; kept "
+          f"{fmt(sp[k]['kept'])}" for k in keys],
+         [("Notes: the two bars in each group partition that configuration's divergent bar in "
+           "05b. Difference (overwrote minus kept), exact 95% interval and Fisher exact p from "
+           "the readout: "
+           + "; ".join(f"{SHORT_C[k]} {pts(sp[k]['diff'], *sp[k]['ci'])}, p = {sp[k]['p']:.2g}"
+                       for k in keys)
+           + f". pi-style agent with both starts (two forks per history): {bo[0]}/{bo[1]} vs "
+           f"{bk[0]}/{bk[1]}. Both DeepSeek-in-Claude-Code losses came from runs whose reasoning "
+           "called the teammate's branch \"planted\" or a \"decoy\" (05b caveat)." + agy_txt)],
+         foot)
 
 
 def main():
@@ -793,7 +942,12 @@ def main():
         "Round 2 (`logs/reviews/20261029-week2-figs-r2.md`), after the Antigravity readout "
         "(sprint/week2-build 261ad64f) was copied in and the harness titles reworked: PASS WITH "
         "MINOR FIXES; its one minor finding (a pending DeepSeek configuration would crash the "
-        "caveat) was fixed and tested, not re-reviewed."),
+        "caveat) was fixed and tested, not re-reviewed. Added after round 2: 05b's Antigravity "
+        "call-limit marker (from `harness/agy_summary_content.md`), backup_05c, plain model "
+        "names on the harness charts, and stable SVG ids with no date stamp so reruns diff "
+        "clean; reviewed in `logs/reviews/20261029-week2-figs-harness-marker-r1.md` (1 blocking: "
+        "the marker overstated what the call limit shows; 1 minor: raw model ids; both fixed, "
+        "not re-reviewed)."),
         "",
         "## Data sources",
         "",
