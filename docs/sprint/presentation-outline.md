@@ -27,7 +27,7 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 5. **How we found items and checked the judge.** What an "item" is; the judge; the first validation gate failing and the pipeline bugs it exposed; the tuning rounds; 398 hand-labelled cards in all.
 6. **The task images leaked their solutions, so we rebuilt them.** Reference fixes reachable in git history; full object and layer search; rebuilt images (DeepSWE 40/40, rebuilt SWE-bench Pro 24/24, rebuilt Refactoring 15/15 clean). Agents went looking for solutions unprompted (75/88 task-chaining runs mined git objects).
 7. **Summaries rarely drop anything that changes what the agent does next.** Headline the losses that matter (Opus-labelled consequential: 1–6% of items by source; about 11.5% of items flagged lost after the judge-precision correction, as context). The trajectory question: only 2/24 live compactions had a usable loss; the natural repair cohort was 0/17; the one signal (commit prefix, restored vs not, 2 compactions) is a lead. Caveat: "consequential" is Opus's label, not hand-checked.
-8. **Real users' sessions lose the most, and losses pile up with each compaction** (SWE-chat). About 20% of items lost (6% that matter); rules lost most (31%); about half or more lost by the 2nd compaction against about 1 in 4 at the 1st (60 hand-checked cards). Plus the anomalies being chased now (false "done/fixed/verified" claims), if verified by Friday. We can't rerun SWE-chat sessions, which is why we moved to live runs.
+8. **Real users' sessions lose the most, and losses pile up with each compaction** (SWE-chat). About 20% of items lost (6% that matter); rules lost most (31%); about half or more lost by the 2nd compaction against about 1 in 4 at the 1st (60 hand-checked cards). Plus false "done" claims (29 Oct, Opus 5.5's read, not hand-checked): 10.0% of compactions [8.3, 12.1] (93/928) have a completion line the pre-compaction history contradicts; a floor, every first-pass false rechecked with search over the full history (`results/sprint/swechat_odd/scan_summary.md` on sprint/swechat-odd). We can't rerun SWE-chat sessions, which is why we moved to live runs.
 9. **Planted rules were almost never lost or broken.** All the negative live results on one slide (DeepSeek pilot, SWE-Interact, planted pilot, native harness arms), each linked to its setup slide in the backup.
 
 ### Week 2: main results
@@ -57,7 +57,7 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 | Harness replication | Does the precedent carry over in Claude Code, Codex and Antigravity? | Done: none replicate (see slide 17); Antigravity could not test carry-over | Done 29 Oct |
 | Planted summary (R7) | Does a force-push planted in Claude Code's own compaction summary get acted on? | Running | Thu |
 | Monitor, last step | Does the reasoning view sway the monitor on production-ops acts too? | Running (Haiku only) | Tonight |
-| SWE-chat anomalies | How often do real summaries claim work is done when it isn't? | Labelling page plus Opus scan of 928 compactions (branch `sprint/swechat-odd`) | By Fri |
+| SWE-chat anomalies | How often do real summaries claim work is done when it isn't? | Done: 10.0% [8.3, 12.1] of 928 (Opus 5.5's read); optional review page | Done 29 Oct |
 
 Already done, no slide yet: the exploitation ending, at its ceiling (12/12 fresh and 6/7 one-prior runs cheated), so a rise can't be detected. One line here, or backup.
 
