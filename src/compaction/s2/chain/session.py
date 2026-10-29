@@ -370,9 +370,18 @@ class AHistory:
     compaction: dict | None
 
 
+def with_note(task_text: str, note: str | None) -> str:
+    """The task text with `note` as its own paragraph after the closing line (week 2:
+    experiment 2's control openings, experiment 4's ticket-tag line). None = unchanged."""
+    return task_text if note is None else f"{task_text}\n\n{note}"
+
+
 def b_context(start: str, project: str, b_repo: CC.Repo, hist: AHistory | None,
-              b_text: str, uname: dict | None) -> list[dict]:
-    inst = L.instance_message(b_text, uname)
+              b_text: str, uname: dict | None, opening_note: str | None = None,
+              lead: str | None = None) -> list[dict]:
+    """B's opening context. `lead` replaces the lead-in line before B's task (week 2,
+    experiment 5's neutral_opening arm); None = CC.lead_in's line, as before."""
+    inst = L.instance_message(with_note(b_text, opening_note), uname)
     if start == "fresh":
         return [{"role": "system", "content": L.SYSTEM_PROMPT}, {"role": "user", "content": inst}]
     if hist is None:
@@ -385,13 +394,15 @@ def b_context(start: str, project: str, b_repo: CC.Repo, hist: AHistory | None,
         prefix = list(hist.compaction["post_messages"])
     else:
         raise ValueError(start)
-    lead = CC.lead_in(project, b_repo, CC.REPOS[hist.repo])
+    if lead is None:
+        lead = CC.lead_in(project, b_repo, CC.REPOS[hist.repo])
     return prefix + [{"role": "user", "content": f"{lead}\n\n{inst}"}]
 
 
 def run_b(brun: CC.BRun, task: TaskInfo, hist: AHistory | None, model: ChatModel,
           inv: Invocation, out: Path, *, stop=None, max_calls: int = CC.MAX_CALLS,
-          max_seconds: float = CC.MAX_SECONDS, on_keep=None) -> RunResult:
+          max_seconds: float = CC.MAX_SECONDS, on_keep=None,
+          opening_note: str | None = None, lead: str | None = None) -> RunResult:
     t0 = time.monotonic()
     cell = brun.cell
     b_repo = CC.REPO_OF_TASK[cell.b_task]
@@ -408,7 +419,12 @@ def run_b(brun: CC.BRun, task: TaskInfo, hist: AHistory | None, model: ChatModel
         res.extra["b_setup"] = setup
         res.extra["test_inventory"] = env.base_test_inventory(b_repo.base, task.language)
         text = CC.task_text(task.instruction, b_repo.b_branch)
-        ctx = b_context(cell.start, cell.project, b_repo, hist, text, env.uname)
+        ctx = b_context(cell.start, cell.project, b_repo, hist, text, env.uname,
+                        opening_note, lead)
+        if opening_note is not None:
+            res.extra["opening_note"] = opening_note
+        if lead is not None:
+            res.extra["lead"] = lead
         start_len = len(ctx) - 1  # index of B's opening message
         res.extra["b_message_index"] = start_len
         loop = L.Loop(ctx, model, env, f"B:{brun.id}", stop=stop)

@@ -88,7 +88,14 @@ def origin_url(repo_name: str) -> str:
     return f"/srv/git/{repo_name}.git"
 
 
+# Explicit repo names for tasks outside task chaining (week 2, experiment 4 registers them from
+# its per-task file): "obsidian-linter", not "obsidian". Empty by default.
+REPO_NAMES: dict[str, str] = {}
+
+
 def repo_name(task_id: str) -> str:
+    if task_id in REPO_NAMES:
+        return REPO_NAMES[task_id]
     r = CC.REPO_OF_TASK.get(task_id)
     return r.name if r is not None else task_id.split("-", 1)[0]
 
@@ -718,8 +725,14 @@ class ChainEnv(TaskEnv):
             if p in allowed or p.startswith(f"{HOME}/bin/"):
                 continue
             name = p.rsplit("/", 1)[-1].lower()
-            ours = ("gitd" in p.lower() or name in ("shim.jsonl", "push.jsonl", "ask.jsonl")
+            # a "gitd" name counts only when the container added it: some task images ship one
+            # (arcane's Go module cache holds docker's contrib/gitdm)
+            ours = (("gitd" in p.lower() and p in added)
+                    or name in ("shim.jsonl", "push.jsonl", "ask.jsonl")
                     or name.startswith("traps_home") or p.startswith("/tmp/vcs_"))
+            if "gitd" in p.lower() and not ours:
+                image_native.append(p)
+                continue
             maybe = ("trap" in name or name in ("messages.json", "calls.json", "result.json",
                                                  "compaction.json") or name == ".pi"
                      or "transcript" in name or name.startswith(("fs_", "git_", "vcs_"))

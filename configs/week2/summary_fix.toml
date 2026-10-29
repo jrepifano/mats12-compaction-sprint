@@ -1,0 +1,56 @@
+# Week-2 config of experiment 5 ("summary_fix", pi): docs/sprint/plans/week2-summary-fix.md (synced
+# from sprint/prep). Every key except [meta] must match the proposal's "Build contract" table
+# (scripts/week2_plan_check.py). It drives compaction.s2.chain.summary_fix and
+# scripts/week2_summary_fix.py: experiment 1's 10 overwriting histories x 5 boundary arms x
+# replicates (3 if the pi bulk starts by late_after_et ET, else replicates_late, with its cap).
+
+[meta]
+exp = "summary_fix"
+proposal = "docs/sprint/plans/week2-summary-fix.md"
+built_against = "54e446e9f2e80173208457a00851b30a850e431bc0b514111a4597df79fcb097"
+
+[design]
+kind = "summary_fix"
+stage = "SPRINT-S2-SUMMARY-FIX"
+seed = 20261029
+n_phases = 2
+log_reasoning = true
+
+[summary_fix]
+testbed = "pi"
+source_exp = "precedent"
+histories = ["httpx-np-2", "httpx-np-3", "httpx-np-4", "httpx-np-5", "tengo-np-1", "tengo-np-2", "tengo-np-3", "tengo-np-6", "tengo-np-7", "tengo-np-8"]
+arms = ["native", "ledger", "line", "placebo", "neutral_opening"]
+replicates = 3
+replicates_late = 2
+late_after_et = "2026-10-29T07:00"
+project = "different"
+start = "compacted"
+host = "rig"
+smoke_history = "httpx-np-3"
+smoke_arms = ["native", "ledger"]
+focus_calls = "both"  # Jacob, 28 Oct ("exp 5 B"): ledger and placebo focus on both of pi's calls
+
+[caps]
+stage_usd = 305.0  # 3 replicates, 5 arms (Research Advisor, 28 Oct; was 250 for 4 arms)
+stage_usd_late = 203.0  # 2 replicates: 166 plus the fifth arm's share
+run_usd = 2.5
+max_calls = 400
+max_seconds = 7200
+
+[parallelism]
+agents = 16
+fallback_agents = 6
+agent_memory_mb = 1280
+fallback_agent_memory_mb = 3072
+
+[wording]
+task_ending = { path = "configs/week2/wording/task_chaining/task_ending.txt", sha256 = "69a5e1ae691059f82d63fc68dfadf50236deefd3dd4138f2fcec1244253b6b34" }
+lead_different = { path = "configs/week2/wording/task_chaining/lead_different.txt", sha256 = "f3e771faca721f959383d3d26eb1138375f6b9c49b550db7468219078dd7c910" }
+teammate_message = { path = "configs/week2/wording/task_chaining/teammate_message.txt", sha256 = "2604c0a2d6931031436781926f0485e874659a879ab50a6567433d745eebce34" }
+teammate_text_httpx = { path = "configs/week2/wording/task_chaining/teammate_text_httpx.txt", sha256 = "9eb455ea6f5e54fffd8931f3511b25ab4ba4252fb6d288a8a13f6de0d53c1e1a" }
+teammate_text_tengo = { path = "configs/week2/wording/task_chaining/teammate_text_tengo.txt", sha256 = "c2843cfac4759ec358f9f56b4921ba1858dd5ca651eb833e397afea5de97b202" }
+ledger_focus = { path = "configs/week2/wording/summary_fix/ledger_focus.txt", sha256 = "f2a898a9daed8d90ab15c5aa0d1def3fb81d43ac611eaa2c29d22b4bf835a8aa" }
+placebo_focus = { path = "configs/week2/wording/summary_fix/placebo_focus.txt", sha256 = "1caf3815adf787c9637d025be0c3a791ae02536154075c256a696866f4e31628" }
+line = { path = "configs/week2/wording/summary_fix/line.txt", sha256 = "299e80c1de8417424daba11f9862e997c1be3912af0100f782514f5ba7978bf6" }
+neutral_lead = { path = "configs/week2/wording/summary_fix/neutral_lead.txt", sha256 = "0176c8625332fff048112bad869cf4d7a5b31987d9bdaa673f142cc17c46c547" }

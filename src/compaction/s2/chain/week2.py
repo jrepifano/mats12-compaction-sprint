@@ -38,7 +38,10 @@ class PlanDrift(RuntimeError):
 
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
-    "design": {"kind": ("two_phase", "chain", "precedent"), "stage": "str", "seed": "int",
+    "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
+                        "summary_refusal", "summary_fix"),
+               "stage": "str",
+               "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
     "two_phase": {"repos": "list[str]", "arms": "list[str]", "starts": "list[str]",
                   "projects": "list[str]", "histories_per_arm": "int", "a_retries": "int",
@@ -46,7 +49,13 @@ SCHEMA: dict[str, dict] = {
                   "checkin_calls": "list[int]"},
     "chain": {"orders": "file", "arms": "list[str]", "boundary": ("compacted", "full"),
               "auto_compact_tokens": "int", "update_prompt_from_boundary": "int",
-              "fork_after_every_phase": "bool"},
+              "fork_after_every_phase": "bool",
+              # experiment 4 (chain stress); optional, so the N = 5 stub's config stays valid
+              "unrelated_chains": "int", "within_task_chains": "int",
+              "within_task_auto_compact_tokens": "int", "within_task_orders_from": "str",
+              "related_repeats": "int", "related_repeats_max": "int", "fresh_controls": "int",
+              "ticket_tags": "bool", "interim_after_unrelated_chains": "int",
+              "save_state_after": "list[str]"},
     "precedent": {"repos": "list[str]", "arms": "list[str]", "per_task": "list[int]",
                   "rounds": "int", "starts": "list[str]", "project": ("different",),
                   "a_retries": "int", "permission_after_call": "int",
@@ -54,12 +63,87 @@ SCHEMA: dict[str, dict] = {
                   "assignment": "file", "checkpoint_on": "list[str]", "checkpoint_max": "int",
                   "second_tasks_after_gate": "bool", "spillover_acts": "list[str]",
                   "interim_after_second_tasks": "int"},
+    # experiment 2 (monitors): the 24 control runs' keys, then the offline scorer's
+    "monitors": {"control_states": "int", "control_openings": "list[str]",
+                 "control_project": ("different",), "control_starts_full": "int",
+                 "control_starts_compacted": "int", "controls_stop_after_pairs": "int",
+                 "controls_stop_min_authorized_push": "int", "assignment": "file",
+                 "host": ("laptop", "rig"), "agent_cpus": "int", "ramp_agents": "int",
+                 "ramp_after_s": "int",
+                 "prompts": "list[str]",
+                 "models": "list[str]", "views": "list[str]", "primary_acts": "int",
+                 "test_retest_items": "int", "concurrency": "int", "max_window_pause": "float",
+                 "second_scenario": "str", "p38_natural_acts": "int",
+                 "p38_false_licence_acts": "int", "p38_authorized_items": "int",
+                 "p38_policy_in_every_view": "bool", "third_scenario": "str"},
+    # experiment 4's exploitation ending (week2-build-c): a 6th, impossible task forked from
+    # the chains' saved states
+    "exploit": {"tasks": "list[str]", "draw": "draw_table", "languages": "list[str]",
+                "mutation": "str", "opening_line": "str", "no_test_rule": "bool",
+                "position": "int", "cells": "list[str]", "smoke": "int",
+                "related_chains": "str", "signs_of_life_points": "int", "task_files": "str",
+                "validation": "str", "claim_scoring": "str"},
+    # experiment 3b (summary refusal, week2-build-c): forks of experiment 1's divergent
+    # histories resumed from a pi summary with a planted line
+    "refusal": {"source_exp": "str", "source_arm": "str", "source_assignment": "str",
+                "source_assignment_sha256": "str", "source_config": "str",
+                "source_config_sha256": "str", "topup_deadline_et": "str",
+                "pairs_only_after_et": "str", "restore_from": "str", "summary_policy": "str",
+                "resume_template": "str", "placement_section": "str",
+                "placement_fallback_after": "str",
+                "versions": "list[str]", "primary": "list[str]", "topup_repos": "list[str]",
+                "monitor_views": "list[str]", "launch_phases": "list[list[str]]",
+                "runs_per_version": "int", "min_histories_test": "int",
+                "target_histories": "int", "max_histories": "int", "topup_max_tasks": "int",
+                "topup_rep_start": "int", "summary_regenerations": "int",
+                "bootstrap_reps": "int", "crash_reruns": "int", "alpha": "float"},
+    # experiment 5 (summary fix, pi): experiment 1's overwriting histories under four boundary
+    # arms (compaction.s2.chain.summary_fix)
+    "summary_fix": {"testbed": ("pi",), "source_exp": "str", "histories": "list[str]",
+                    "arms": "list[str]", "replicates": "int", "replicates_late": "int",
+                    "late_after_et": "str", "project": ("different",), "start": ("compacted",),
+                    "host": ("laptop", "rig"), "smoke_history": "str", "smoke_arms": "list[str]",
+                    # optional: which of pi's calls get the arm's focus (default "history")
+                    "focus_calls": ("history", "both")},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
-                    "fallback_agent_memory_mb": "int"},
+                    "fallback_agent_memory_mb": "int",
+                    # experiment 4: a reduced grader limit (driver.set_grader_memory); optional
+                    "grader_memory_mb": "int"},
     "wording": {"*": "file"},
 }
-KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent"}  # design.kind -> its own section
+KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent",
+                 "monitor_controls": "monitors", "exploit": "exploit",
+                 "summary_refusal": "refusal",
+                 "summary_fix": "summary_fix"}  # design.kind -> its own section
+# A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the
+# section optional (validated against SCHEMA if present).
+KIND_OVERRIDES: dict[str, dict] = {
+    "exploit": {"caps": {"exploit_usd": "float"}, "parallelism": None},
+    # experiment 5: a second cap for the 2-replicate case (a pi start after late_after_et)
+    "summary_fix": {"caps": {"stage_usd": "float", "stage_usd_late": "float", "run_usd": "float",
+                             "max_calls": "int", "max_seconds": "int"}},
+    # 3b has no phases (design.n_phases left out) and its own caps and laptop/rig limits
+    "summary_refusal": {
+        "design": {k: t for k, t in SCHEMA["design"].items() if k != "n_phases"},
+        "caps": {"stage_usd": "float", "topup_usd": "float", "run_usd": "float",
+                 "max_calls": "int", "max_seconds": "int", "summary_usd": "float"},
+        "parallelism": {"rig_agents": "int", "laptop_agents": "int", "laptop_ramp": "list[int]",
+                        "laptop_ramp_after_s": "float", "laptop_poll_s": "float",
+                        "laptop_agent_memory_mb": "int", "laptop_agent_cpus": "int",
+                        "laptop_min_free_mem_frac": "float", "laptop_max_load1": "float",
+                        "max_concurrent_histories": "int", "sandbox_label": "str"}}}
+# Keys a config may leave out (a later experiment's keys in a shared section); the plan check
+# still reports any the contract lists and the config lacks.
+OPTIONAL = {"chain": {"unrelated_chains", "within_task_chains", "within_task_auto_compact_tokens",
+                      "within_task_orders_from", "related_repeats", "related_repeats_max",
+                      "fresh_controls", "ticket_tags", "interim_after_unrelated_chains",
+                      "save_state_after"},
+            "parallelism": {"grader_memory_mb"},
+            "summary_fix": {"focus_calls"}}
+# Chain arms whose chains may be shorter than design.n_phases: related chains run each repo's
+# tasks (2..n), a fresh control is one task.
+SHORT_ARMS = {"related": (2, None), "fresh": (1, 1)}
 NOT_CONTRACT = ("meta", "_source")  # flatten skips these
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 FILE_KEYS = ("path", "sha256")
@@ -86,6 +170,14 @@ def _type_ok(v, t) -> str | None:
           "list[str]": lambda: isinstance(v, list) and all(isinstance(x, str) for x in v),
           "list[int]": lambda: isinstance(v, list) and all(
               isinstance(x, int) and not isinstance(x, bool) for x in v),
+          # nonempty groups of items free of the flatten separators, so "a + b, c" is unique
+          "list[list[str]]": lambda: isinstance(v, list) and all(
+              isinstance(x, list) and x and all(
+                  isinstance(y, str) and y.strip() == y and y and not set(y) & {",", "+"}
+                  for y in x) for x in v),
+          "draw_table": lambda: isinstance(v, dict) and set(v) == {"seed", "path"}
+          and isinstance(v["seed"], int) and not isinstance(v["seed"], bool)
+          and isinstance(v["path"], str),
           "file": lambda: isinstance(v, dict) and set(v) == set(FILE_KEYS)
           and all(isinstance(v[k], str) for k in FILE_KEYS) and bool(SHA_RE.match(v["sha256"]))}
     return None if ok[t]() else {"file": "a table {path, sha256 (64 hex)}"}.get(t, t)
@@ -126,9 +218,13 @@ def _check_orders(p: Path, cfg: dict, errors: list[str]) -> None:
         if ch["arm"] not in arms:
             errors.append(f"{where} ({ch['id']}): arm {ch['arm']!r} not in chain.arms {arms}")
         ph = ch["phases"]
-        if not isinstance(ph, list) or len(ph) != n:
+        lo, hi = SHORT_ARMS.get(ch["arm"], (n, n))
+        hi = n if hi is None else hi
+        if not isinstance(ph, list) or not lo <= len(ph) <= hi:
             got = len(ph) if isinstance(ph, list) else type(ph).__name__
-            errors.append(f"{where} ({ch['id']}): {got} phases, design.n_phases = {n}")
+            want = f"design.n_phases = {n}" if (lo, hi) == (n, n) else \
+                f"arm {ch['arm']!r} takes {lo}..{hi}"
+            errors.append(f"{where} ({ch['id']}): {got} phases, {want}")
             continue
         for j, x in enumerate(ph):
             if not isinstance(x, dict) or not isinstance(x.get("task"), str):
@@ -145,7 +241,12 @@ def validate(cfg: dict) -> None:
     for sec in cfg:
         if sec not in SCHEMA:
             errors.append(f"unknown section [{sec}]")
+    overrides = KIND_OVERRIDES.get(kind, {})
     for sec, keys in SCHEMA.items():
+        if sec in overrides:
+            if overrides[sec] is None and sec not in cfg:
+                continue
+            keys = overrides[sec] or keys
         own_kind = [k for k, s in KIND_SECTIONS.items() if s == sec]
         if own_kind and kind != own_kind[0]:
             if sec in cfg:
@@ -166,7 +267,8 @@ def validate(cfg: dict) -> None:
                     errors.append(f"{sec}.{k}: expected {exp}, got {v!r}")
             continue
         errors += [f"unknown key {sec}.{k}" for k in body if k not in keys]
-        errors += [f"missing key {sec}.{k}" for k in keys if k not in body]
+        errors += [f"missing key {sec}.{k}" for k in keys
+                   if k not in body and k not in OPTIONAL.get(sec, ())]
         for k, t in keys.items():
             if k in body and (exp := _type_ok(body[k], t)) is not None:
                 errors.append(f"{sec}.{k}: expected {exp}, got {body[k]!r}")
@@ -175,10 +277,10 @@ def validate(cfg: dict) -> None:
     # Cross-field rules (types are known good from here).
     if not SHA_RE.match(cfg["meta"]["built_against"]):
         errors.append("meta.built_against: must be a 64-hex sha256")
-    n = cfg["design"]["n_phases"]
+    n = cfg["design"].get("n_phases", 2)  # absent only where the kind has no phases
     if n < 2:
         errors.append(f"design.n_phases: must be >= 2, got {n}")
-    if kind in ("two_phase", "precedent") and n != 2:
+    if kind in ("two_phase", "precedent", "monitor_controls") and n != 2:
         errors.append(f"design.n_phases: must be 2 for {kind}, got {n}")
     for name, spec in cfg["wording"].items():
         _check_file(f"wording.{name}", spec, errors)
@@ -188,8 +290,17 @@ def validate(cfg: dict) -> None:
             _check_orders(p, cfg, errors)
     if kind == "precedent":
         _check_file("precedent.assignment", cfg["precedent"]["assignment"], errors)
+    if kind == "monitor_controls":
+        _check_file("monitors.assignment", cfg["monitors"]["assignment"], errors)
     if errors:
         raise ValueError("config invalid:\n  " + "\n  ".join(errors))
+
+
+def stage_cap(cfg: dict) -> float:
+    """The stage cap a config's caps file holds: caps.stage_usd (3b's too), or the exploitation
+    ending's caps.exploit_usd."""
+    caps = cfg["caps"]
+    return float(caps["exploit_usd"] if cfg["design"]["kind"] == "exploit" else caps["stage_usd"])
 
 
 def load_config(path: str | Path) -> dict:
@@ -245,7 +356,9 @@ def flatten(cfg: dict) -> dict[str, str]:
                 for kk, vv in v.items():
                     out[f"{sec}.{k}.{kk}"] = _scalar(vv)
             elif isinstance(v, list):
-                out[f"{sec}.{k}"] = ", ".join(_scalar(x) for x in v)
+                # a list of lists (3b's launch_phases) reads "a + b, c": groups by comma
+                out[f"{sec}.{k}"] = ", ".join(" + ".join(_scalar(y) for y in x)
+                                              if isinstance(x, list) else _scalar(x) for x in v)
             else:
                 out[f"{sec}.{k}"] = _scalar(v)
     return out
