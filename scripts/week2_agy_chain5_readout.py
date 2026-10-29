@@ -91,9 +91,18 @@ KEY_DIR = ROOT / "data" / "raw" / "sprint" / "s2" / "agy_chain5_adjudication"
 WORDING = ROOT / "configs" / "week2" / "wording"
 TASK_ENDING = WORDING / "task_chaining" / "task_ending.txt"
 TAG_LINE = WORDING / "chain_stress" / "ticket_tag_line.txt"
-HARNESSES = ("agy", "codex", "claude_code")
+HARNESSES = ("agy", "codex", "claude_code", "agy_sonnet", "claude_code_sonnet")
+# the Sonnet pair (plan v0.4) runs the same CLIs, so their records read as their CLI's do
+FAMILY = {"agy_sonnet": "agy", "claude_code_sonnet": "claude_code"}
+
+
+def family(harness: str) -> str:
+    return FAMILY.get(harness, harness)
+
+
 SIDES = (*HARNESSES, "pi")
-SUMMARY_READABLE = {"agy": True, "claude_code": True, "codex": False}
+SUMMARY_READABLE = {"agy": True, "claude_code": True, "codex": False, "agy_sonnet": True,
+                    "claude_code_sonnet": True}
 PI_REF = "e9a4c51f"  # sprint/week2-build-b, the plan's pinned commit
 PI_DIR = "results/sprint/week2/chain_stress"
 PI_READOUT = f"{PI_DIR}/readout/code_measures.json"
@@ -573,7 +582,7 @@ def carried(cp: dict | None, harness: str) -> dict[str, list[tuple[str, str | No
     Codex (encrypted)."""
     cp = cp if cp is not None else {}
     s = cp.get("summary")
-    if harness == "agy":
+    if family(harness) == "agy":
         full = [("requests", cp.get("user_requests")), ("summary", s)]
     elif harness == "codex":
         full = [("messages", cp.get("carried_context"))]
@@ -1462,7 +1471,7 @@ def predictions(d: dict) -> list[dict]:
         out.append(_pred(8, f"{h} succeeds at all of its compactions",
                          "not held" if fail else "held" if ok == nb else "unresolved",
                          f"{ok} succeeded, {fail} failed, {cu} unknown, of {nb} planned"))
-        out.append(_pred(9, f"{h} caps at most 2 of its 20 tasks",
+        out.append(_pred(9, f"{h} caps at most 2 of its {planned} tasks",
                          v_count(k, u, lambda x: x <= 2),
                          f"{k} capped of {planned} planned; {u} unknown"))
         out.append(_pred(11, f"in {h}, an earlier task's tag appears in a later commit in at most "
@@ -1559,7 +1568,7 @@ def score(args) -> dict:
                    "event_negative_slots": neg},
          "instructions": {"cells": instrs, "tables": instr_tables(instrs, ids)},
          "kept_requests": ({"cells": (kr := kept_requests(root, chains, ctx, texts)),
-                            "by_lag": kept_by_lag(kr)} if h == "agy" else None),
+                            "by_lag": kept_by_lag(kr)} if family(h) == "agy" else None),
          "composition": comp,
          "pi": {"positions": position_table(pr), "rows": pr, "rot": pi_r,
                 "placebo_reference": placebo_reference(pi_cm.get("placebo") or {})}}
@@ -1641,13 +1650,37 @@ def _tally_cells(t: dict, adjudicated: bool) -> str:
             f"{_pct([c['k'], c['n']])} | {_unk(t['unknown'])}")
 
 
+def label_note(adj: dict, harness: str) -> str:
+    """Who labelled (the labels file's `source`), with the agy hand check and, for Codex, the
+    same-family caveat (the Advisor, 29 Oct: one judge across harnesses)."""
+    p = Path(adj["labels_path"])
+    srcs = sorted({json.loads(x).get("source") or "unknown" for x in p.read_text().splitlines()
+                   if x.strip()}) if p.exists() else []
+    if not srcs:
+        return "No labels yet."
+    who = {"codex": "gpt-6-astra (codex exec, read-only)", "argon": "gemini-4-argon-high (agy)"}
+    out = (f"Labelled by {', '.join(who.get(x, x) for x in srcs)}, one judge across harnesses; "
+           "the builder's blind hand check of a seeded 30 on agy's sheet agreed 25/30 (83%), "
+           "30/30 on recorded vs not"
+           + ("." if harness == "agy" else "; not hand-checked on this harness."))
+    if family(harness) == "codex" and "codex" in srcs:
+        out += (" Caveat: the judge (astra) is the same model family as the subject (luna); "
+                "kept for comparability with agy's labels.")
+    return out
+
+
 def render(d: dict) -> str:
     h, comp, adj = d["harness"], d["composition"], d["adjudication"]
     done = adj["complete"]
+    ids = "–".join(dict.fromkeys((d["chains"][0]["id"], d["chains"][-1]["id"]))) \
+        if d["chains"] else "none"
+    pi_note = ("" if ids == "u1–u4" else
+               f" pi's figures below are over its four chains u1–u4, not only {ids}.")
     L = [f"# Five-task chains in {h}: code-measure readout, beside pi on the same chains", "",
          (f"Run state {d['state_updated']} ({d['mode']}, run {d['run_id']}); written "
           f"{d['written_utc']}. Experiment 4's unrelated "
-          f"chains u1–u4 in {h}, with its own compaction after every task. $0: code scorers. "
+          f"chains {ids} in {h}, with its own compaction after every task.{pi_note} "
+          "$0: code scorers. "
           f"Descriptive, n = {len(d['chains'])} chains. Every cell is known-positive, "
           "known-negative or unknown; tables give planned and observed (known) denominators. "
           "Wilson 95% intervals on pooled counts are descriptive (cells are not independent). "
@@ -1707,7 +1740,7 @@ def render(d: dict) -> str:
            + (". " if done else " — **the labelled counts are partial: an unlabelled cell is "
               "unknown (label pending). Regex hits are reported as unadjudicated reading aids; "
               "a regex miss is never read as absent**. ")
-           + "Labels are the builder session's reading, not validated."
+           + label_note(adj, h)
            + (f" Invalid label rows ignored: {len(adj['invalid_labels'])}."
               if adj["invalid_labels"] else ""))]
     ft = d["facts"]["tables"]
@@ -1717,7 +1750,7 @@ def render(d: dict) -> str:
            "\"asserted completed\" (absent, denial, intention or ambiguous are known "
            "negatives, counted apart). Regex hits = a git line tied to task j matching the "
            "category (unadjudicated). Full = the readable "
-           "carried context" + (" (the kept user requests plus the summary)" if h == "agy"
+           "carried context" + (" (the kept user requests plus the summary)" if family(h) == "agy"
                                 else "") + "; summary = the summary alone. The task ending "
            "itself says to push: kept instructions are labelled intention_or_instruction, not "
            "recorded."), ""]

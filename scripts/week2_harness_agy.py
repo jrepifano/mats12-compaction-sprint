@@ -312,11 +312,14 @@ def history_cpus(host: str | None, cpus: float) -> float:
 def slot_prefix(owner: str) -> str:
     """The ledger prefix matching the owner's container names, so the ledger counts each
     container once rather than also as external: the five-task runner's Codex chains (owner
-    "cx-chain5:...") run native-cx-chain-* containers, its Claude Code chains ("cc-..." and
-    "cc_sonnet-...") native-cc-chain-*; every other owner runs agy's native-agy-chain-*."""
+    "cx-chain5:...") run native-cx-chain-* containers, its Claude Code chains ("cc-...")
+    native-cc-chain-* and its Claude Code + Sonnet chains ("cc_sonnet-...")
+    native-cc-sonnet-chain-*; every other owner runs agy's native-agy-chain-*."""
     if owner.startswith("cx-"):
         return "native-cx-chain"
-    return "native-cc-chain" if owner.startswith("cc") else "native-agy-chain"
+    if owner.startswith("cc_sonnet-"):
+        return "native-cc-sonnet-chain"
+    return "native-cc-chain" if owner.startswith("cc-") else "native-agy-chain"
 
 
 def reserve_slots(host: str | None, owner: str, capacity: int | None = None,

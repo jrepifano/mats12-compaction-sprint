@@ -1,0 +1,1007 @@
+{
+ "written_utc": "2026-10-29T19:22:55+00:00",
+ "sides": [
+  "agy",
+  "codex",
+  "pi"
+ ],
+ "missing": [],
+ "unobservable": {
+  "agy": [],
+  "codex": [
+   "facts_summary_fresh_push_attempted",
+   "facts_summary_fresh_push_rejected",
+   "facts_summary_fresh_all",
+   "facts_summary_later_push_attempted",
+   "facts_summary_later_push_rejected",
+   "facts_summary_later_all",
+   "expired_summary",
+   "rot_earlier_b*"
+  ]
+ },
+ "rule": {
+  "eligible": "at least one known cell on both sides",
+  "seed": 20261029,
+  "n_boot": 10000,
+  "min_chains": 3,
+  "min_cells": 8
+ },
+ "rows": [
+  {
+   "measure": "capped_calls",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.45,
+   "ci95": [
+    0.4,
+    0.55
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "differs, agy higher",
+   "signs": {
+    "a_higher": 4,
+    "b_higher": 0,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "compaction_success",
+   "unit": "compactions",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "earlier_tag_commit",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 16,
+   "known_cells_b": 16,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "expired_full",
+   "unit": "cells",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.04999999999999999,
+   "ci95": [
+    -0.09999999999999998,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 60,
+   "known_cells_b": 60,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 2,
+    "equal": 2
+   }
+  },
+  {
+   "measure": "facts_full_fresh_all",
+   "unit": "cells",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 1.0,
+   "ci95": [
+    1.0,
+    1.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 19,
+   "known_cells_b": 39,
+   "verdict": "differs, agy higher",
+   "signs": {
+    "a_higher": 4,
+    "b_higher": 0,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "facts_full_fresh_all_candidates",
+   "unit": "cells (regex hits, unadjudicated)",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.4444444444444444,
+   "ci95": [
+    0.375,
+    0.5
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 19,
+   "known_cells_b": 39,
+   "verdict": "differs, agy higher",
+   "signs": {
+    "a_higher": 4,
+    "b_higher": 0,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "facts_full_fresh_push_attempted",
+   "unit": "cells",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 1.0,
+   "ci95": [
+    1.0,
+    1.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 11,
+   "known_cells_b": 20,
+   "verdict": "differs, agy higher",
+   "signs": {
+    "a_higher": 4,
+    "b_higher": 0,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "facts_full_fresh_push_attempted_candidates",
+   "unit": "cells (regex hits, unadjudicated)",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 11,
+   "known_cells_b": 20,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "facts_full_fresh_push_rejected",
+   "unit": "cells",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u4"
+   ],
+   "dropped_chains": 1,
+   "diff": 1.0,
+   "ci95": [
+    1.0,
+    1.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 8,
+   "known_cells_b": 15,
+   "verdict": "differs, agy higher",
+   "signs": {
+    "a_higher": 3,
+    "b_higher": 0,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "facts_full_fresh_push_rejected_candidates",
+   "unit": "cells (regex hits, unadjudicated)",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u4"
+   ],
+   "dropped_chains": 1,
+   "diff": 0.8888888888888888,
+   "ci95": [
+    0.6666666666666666,
+    1.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 8,
+   "known_cells_b": 15,
+   "verdict": "differs, agy higher",
+   "signs": {
+    "a_higher": 3,
+    "b_higher": 0,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "facts_full_later_all",
+   "unit": "cells",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 21,
+   "known_cells_b": 48,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "facts_full_later_all_candidates",
+   "unit": "cells (regex hits, unadjudicated)",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.4125,
+   "ci95": [
+    -0.5,
+    -0.3125
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 21,
+   "known_cells_b": 48,
+   "verdict": "differs, codex higher",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 4,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "facts_full_later_push_attempted",
+   "unit": "cells",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 11,
+   "known_cells_b": 24,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "facts_full_later_push_attempted_candidates",
+   "unit": "cells (regex hits, unadjudicated)",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.825,
+   "ci95": [
+    -1.0,
+    -0.625
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 11,
+   "known_cells_b": 24,
+   "verdict": "differs, codex higher",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 4,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "facts_full_later_push_rejected",
+   "unit": "cells",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u4"
+   ],
+   "dropped_chains": 1,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 10,
+   "known_cells_b": 18,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 3
+   }
+  },
+  {
+   "measure": "facts_full_later_push_rejected_candidates",
+   "unit": "cells (regex hits, unadjudicated)",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u4"
+   ],
+   "dropped_chains": 1,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 10,
+   "known_cells_b": 18,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 3
+   }
+  },
+  {
+   "measure": "pass",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.09999999999999999,
+   "ci95": [
+    -0.25,
+    0.35
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 3,
+    "b_higher": 1,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "rewrite",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "codex",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "capped_calls",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.45,
+   "ci95": [
+    0.4,
+    0.55
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "differs, agy higher",
+   "signs": {
+    "a_higher": 4,
+    "b_higher": 0,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "earlier_tag_commit",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 16,
+   "known_cells_b": 16,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "pass",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.30000000000000004,
+   "ci95": [
+    -0.4,
+    -0.1
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "differs, pi higher",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 3,
+    "equal": 1
+   }
+  },
+  {
+   "measure": "rewrite",
+   "unit": "tasks",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.1,
+   "ci95": [
+    -0.2,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 2,
+    "equal": 2
+   }
+  },
+  {
+   "measure": "rot_earlier_b1",
+   "unit": "entries",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 300,
+   "known_cells_b": 198,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "rot_earlier_b2",
+   "unit": "entries",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.1236554293865265,
+   "ci95": [
+    -0.1810229799851742,
+    -0.06628787878787878
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 524,
+   "known_cells_b": 256,
+   "verdict": "differs, pi higher",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 4,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "rot_earlier_b3",
+   "unit": "entries",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.344110100245543,
+   "ci95": [
+    -0.44866979655712047,
+    -0.23955040393396557
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 367,
+   "known_cells_b": 273,
+   "verdict": "differs, pi higher",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 4,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "rot_earlier_b4",
+   "unit": "entries",
+   "a": "agy",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.23549792330725394,
+   "ci95": [
+    -0.338921568627451,
+    -0.13830049261083743
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 260,
+   "known_cells_b": 229,
+   "verdict": "differs, pi higher",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 4,
+    "equal": 0
+   }
+  },
+  {
+   "measure": "capped_calls",
+   "unit": "tasks",
+   "a": "codex",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "earlier_tag_commit",
+   "unit": "tasks",
+   "a": "codex",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 16,
+   "known_cells_b": 16,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 0,
+    "equal": 4
+   }
+  },
+  {
+   "measure": "pass",
+   "unit": "tasks",
+   "a": "codex",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.4,
+   "ci95": [
+    -0.7000000000000001,
+    -0.09999999999999998
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "differs, pi higher",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 3,
+    "equal": 1
+   }
+  },
+  {
+   "measure": "rewrite",
+   "unit": "tasks",
+   "a": "codex",
+   "b": "pi",
+   "eligible_chains": [
+    "u1",
+    "u2",
+    "u3",
+    "u4"
+   ],
+   "dropped_chains": 0,
+   "diff": -0.1,
+   "ci95": [
+    -0.2,
+    0.0
+   ],
+   "seed": 20261029,
+   "n_boot": 10000,
+   "known_cells_a": 20,
+   "known_cells_b": 20,
+   "verdict": "no difference detected",
+   "signs": {
+    "a_higher": 0,
+    "b_higher": 2,
+    "equal": 2
+   }
+  }
+ ],
+ "shared_slots": {
+  "agy|codex|full": {
+   "fresh": {
+    "slots": 19,
+    "both": 0,
+    "a_only": 19,
+    "b_only": 0,
+    "neither": 0,
+    "candidates": {
+     "slots": 19,
+     "both": 11,
+     "a_only": 7,
+     "b_only": 0,
+     "neither": 1
+    }
+   },
+   "later": {
+    "slots": 21,
+    "both": 0,
+    "a_only": 0,
+    "b_only": 0,
+    "neither": 21,
+    "candidates": {
+     "slots": 21,
+     "both": 3,
+     "a_only": 0,
+     "b_only": 8,
+     "neither": 10
+    }
+   }
+  }
+ },
+ "predictions": [
+  {
+   "n": 1,
+   "text": "agy hits the 400-call cap in at least 6 of its 20 tasks",
+   "verdict": "held",
+   "data": "9 capped of 20 planned; 0 unknown",
+   "harness": "agy"
+  },
+  {
+   "n": 2,
+   "text": "at least 18 of 20 agy compactions succeed",
+   "verdict": "held",
+   "data": "20 succeeded, 0 failed, 0 unknown, of 20 planned",
+   "harness": "agy"
+  },
+  {
+   "n": 3,
+   "text": "at boundary 4, task 1's text is verbatim in the kept user requests in at most 2 of the 4 chains",
+   "verdict": "held",
+   "data": "2 chains verbatim; 0 unknown",
+   "harness": "agy"
+  },
+  {
+   "n": 4,
+   "text": "historical facts, full readable context: at least 80% at b = j of known push-attempted and push-rejected cells are recorded",
+   "verdict": "held",
+   "data": "19/19 recorded (adjudicated); 0 unknown",
+   "harness": "agy"
+  },
+  {
+   "n": 4,
+   "text": "historical facts, full readable context: at most 30% at b >= j + 2 of known push-attempted and push-rejected cells are recorded",
+   "verdict": "held",
+   "data": "0/21 recorded (adjudicated); 0 unknown",
+   "harness": "agy"
+  },
+  {
+   "n": 5,
+   "text": "an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran",
+   "verdict": "held",
+   "data": "0 of 16 later tasks; 0 unknown",
+   "harness": "agy"
+  },
+  {
+   "n": 6,
+   "text": "agy's earlier-task share at boundary 4 is below pi's u1–u4 share",
+   "verdict": "held",
+   "data": "0.0% over 4 chains with labelled entries (possible range 0.0–0.0%) vs pi 23.5%; unlabelled at boundary 4: 0",
+   "harness": "agy"
+  },
+  {
+   "n": 7,
+   "text": "agy's pass rate over its graded tasks is below pi's u1–u4 rate",
+   "verdict": "held",
+   "data": "9/20 graded passed, 0 ungraded; pi 75%",
+   "harness": "agy"
+  },
+  {
+   "n": 8,
+   "text": "codex succeeds at all of its compactions",
+   "verdict": "held",
+   "data": "20 succeeded, 0 failed, 0 unknown, of 20 planned",
+   "harness": "codex"
+  },
+  {
+   "n": 9,
+   "text": "codex caps at most 2 of its 20 tasks",
+   "verdict": "held",
+   "data": "0 capped of 20 planned; 0 unknown",
+   "harness": "codex"
+  },
+  {
+   "n": 11,
+   "text": "in codex, an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran",
+   "verdict": "held",
+   "data": "0 of 16 later tasks; 0 unknown",
+   "harness": "codex"
+  },
+  {
+   "n": 10,
+   "harness": "claude_code vs agy",
+   "verdict": "unresolved",
+   "data": "agy and Claude Code later-age measures not both present",
+   "text": "historical facts at b >= j + 2 (full readable context): Claude Code minus agy is not \"differs, agy higher\""
+  }
+ ],
+ "mode": "bulk",
+ "capping": {
+  "agy": {
+   "capped": 9,
+   "known_endings": 20,
+   "share": 0.45,
+   "gate": false
+  },
+  "codex": {
+   "capped": 0,
+   "known_endings": 20,
+   "share": 0.0,
+   "gate": false
+  },
+  "pi": {
+   "capped": 7,
+   "known_endings": 20,
+   "share": 0.35,
+   "gate": false
+  }
+ },
+ "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/results/sprint/week2/agy_chain5/compare.md"
+}

@@ -933,3 +933,10 @@ def test_r3_scorers_read_the_rebased_home(tmp_path):
         (other / "result.json").write_text(json.dumps({"end": "x", "traps_home": "/a"}))
         assert R.CSS._phase(other)["home"] == Path("/a")  # only this phase is rebased
     assert R.CSS._phase(d)["home"] == Path("/rig/elsewhere/home")
+
+
+def test_the_sonnet_pair_reads_as_its_cli():
+    cp = {"summary": "s", "user_requests": "r", "carried_context": "c"}
+    assert R.carried(cp, "agy_sonnet") == R.carried(cp, "agy")
+    assert R.carried(cp, "claude_code_sonnet") == R.carried(cp, "claude_code")
+    assert {"agy_sonnet", "claude_code_sonnet"} <= set(R.HARNESSES) <= set(R.SUMMARY_READABLE)
