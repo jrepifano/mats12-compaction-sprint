@@ -1,6 +1,6 @@
 # Five-task chains in agy: code-measure readout, beside pi on the same chains
 
-Run state None (bulk, run a43060f0b53b); written 2026-10-29T16:13:01+00:00. Experiment 4's unrelated chains u1–u4 in agy, with its own compaction after every task. $0: code scorers. Descriptive, n = 4 chains. Every cell is known-positive, known-negative or unknown; tables give planned and observed (known) denominators. Wilson 95% intervals on pooled counts are descriptive (cells are not independent). Wrong-project counts are unadjudicated code flags.
+Run state None (bulk, run a43060f0b53b); written 2026-10-29T16:21:59+00:00. Experiment 4's unrelated chains u1–u4 in agy, with its own compaction after every task. $0: code scorers. Descriptive, n = 4 chains. Every cell is known-positive, known-negative or unknown; tables give planned and observed (known) denominators. Wilson 95% intervals on pooled counts are descriptive (cells are not independent). Wrong-project counts are unadjudicated code flags.
 
 ## Predictions (plan v0.3.1)
 
@@ -9,8 +9,8 @@ Run state None (bulk, run a43060f0b53b); written 2026-10-29T16:13:01+00:00. Expe
 | 1 | agy hits the 400-call cap in at least 6 of its 20 tasks | **held** | 9 capped of 20 planned; 0 unknown |
 | 2 | at least 18 of 20 agy compactions succeed | **held** | 20 succeeded, 0 failed, 0 unknown, of 20 planned |
 | 3 | at boundary 4, task 1's text is verbatim in the kept user requests in at most 2 of the 4 chains | **held** | 2 chains verbatim; 0 unknown |
-| 4 | historical facts, full readable context: at least 80% at b = j of known push-attempted and push-rejected cells are recorded | **unresolved** | 0/0 recorded (adjudicated); 19 unknown |
-| 4 | historical facts, full readable context: at most 30% at b >= j + 2 of known push-attempted and push-rejected cells are recorded | **unresolved** | 0/0 recorded (adjudicated); 21 unknown |
+| 4 | historical facts, full readable context: at least 80% at b = j of known push-attempted and push-rejected cells are recorded | **held** | 19/19 recorded (adjudicated); 0 unknown |
+| 4 | historical facts, full readable context: at most 30% at b >= j + 2 of known push-attempted and push-rejected cells are recorded | **held** | 0/21 recorded (adjudicated); 0 unknown |
 | 5 | an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran | **held** | 0 of 16 later tasks; 0 unknown |
 | 6 | agy's earlier-task share at boundary 4 is below pi's u1–u4 share | **held** | 0.0% over 4 chains with labelled entries (possible range 0.0–0.0%) vs pi 23.5%; unlabelled at boundary 4: 0 |
 | 7 | agy's pass rate over its graded tasks is below pi's u1–u4 rate | **held** | 9/20 graded passed, 0 ungraded; pi 75% |
@@ -67,7 +67,7 @@ In-task automatic compactions: u1 task 1: 1; u1 task 2: 1; u1 task 5: 1; u2 task
 
 ## Adjudication
 
-One sheet item per readable boundary context, the whole context with regex matches marked as highlights only, and the questions of its cells under it: results/sprint/week2/agy_chain5/agy/bulk/adjudication_sheet.jsonl (20 contexts, 232 questions over every harness read so far; seed 20261102; harness, chain and boundary hidden). This harness: 0/232 questions labelled — **the labelled counts are partial: an unlabelled cell is unknown (label pending). Regex hits are reported as unadjudicated reading aids; a regex miss is never read as absent**. Labels are the builder session's reading, not validated.
+One sheet item per readable boundary context, the whole context with regex matches marked as highlights only, and the questions of its cells under it: results/sprint/week2/agy_chain5/agy/bulk/adjudication_sheet.jsonl (20 contexts, 232 questions over every harness read so far; seed 20261102; harness, chain and boundary hidden). This harness: 232/232 questions labelled. Labels are the builder session's reading, not validated.
 
 ## Historical facts: does the carried context record what happened?
 
@@ -77,43 +77,43 @@ One fact per task and category, from the task's own evidence. Cell = (chain, tas
 
 | window | category | planned / observed cells | recorded (pooled) | chain mean | regex hits (unadjudicated) | unknown |
 |---|---|---|---|---|---|---|
-| b = j | push attempted | 11 / 0 | – | – | 11/11 (100%, 74–100) | label pending 11 |
-| b = j | push rejected | 8 / 0 | – | – | 7/8 (88%, 53–98) | label pending 8 |
-| b = j | all categories | 19 / 0 | – | – | 18/19 (95%, 75–99) | label pending 19 |
-| b >= j + 2 | push attempted | 11 / 0 | – | – | 3/11 (27%, 10–57) | label pending 11 |
-| b >= j + 2 | push rejected | 10 / 0 | – | – | 0/10 (0%, 0–28) | label pending 10 |
-| b >= j + 2 | all categories | 21 / 0 | – | – | 3/21 (14%, 5–35) | label pending 21 |
+| b = j | push attempted | 11 / 11 | 11/11 (100%, 74–100) | 100% | 11/11 (100%, 74–100) | 0 |
+| b = j | push rejected | 8 / 8 | 8/8 (100%, 68–100) | 100% | 7/8 (88%, 53–98) | 0 |
+| b = j | all categories | 19 / 19 | 19/19 (100%, 83–100) | 100% | 18/19 (95%, 75–99) | 0 |
+| b >= j + 2 | push attempted | 11 / 11 | 0/11 (0%, 0–26) | 0% | 3/11 (27%, 10–57) | 0 |
+| b >= j + 2 | push rejected | 10 / 10 | 0/10 (0%, 0–28) | 0% | 0/10 (0%, 0–28) | 0 |
+| b >= j + 2 | all categories | 21 / 21 | 0/21 (0%, 0–15) | 0% | 3/21 (14%, 5–35) | 0 |
 
 By age (b − j), all categories:
 
 | age | planned / observed cells | recorded (pooled) | chain mean | regex hits (unadjudicated) | unknown | event-negative slots |
 |---|---|---|---|---|---|---|
-| 0 | 19 / 0 | – | – | 18/19 (95%, 75–99) | label pending 19 | 77 |
-| 1 | 16 / 0 | – | – | 5/16 (31%, 14–56) | label pending 16 | 60 |
-| 2 | 11 / 0 | – | – | 2/11 (18%, 5–48) | label pending 11 | 45 |
-| 3 | 6 / 0 | – | – | 1/6 (17%, 3–56) | label pending 6 | 30 |
-| 4 | 4 / 0 | – | – | 0/4 (0%, 0–49) | label pending 4 | 12 |
+| 0 | 19 / 19 | 19/19 (100%, 83–100) | 100% | 18/19 (95%, 75–99) | 0 | 77 |
+| 1 | 16 / 16 | 0/16 (0%, 0–19) | 0% | 5/16 (31%, 14–56) | 0 | 60 |
+| 2 | 11 / 11 | 0/11 (0%, 0–26) | 0% | 2/11 (18%, 5–48) | 0 | 45 |
+| 3 | 6 / 6 | 0/6 (0%, 0–39) | 0% | 1/6 (17%, 3–56) | 0 | 30 |
+| 4 | 4 / 4 | 0/4 (0%, 0–49) | 0% | 0/4 (0%, 0–49) | 0 | 12 |
 
 ### summary scope
 
 | window | category | planned / observed cells | recorded (pooled) | chain mean | regex hits (unadjudicated) | unknown |
 |---|---|---|---|---|---|---|
-| b = j | push attempted | 11 / 0 | – | – | 11/11 (100%, 74–100) | label pending 11 |
-| b = j | push rejected | 8 / 0 | – | – | 7/8 (88%, 53–98) | label pending 8 |
-| b = j | all categories | 19 / 0 | – | – | 18/19 (95%, 75–99) | label pending 19 |
-| b >= j + 2 | push attempted | 11 / 0 | – | – | 0/11 (0%, 0–26) | label pending 11 |
-| b >= j + 2 | push rejected | 10 / 0 | – | – | 0/10 (0%, 0–28) | label pending 10 |
-| b >= j + 2 | all categories | 21 / 0 | – | – | 0/21 (0%, 0–15) | label pending 21 |
+| b = j | push attempted | 11 / 11 | 11/11 (100%, 74–100) | 100% | 11/11 (100%, 74–100) | 0 |
+| b = j | push rejected | 8 / 8 | 8/8 (100%, 68–100) | 100% | 7/8 (88%, 53–98) | 0 |
+| b = j | all categories | 19 / 19 | 19/19 (100%, 83–100) | 100% | 18/19 (95%, 75–99) | 0 |
+| b >= j + 2 | push attempted | 11 / 11 | 0/11 (0%, 0–26) | 0% | 0/11 (0%, 0–26) | 0 |
+| b >= j + 2 | push rejected | 10 / 10 | 0/10 (0%, 0–28) | 0% | 0/10 (0%, 0–28) | 0 |
+| b >= j + 2 | all categories | 21 / 21 | 0/21 (0%, 0–15) | 0% | 0/21 (0%, 0–15) | 0 |
 
 By age (b − j), all categories:
 
 | age | planned / observed cells | recorded (pooled) | chain mean | regex hits (unadjudicated) | unknown | event-negative slots |
 |---|---|---|---|---|---|---|
-| 0 | 19 / 0 | – | – | 18/19 (95%, 75–99) | label pending 19 | 77 |
-| 1 | 16 / 0 | – | – | 0/16 (0%, 0–19) | label pending 16 | 60 |
-| 2 | 11 / 0 | – | – | 0/11 (0%, 0–26) | label pending 11 | 45 |
-| 3 | 6 / 0 | – | – | 0/6 (0%, 0–39) | label pending 6 | 30 |
-| 4 | 4 / 0 | – | – | 0/4 (0%, 0–49) | label pending 4 | 12 |
+| 0 | 19 / 19 | 19/19 (100%, 83–100) | 100% | 18/19 (95%, 75–99) | 0 | 77 |
+| 1 | 16 / 16 | 0/16 (0%, 0–19) | 0% | 0/16 (0%, 0–19) | 0 | 60 |
+| 2 | 11 / 11 | 0/11 (0%, 0–26) | 0% | 0/11 (0%, 0–26) | 0 | 45 |
+| 3 | 6 / 6 | 0/6 (0%, 0–39) | 0% | 0/6 (0%, 0–39) | 0 | 30 |
+| 4 | 4 / 4 | 0/4 (0%, 0–49) | 0% | 0/4 (0%, 0–49) | 0 | 12 |
 
 ## Expired instructions
 
@@ -121,8 +121,8 @@ Cell = (chain, boundary b, task j up to b): every one of those tasks is over whe
 
 | scope | planned / observed cells | presented as current (pooled) | chain mean | regex hits (unadjudicated) | unknown |
 |---|---|---|---|---|---|
-| full | 60 / 0 | – | – | 43/60 (72%, 59–81) | label pending 60 |
-| summary | 60 / 0 | – | – | 20/60 (33%, 23–46) | label pending 60 |
+| full | 60 / 60 | 17/60 (28%, 19–41) | 28% | 43/60 (72%, 59–81) | 0 |
+| summary | 60 / 60 | 17/60 (28%, 19–41) | 28% | 20/60 (33%, 23–46) | 0 |
 
 ### Kept user requests (structural)
 

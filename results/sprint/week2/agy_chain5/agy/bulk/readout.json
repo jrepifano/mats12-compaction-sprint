@@ -3,7 +3,7 @@
  "mode": "bulk",
  "run_id": "a43060f0b53b",
  "stage": "SPRINT-S2-AGY-CHAIN",
- "written_utc": "2026-10-29T16:13:01+00:00",
+ "written_utc": "2026-10-29T16:21:59+00:00",
  "root": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/s2/agy_chain5",
  "capacity": [
   {
@@ -1685,8 +1685,8 @@
   "seed": 20261102,
   "labels_path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/results/sprint/week2/agy_chain5/agy/bulk/adjudication_labels.jsonl",
   "questions": 232,
-  "labelled": 0,
-  "complete": false,
+  "labelled": 232,
+  "complete": true,
   "invalid_labels": []
  },
  "facts": {
@@ -1704,18 +1704,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i85ee17562ea5.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -1732,18 +1730,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i1717b0804571.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -1760,18 +1756,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -1788,18 +1782,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i85ee17562ea5.t3.push_rejected.summary.322017ee",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -1816,18 +1808,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i1717b0804571.t3.push_rejected.summary.322017ee",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -1844,18 +1834,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t3.push_rejected.summary.322017ee",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -1872,18 +1860,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i1717b0804571.t4.push_attempted.summary.58ec1cfc",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -1900,18 +1886,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t4.push_attempted.summary.58ec1cfc",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -1928,18 +1912,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i1717b0804571.t4.push_rejected.summary.9a196720",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -1956,18 +1938,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t4.push_rejected.summary.9a196720",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -1984,18 +1964,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "ifec76a23c330.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2012,18 +1990,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "i1a1c65a036f0.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2040,18 +2016,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "ic76df18c3cb8.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2068,18 +2042,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "ib09de1a38613.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2096,18 +2068,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2124,18 +2094,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "ifec76a23c330.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2152,18 +2120,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i1a1c65a036f0.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2180,18 +2146,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ic76df18c3cb8.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2208,18 +2172,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ib09de1a38613.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2236,18 +2198,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2264,18 +2224,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "ic76df18c3cb8.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2292,18 +2250,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "ib09de1a38613.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2320,18 +2276,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2348,18 +2302,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "ic76df18c3cb8.t3.push_rejected.summary.322017ee",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2376,18 +2328,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ib09de1a38613.t3.push_rejected.summary.322017ee",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2404,18 +2354,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t3.push_rejected.summary.322017ee",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2432,18 +2380,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i425084488ef8.t5.push_attempted.summary.08bdefa9",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2460,18 +2406,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i425084488ef8.t5.push_rejected.summary.656f1703",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2488,18 +2432,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i518655e7df74.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2516,18 +2458,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ib3fff3a1baf9.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2544,18 +2484,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "icb238eec4f5a.t3.push_attempted.summary.d2f14c8a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2572,18 +2510,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "ib3fff3a1baf9.t4.push_attempted.summary.58ec1cfc",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2600,18 +2536,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "icb238eec4f5a.t4.push_attempted.summary.58ec1cfc",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2628,18 +2562,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "icb238eec4f5a.t5.push_attempted.summary.08bdefa9",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2656,18 +2588,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "ie204a3269b30.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2684,18 +2614,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "i857f7d0d8aaf.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2712,18 +2640,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "i788f30f7039c.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2740,18 +2666,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i3d0366020ce2.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2768,18 +2692,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t1.push_attempted.summary.884d267f",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2796,18 +2718,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "ie204a3269b30.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2824,18 +2744,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i857f7d0d8aaf.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2852,18 +2770,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i788f30f7039c.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2880,18 +2796,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i3d0366020ce2.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2908,18 +2822,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t1.push_rejected.summary.20706b4e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2936,18 +2848,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i857f7d0d8aaf.t2.push_attempted.summary.072f012a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -2964,18 +2874,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "intention_or_instruction",
+      "state": "negative"
      },
      "summary": {
       "q": "i788f30f7039c.t2.push_attempted.summary.072f012a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -2992,18 +2900,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i3d0366020ce2.t2.push_attempted.summary.072f012a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -3020,18 +2926,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t2.push_attempted.summary.072f012a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -3048,18 +2952,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i857f7d0d8aaf.t2.push_rejected.summary.86c8b274",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -3076,18 +2978,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i788f30f7039c.t2.push_rejected.summary.86c8b274",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -3104,18 +3004,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i3d0366020ce2.t2.push_rejected.summary.86c8b274",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -3132,18 +3030,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t2.push_rejected.summary.86c8b274",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -3160,18 +3056,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i3d0366020ce2.t4.push_attempted.summary.58ec1cfc",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -3188,18 +3082,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t4.push_attempted.summary.58ec1cfc",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -3216,18 +3108,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      },
      "summary": {
       "q": "i3d0366020ce2.t4.push_rejected.summary.9a196720",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "asserted_completed",
+      "state": "positive"
      }
     }
    },
@@ -3244,18 +3134,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t4.push_rejected.summary.9a196720",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    }
@@ -3266,28 +3154,41 @@
      "push_attempted": {
       "0": {
        "planned": 11,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "observed": 11,
+       "k": 11,
+       "n": 11,
+       "p": 1.0,
+       "wilson95": [
+        0.7411599827511859,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 11
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 3,
         "u4": 3
+       },
+       "pos_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u3": 3,
+        "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3295,7 +3196,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 11,
         "n": 11,
@@ -3322,17 +3223,31 @@
       },
       "1": {
        "planned": 9,
-       "observed": 0,
+       "observed": 9,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 9
+       "n": 9,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.2991527535509594
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 4,
+        "intention_or_instruction": 5
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 2,
+        "u3": 2,
+        "u4": 3
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3340,10 +3255,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 2,
-        "u3": 2,
-        "u4": 3
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3351,7 +3266,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 5,
         "n": 9,
@@ -3378,17 +3293,31 @@
       },
       "2": {
        "planned": 6,
-       "observed": 0,
+       "observed": 6,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 6
+       "n": 6,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.3903430336530645
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 4,
+        "intention_or_instruction": 2
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 2,
+        "u3": 1,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3396,10 +3325,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 2,
-        "u3": 1,
-        "u4": 2
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3407,7 +3336,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 2,
         "n": 6,
@@ -3434,17 +3363,27 @@
       },
       "3": {
        "planned": 3,
-       "observed": 0,
+       "observed": 3,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 3
+       "n": 3,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.5615060804490177
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 2,
+        "intention_or_instruction": 1
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3453,9 +3392,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3463,7 +3402,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 1,
         "n": 3,
@@ -3486,17 +3425,26 @@
       },
       "4": {
        "planned": 2,
-       "observed": 0,
+       "observed": 2,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 2
+       "n": 2,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.6576280471103807
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 2
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 1
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3505,9 +3453,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 1
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3515,7 +3463,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 2,
@@ -3747,28 +3695,39 @@
      "push_rejected": {
       "0": {
        "planned": 8,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 8
+       "observed": 8,
+       "k": 8,
+       "n": 8,
+       "p": 1.0,
+       "wilson95": [
+        0.6755843804891231,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 8
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u4": 1.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u4": 3
+       },
        "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
-       },
-       "unknown_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 0,
         "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3776,7 +3735,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 7,
         "n": 8,
@@ -3801,17 +3760,28 @@
       },
       "1": {
        "planned": 7,
-       "observed": 0,
+       "observed": 7,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 7
+       "n": 7,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.35433884297520657
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 7
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 2,
+        "u4": 3
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3819,10 +3789,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 2,
+        "u1": 0,
+        "u2": 0,
         "u3": 0,
-        "u4": 3
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3830,7 +3800,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 7,
@@ -3855,17 +3825,28 @@
       },
       "2": {
        "planned": 5,
-       "observed": 0,
+       "observed": 5,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 5
+       "n": 5,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.43449149475208104
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 5
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 2,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3873,10 +3854,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 2,
+        "u1": 0,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3884,7 +3865,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 5,
@@ -3909,17 +3890,26 @@
       },
       "3": {
        "planned": 3,
-       "observed": 0,
+       "observed": 3,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 3
+       "n": 3,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.5615060804490177
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 3
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3928,9 +3918,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3938,7 +3928,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 3,
@@ -3961,17 +3951,26 @@
       },
       "4": {
        "planned": 2,
-       "observed": 0,
+       "observed": 2,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 2
+       "n": 2,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.6576280471103807
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 2
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 1
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -3980,9 +3979,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 1
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -3990,7 +3989,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 2,
@@ -4388,28 +4387,41 @@
      "all": {
       "0": {
        "planned": 19,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 19
+       "observed": 19,
+       "k": 19,
+       "n": 19,
+       "p": 1.0,
+       "wilson95": [
+        0.8318156346315496,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 19
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 4,
         "u2": 6,
         "u3": 3,
         "u4": 6
+       },
+       "pos_by_chain": {
+        "u1": 4,
+        "u2": 6,
+        "u3": 3,
+        "u4": 6
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4417,7 +4429,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 18,
         "n": 19,
@@ -4444,17 +4456,31 @@
       },
       "1": {
        "planned": 16,
-       "observed": 0,
+       "observed": 16,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 16
+       "n": 16,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.19361341827271994
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 11,
+        "intention_or_instruction": 5
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 4,
+        "u2": 4,
+        "u3": 2,
+        "u4": 6
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -4462,10 +4488,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 4,
-        "u2": 4,
-        "u3": 2,
-        "u4": 6
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4473,7 +4499,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 5,
         "n": 16,
@@ -4500,17 +4526,31 @@
       },
       "2": {
        "planned": 11,
-       "observed": 0,
+       "observed": 11,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "n": 11,
+       "p": 0.0,
+       "wilson95": [
+        2.7755575615628914e-17,
+        0.2588400172488141
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 9,
+        "intention_or_instruction": 2
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 4,
+        "u3": 1,
+        "u4": 4
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -4518,10 +4558,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 4,
-        "u3": 1,
-        "u4": 4
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4529,7 +4569,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 2,
         "n": 11,
@@ -4556,17 +4596,27 @@
       },
       "3": {
        "planned": 6,
-       "observed": 0,
+       "observed": 6,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 6
+       "n": 6,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.3903430336530645
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 5,
+        "intention_or_instruction": 1
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 2,
+        "u4": 4
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -4575,9 +4625,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 2,
+        "u2": 0,
         "u3": 0,
-        "u4": 4
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4585,7 +4635,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 1,
         "n": 6,
@@ -4608,17 +4658,26 @@
       },
       "4": {
        "planned": 4,
-       "observed": 0,
+       "observed": 4,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 4
+       "n": 4,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.48990002040399916
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 4
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 2,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -4627,9 +4686,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 2,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4637,7 +4696,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 4,
@@ -4664,28 +4723,41 @@
      "fresh": {
       "push_attempted": {
        "planned": 11,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "observed": 11,
+       "k": 11,
+       "n": 11,
+       "p": 1.0,
+       "wilson95": [
+        0.7411599827511859,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 11
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 3,
         "u4": 3
+       },
+       "pos_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u3": 3,
+        "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4693,7 +4765,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 11,
         "n": 11,
@@ -4759,28 +4831,39 @@
       },
       "push_rejected": {
        "planned": 8,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 8
+       "observed": 8,
+       "k": 8,
+       "n": 8,
+       "p": 1.0,
+       "wilson95": [
+        0.6755843804891231,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 8
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u4": 1.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u4": 3
+       },
        "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
-       },
-       "unknown_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 0,
         "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4788,7 +4871,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 7,
         "n": 8,
@@ -4892,28 +4975,41 @@
       },
       "all": {
        "planned": 19,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 19
+       "observed": 19,
+       "k": 19,
+       "n": 19,
+       "p": 1.0,
+       "wilson95": [
+        0.8318156346315496,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 19
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 4,
         "u2": 6,
         "u3": 3,
         "u4": 6
+       },
+       "pos_by_chain": {
+        "u1": 4,
+        "u2": 6,
+        "u3": 3,
+        "u4": 6
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4921,7 +5017,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 18,
         "n": 19,
@@ -4949,17 +5045,31 @@
      "later": {
       "push_attempted": {
        "planned": 11,
-       "observed": 0,
+       "observed": 11,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "n": 11,
+       "p": 0.0,
+       "wilson95": [
+        2.7755575615628914e-17,
+        0.2588400172488141
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 8,
+        "intention_or_instruction": 3
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 4,
+        "u3": 1,
+        "u4": 5
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -4967,10 +5077,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 4,
-        "u3": 1,
-        "u4": 5
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -4978,7 +5088,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 3,
         "n": 11,
@@ -5044,17 +5154,28 @@
       },
       "push_rejected": {
        "planned": 10,
-       "observed": 0,
+       "observed": 10,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 10
+       "n": 10,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.2775401687666166
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 10
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 4,
+        "u4": 5
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5062,10 +5183,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 4,
+        "u1": 0,
+        "u2": 0,
         "u3": 0,
-        "u4": 5
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5073,7 +5194,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 10,
@@ -5177,17 +5298,31 @@
       },
       "all": {
        "planned": 21,
-       "observed": 0,
+       "observed": 21,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 21
+       "n": 21,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.15464382326420195
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 18,
+        "intention_or_instruction": 3
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 8,
+        "u3": 1,
+        "u4": 10
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5195,10 +5330,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 8,
-        "u3": 1,
-        "u4": 10
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5206,7 +5341,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 3,
         "n": 21,
@@ -5238,28 +5373,41 @@
      "push_attempted": {
       "0": {
        "planned": 11,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "observed": 11,
+       "k": 11,
+       "n": 11,
+       "p": 1.0,
+       "wilson95": [
+        0.7411599827511859,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 11
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 3,
         "u4": 3
+       },
+       "pos_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u3": 3,
+        "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5267,7 +5415,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 11,
         "n": 11,
@@ -5294,17 +5442,30 @@
       },
       "1": {
        "planned": 9,
-       "observed": 0,
+       "observed": 9,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 9
+       "n": 9,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.2991527535509594
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 9
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 2,
+        "u3": 2,
+        "u4": 3
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5312,10 +5473,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 2,
-        "u3": 2,
-        "u4": 3
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5323,7 +5484,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 9,
@@ -5350,17 +5511,30 @@
       },
       "2": {
        "planned": 6,
-       "observed": 0,
+       "observed": 6,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 6
+       "n": 6,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.3903430336530645
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 6
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 2,
+        "u3": 1,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5368,10 +5542,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 2,
-        "u3": 1,
-        "u4": 2
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5379,7 +5553,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 6,
@@ -5406,17 +5580,26 @@
       },
       "3": {
        "planned": 3,
-       "observed": 0,
+       "observed": 3,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 3
+       "n": 3,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.5615060804490177
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 3
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5425,9 +5608,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5435,7 +5618,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 3,
@@ -5458,17 +5641,26 @@
       },
       "4": {
        "planned": 2,
-       "observed": 0,
+       "observed": 2,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 2
+       "n": 2,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.6576280471103807
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 2
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 1
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5477,9 +5669,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 1
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5487,7 +5679,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 2,
@@ -5719,28 +5911,39 @@
      "push_rejected": {
       "0": {
        "planned": 8,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 8
+       "observed": 8,
+       "k": 8,
+       "n": 8,
+       "p": 1.0,
+       "wilson95": [
+        0.6755843804891231,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 8
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u4": 1.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u4": 3
+       },
        "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
-       },
-       "unknown_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 0,
         "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5748,7 +5951,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 7,
         "n": 8,
@@ -5773,17 +5976,28 @@
       },
       "1": {
        "planned": 7,
-       "observed": 0,
+       "observed": 7,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 7
+       "n": 7,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.35433884297520657
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 7
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 2,
+        "u4": 3
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5791,10 +6005,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 2,
+        "u1": 0,
+        "u2": 0,
         "u3": 0,
-        "u4": 3
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5802,7 +6016,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 7,
@@ -5827,17 +6041,28 @@
       },
       "2": {
        "planned": 5,
-       "observed": 0,
+       "observed": 5,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 5
+       "n": 5,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.43449149475208104
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 5
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 2,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5845,10 +6070,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 2,
+        "u1": 0,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5856,7 +6081,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 5,
@@ -5881,17 +6106,26 @@
       },
       "3": {
        "planned": 3,
-       "observed": 0,
+       "observed": 3,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 3
+       "n": 3,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.5615060804490177
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 3
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5900,9 +6134,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5910,7 +6144,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 3,
@@ -5933,17 +6167,26 @@
       },
       "4": {
        "planned": 2,
-       "observed": 0,
+       "observed": 2,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 2
+       "n": 2,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.6576280471103807
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 2
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 1,
+        "u4": 1
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -5952,9 +6195,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 1,
+        "u2": 0,
         "u3": 0,
-        "u4": 1
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -5962,7 +6205,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 2,
@@ -6360,28 +6603,41 @@
      "all": {
       "0": {
        "planned": 19,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 19
+       "observed": 19,
+       "k": 19,
+       "n": 19,
+       "p": 1.0,
+       "wilson95": [
+        0.8318156346315496,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 19
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 4,
         "u2": 6,
         "u3": 3,
         "u4": 6
+       },
+       "pos_by_chain": {
+        "u1": 4,
+        "u2": 6,
+        "u3": 3,
+        "u4": 6
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6389,7 +6645,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 18,
         "n": 19,
@@ -6416,17 +6672,30 @@
       },
       "1": {
        "planned": 16,
-       "observed": 0,
+       "observed": 16,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 16
+       "n": 16,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.19361341827271994
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 16
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 4,
+        "u2": 4,
+        "u3": 2,
+        "u4": 6
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -6434,10 +6703,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 4,
-        "u2": 4,
-        "u3": 2,
-        "u4": 6
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6445,7 +6714,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 16,
@@ -6472,17 +6741,30 @@
       },
       "2": {
        "planned": 11,
-       "observed": 0,
+       "observed": 11,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "n": 11,
+       "p": 0.0,
+       "wilson95": [
+        2.7755575615628914e-17,
+        0.2588400172488141
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 11
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 4,
+        "u3": 1,
+        "u4": 4
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -6490,10 +6772,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 4,
-        "u3": 1,
-        "u4": 4
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6501,7 +6783,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 11,
@@ -6528,17 +6810,26 @@
       },
       "3": {
        "planned": 6,
-       "observed": 0,
+       "observed": 6,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 6
+       "n": 6,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.3903430336530645
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 6
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 2,
+        "u4": 4
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -6547,9 +6838,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 2,
+        "u2": 0,
         "u3": 0,
-        "u4": 4
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6557,7 +6848,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 6,
@@ -6580,17 +6871,26 @@
       },
       "4": {
        "planned": 4,
-       "observed": 0,
+       "observed": 4,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 4
+       "n": 4,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.48990002040399916
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 4
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u2": 2,
+        "u4": 2
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -6599,9 +6899,9 @@
        },
        "unknown_by_chain": {
         "u1": 0,
-        "u2": 2,
+        "u2": 0,
         "u3": 0,
-        "u4": 2
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6609,7 +6909,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 4,
@@ -6636,28 +6936,41 @@
      "fresh": {
       "push_attempted": {
        "planned": 11,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "observed": 11,
+       "k": 11,
+       "n": 11,
+       "p": 1.0,
+       "wilson95": [
+        0.7411599827511859,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 11
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 3,
         "u4": 3
+       },
+       "pos_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u3": 3,
+        "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6665,7 +6978,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 11,
         "n": 11,
@@ -6731,28 +7044,39 @@
       },
       "push_rejected": {
        "planned": 8,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 8
+       "observed": 8,
+       "k": 8,
+       "n": 8,
+       "p": 1.0,
+       "wilson95": [
+        0.6755843804891231,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 8
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u4": 1.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 3,
+        "u4": 3
+       },
        "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
-       },
-       "unknown_by_chain": {
         "u1": 2,
         "u2": 3,
         "u3": 0,
         "u4": 3
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6760,7 +7084,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 7,
         "n": 8,
@@ -6864,28 +7188,41 @@
       },
       "all": {
        "planned": 19,
-       "observed": 0,
-       "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 19
+       "observed": 19,
+       "k": 19,
+       "n": 19,
+       "p": 1.0,
+       "wilson95": [
+        0.8318156346315496,
+        1.0
+       ],
+       "unknown": {},
+       "labels": {
+        "asserted_completed": 19
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
-       "pos_by_chain": {
-        "u1": 0,
-        "u2": 0,
-        "u3": 0,
-        "u4": 0
+       "by_chain": {
+        "u1": 1.0,
+        "u2": 1.0,
+        "u3": 1.0,
+        "u4": 1.0
        },
-       "unknown_by_chain": {
+       "cells_by_chain": {
         "u1": 4,
         "u2": 6,
         "u3": 3,
         "u4": 6
+       },
+       "pos_by_chain": {
+        "u1": 4,
+        "u2": 6,
+        "u3": 3,
+        "u4": 6
+       },
+       "unknown_by_chain": {
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6893,7 +7230,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 1.0,
        "candidates": {
         "k": 18,
         "n": 19,
@@ -6921,17 +7258,30 @@
      "later": {
       "push_attempted": {
        "planned": 11,
-       "observed": 0,
+       "observed": 11,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 11
+       "n": 11,
+       "p": 0.0,
+       "wilson95": [
+        2.7755575615628914e-17,
+        0.2588400172488141
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 11
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 4,
+        "u3": 1,
+        "u4": 5
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -6939,10 +7289,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 4,
-        "u3": 1,
-        "u4": 5
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -6950,7 +7300,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 11,
@@ -7016,17 +7366,28 @@
       },
       "push_rejected": {
        "planned": 10,
-       "observed": 0,
+       "observed": 10,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 10
+       "n": 10,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.2775401687666166
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 10
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 1,
+        "u2": 4,
+        "u4": 5
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -7034,10 +7395,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 1,
-        "u2": 4,
+        "u1": 0,
+        "u2": 0,
         "u3": 0,
-        "u4": 5
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -7045,7 +7406,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 10,
@@ -7149,17 +7510,30 @@
       },
       "all": {
        "planned": 21,
-       "observed": 0,
+       "observed": 21,
        "k": 0,
-       "n": 0,
-       "p": null,
-       "wilson95": null,
-       "unknown": {
-        "label pending": 21
+       "n": 21,
+       "p": 0.0,
+       "wilson95": [
+        0.0,
+        0.15464382326420195
+       ],
+       "unknown": {},
+       "labels": {
+        "absent": 21
        },
-       "labels": {},
-       "by_chain": {},
-       "cells_by_chain": {},
+       "by_chain": {
+        "u1": 0.0,
+        "u2": 0.0,
+        "u3": 0.0,
+        "u4": 0.0
+       },
+       "cells_by_chain": {
+        "u1": 2,
+        "u2": 8,
+        "u3": 1,
+        "u4": 10
+       },
        "pos_by_chain": {
         "u1": 0,
         "u2": 0,
@@ -7167,10 +7541,10 @@
         "u4": 0
        },
        "unknown_by_chain": {
-        "u1": 2,
-        "u2": 8,
-        "u3": 1,
-        "u4": 10
+        "u1": 0,
+        "u2": 0,
+        "u3": 0,
+        "u4": 0
        },
        "universe": [
         "u1",
@@ -7178,7 +7552,7 @@
         "u3",
         "u4"
        ],
-       "chain_mean": null,
+       "chain_mean": 0.0,
        "candidates": {
         "k": 0,
         "n": 21,
@@ -7246,18 +7620,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i735b95cbe7e0.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -7272,18 +7644,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i337b9d6a7481.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7298,18 +7668,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i337b9d6a7481.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -7324,18 +7692,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i85ee17562ea5.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7350,18 +7716,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i85ee17562ea5.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7376,18 +7740,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i85ee17562ea5.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -7402,18 +7764,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i1717b0804571.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7428,18 +7788,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i1717b0804571.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7454,18 +7812,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i1717b0804571.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7480,18 +7836,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i1717b0804571.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      }
     }
    },
@@ -7506,18 +7860,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7532,18 +7884,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7558,18 +7908,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7584,18 +7932,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i4b3d9f63be05.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7610,18 +7956,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i4b3d9f63be05.t5.instruction.summary.83cc4cda",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -7636,18 +7980,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "ifec76a23c330.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -7662,18 +8004,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i1a1c65a036f0.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7688,18 +8028,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i1a1c65a036f0.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -7714,18 +8052,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "ic76df18c3cb8.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7740,18 +8076,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "ic76df18c3cb8.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7766,18 +8100,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "ic76df18c3cb8.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      }
     }
    },
@@ -7792,18 +8124,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "ib09de1a38613.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7818,18 +8148,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "ib09de1a38613.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7844,18 +8172,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "ib09de1a38613.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7870,18 +8196,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "ib09de1a38613.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -7896,18 +8220,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7922,18 +8244,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7948,18 +8268,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -7974,18 +8292,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8000,18 +8316,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i425084488ef8.t5.instruction.summary.83cc4cda",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      }
     }
    },
@@ -8026,18 +8340,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "ib21e79846c13.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8052,18 +8364,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i5ef4232b7c57.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8078,18 +8388,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i5ef4232b7c57.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8104,18 +8412,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i518655e7df74.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8130,18 +8436,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i518655e7df74.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8156,18 +8460,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i518655e7df74.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8182,18 +8484,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ib3fff3a1baf9.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8208,18 +8508,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ib3fff3a1baf9.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8234,18 +8532,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ib3fff3a1baf9.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8260,18 +8556,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "ib3fff3a1baf9.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8286,18 +8580,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "icb238eec4f5a.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8312,18 +8604,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "icb238eec4f5a.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8338,18 +8628,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "icb238eec4f5a.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8364,18 +8652,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "icb238eec4f5a.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8390,18 +8676,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "icb238eec4f5a.t5.instruction.summary.83cc4cda",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8416,18 +8700,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "ie204a3269b30.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8442,18 +8724,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i857f7d0d8aaf.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8468,18 +8748,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i857f7d0d8aaf.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8494,18 +8772,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i788f30f7039c.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8520,18 +8796,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i788f30f7039c.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8546,18 +8820,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i788f30f7039c.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8572,18 +8844,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i3d0366020ce2.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8598,18 +8868,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "i3d0366020ce2.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8624,18 +8892,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "i3d0366020ce2.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8650,18 +8916,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "i3d0366020ce2.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    },
@@ -8676,18 +8940,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t1.instruction.summary.6edf581e",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8702,18 +8964,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t2.instruction.summary.422e5c5a",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8728,18 +8988,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_past",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t3.instruction.summary.afacf1b3",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8754,18 +9012,16 @@
       "qscope": "full",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      },
      "summary": {
       "q": "ie5864cd57548.t4.instruction.summary.cd6c1390",
       "qscope": "summary",
       "hit": false,
       "candidate": false,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "absent",
+      "state": "negative"
      }
     }
    },
@@ -8780,18 +9036,16 @@
       "qscope": "full",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      },
      "summary": {
       "q": "ie5864cd57548.t5.instruction.summary.83cc4cda",
       "qscope": "summary",
       "hit": true,
       "candidate": true,
-      "label": null,
-      "state": "unknown",
-      "unknown": "label pending"
+      "label": "presented_as_current",
+      "state": "positive"
      }
     }
    }
@@ -8800,28 +9054,43 @@
    "full": {
     "all": {
      "planned": 60,
-     "observed": 0,
-     "k": 0,
-     "n": 0,
-     "p": null,
-     "wilson95": null,
-     "unknown": {
-      "label pending": 60
+     "observed": 60,
+     "k": 17,
+     "n": 60,
+     "p": 0.2833333333333333,
+     "wilson95": [
+      0.1850667860430859,
+      0.40767525049735165
+     ],
+     "unknown": {},
+     "labels": {
+      "absent": 17,
+      "presented_as_current": 17,
+      "presented_as_past": 26
      },
-     "labels": {},
-     "by_chain": {},
-     "cells_by_chain": {},
-     "pos_by_chain": {
-      "u1": 0,
-      "u2": 0,
-      "u3": 0,
-      "u4": 0
+     "by_chain": {
+      "u1": 0.26666666666666666,
+      "u2": 0.2,
+      "u3": 0.3333333333333333,
+      "u4": 0.3333333333333333
      },
-     "unknown_by_chain": {
+     "cells_by_chain": {
       "u1": 15,
       "u2": 15,
       "u3": 15,
       "u4": 15
+     },
+     "pos_by_chain": {
+      "u1": 4,
+      "u2": 3,
+      "u3": 5,
+      "u4": 5
+     },
+     "unknown_by_chain": {
+      "u1": 0,
+      "u2": 0,
+      "u3": 0,
+      "u4": 0
      },
      "universe": [
       "u1",
@@ -8829,7 +9098,7 @@
       "u3",
       "u4"
      ],
-     "chain_mean": null,
+     "chain_mean": 0.2833333333333333,
      "candidates": {
       "k": 43,
       "n": 60,
@@ -8856,28 +9125,42 @@
     "by_age": {
      "0": {
       "planned": 20,
-      "observed": 0,
-      "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 20
+      "observed": 20,
+      "k": 17,
+      "n": 20,
+      "p": 0.85,
+      "wilson95": [
+       0.6395767041130426,
+       0.9476322080405041
+      ],
+      "unknown": {},
+      "labels": {
+       "presented_as_current": 17,
+       "presented_as_past": 3
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
-      "pos_by_chain": {
-       "u1": 0,
-       "u2": 0,
-       "u3": 0,
-       "u4": 0
+      "by_chain": {
+       "u1": 0.8,
+       "u2": 0.6,
+       "u3": 1.0,
+       "u4": 1.0
       },
-      "unknown_by_chain": {
+      "cells_by_chain": {
        "u1": 5,
        "u2": 5,
        "u3": 5,
        "u4": 5
+      },
+      "pos_by_chain": {
+       "u1": 4,
+       "u2": 3,
+       "u3": 5,
+       "u4": 5
+      },
+      "unknown_by_chain": {
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -8885,7 +9168,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.85,
       "candidates": {
        "k": 20,
        "n": 20,
@@ -8911,17 +9194,31 @@
      },
      "1": {
       "planned": 16,
-      "observed": 0,
+      "observed": 16,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 16
+      "n": 16,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.19361341827271994
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 4,
+       "presented_as_past": 12
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 4,
+       "u2": 4,
+       "u3": 4,
+       "u4": 4
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -8929,10 +9226,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 4,
-       "u2": 4,
-       "u3": 4,
-       "u4": 4
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -8940,7 +9237,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 12,
        "n": 16,
@@ -8966,17 +9263,31 @@
      },
      "2": {
       "planned": 12,
-      "observed": 0,
+      "observed": 12,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 12
+      "n": 12,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.2425007574992425
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 6,
+       "presented_as_past": 6
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 3,
+       "u2": 3,
+       "u3": 3,
+       "u4": 3
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -8984,10 +9295,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 3,
-       "u2": 3,
-       "u3": 3,
-       "u4": 3
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -8995,7 +9306,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 6,
        "n": 12,
@@ -9021,17 +9332,31 @@
      },
      "3": {
       "planned": 8,
-      "observed": 0,
+      "observed": 8,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 8
+      "n": 8,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.3244156195108769
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 4,
+       "presented_as_past": 4
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 2,
+       "u2": 2,
+       "u3": 2,
+       "u4": 2
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -9039,10 +9364,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 2,
-       "u2": 2,
-       "u3": 2,
-       "u4": 2
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -9050,7 +9375,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 4,
        "n": 8,
@@ -9076,17 +9401,31 @@
      },
      "4": {
       "planned": 4,
-      "observed": 0,
+      "observed": 4,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 4
+      "n": 4,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.48990002040399916
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 3,
+       "presented_as_past": 1
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 1,
+       "u2": 1,
+       "u3": 1,
+       "u4": 1
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -9094,10 +9433,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 1,
-       "u2": 1,
-       "u3": 1,
-       "u4": 1
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -9105,7 +9444,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 1,
        "n": 4,
@@ -9134,28 +9473,43 @@
    "summary": {
     "all": {
      "planned": 60,
-     "observed": 0,
-     "k": 0,
-     "n": 0,
-     "p": null,
-     "wilson95": null,
-     "unknown": {
-      "label pending": 60
+     "observed": 60,
+     "k": 17,
+     "n": 60,
+     "p": 0.2833333333333333,
+     "wilson95": [
+      0.1850667860430859,
+      0.40767525049735165
+     ],
+     "unknown": {},
+     "labels": {
+      "absent": 40,
+      "presented_as_current": 17,
+      "presented_as_past": 3
      },
-     "labels": {},
-     "by_chain": {},
-     "cells_by_chain": {},
-     "pos_by_chain": {
-      "u1": 0,
-      "u2": 0,
-      "u3": 0,
-      "u4": 0
+     "by_chain": {
+      "u1": 0.26666666666666666,
+      "u2": 0.2,
+      "u3": 0.3333333333333333,
+      "u4": 0.3333333333333333
      },
-     "unknown_by_chain": {
+     "cells_by_chain": {
       "u1": 15,
       "u2": 15,
       "u3": 15,
       "u4": 15
+     },
+     "pos_by_chain": {
+      "u1": 4,
+      "u2": 3,
+      "u3": 5,
+      "u4": 5
+     },
+     "unknown_by_chain": {
+      "u1": 0,
+      "u2": 0,
+      "u3": 0,
+      "u4": 0
      },
      "universe": [
       "u1",
@@ -9163,7 +9517,7 @@
       "u3",
       "u4"
      ],
-     "chain_mean": null,
+     "chain_mean": 0.2833333333333333,
      "candidates": {
       "k": 20,
       "n": 60,
@@ -9190,28 +9544,42 @@
     "by_age": {
      "0": {
       "planned": 20,
-      "observed": 0,
-      "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 20
+      "observed": 20,
+      "k": 17,
+      "n": 20,
+      "p": 0.85,
+      "wilson95": [
+       0.6395767041130426,
+       0.9476322080405041
+      ],
+      "unknown": {},
+      "labels": {
+       "presented_as_current": 17,
+       "presented_as_past": 3
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
-      "pos_by_chain": {
-       "u1": 0,
-       "u2": 0,
-       "u3": 0,
-       "u4": 0
+      "by_chain": {
+       "u1": 0.8,
+       "u2": 0.6,
+       "u3": 1.0,
+       "u4": 1.0
       },
-      "unknown_by_chain": {
+      "cells_by_chain": {
        "u1": 5,
        "u2": 5,
        "u3": 5,
        "u4": 5
+      },
+      "pos_by_chain": {
+       "u1": 4,
+       "u2": 3,
+       "u3": 5,
+       "u4": 5
+      },
+      "unknown_by_chain": {
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -9219,7 +9587,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.85,
       "candidates": {
        "k": 20,
        "n": 20,
@@ -9245,17 +9613,30 @@
      },
      "1": {
       "planned": 16,
-      "observed": 0,
+      "observed": 16,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 16
+      "n": 16,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.19361341827271994
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 16
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 4,
+       "u2": 4,
+       "u3": 4,
+       "u4": 4
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -9263,10 +9644,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 4,
-       "u2": 4,
-       "u3": 4,
-       "u4": 4
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -9274,7 +9655,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 0,
        "n": 16,
@@ -9300,17 +9681,30 @@
      },
      "2": {
       "planned": 12,
-      "observed": 0,
+      "observed": 12,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 12
+      "n": 12,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.2425007574992425
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 12
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 3,
+       "u2": 3,
+       "u3": 3,
+       "u4": 3
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -9318,10 +9712,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 3,
-       "u2": 3,
-       "u3": 3,
-       "u4": 3
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -9329,7 +9723,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 0,
        "n": 12,
@@ -9355,17 +9749,30 @@
      },
      "3": {
       "planned": 8,
-      "observed": 0,
+      "observed": 8,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 8
+      "n": 8,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.3244156195108769
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 8
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 2,
+       "u2": 2,
+       "u3": 2,
+       "u4": 2
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -9373,10 +9780,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 2,
-       "u2": 2,
-       "u3": 2,
-       "u4": 2
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -9384,7 +9791,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 0,
        "n": 8,
@@ -9410,17 +9817,30 @@
      },
      "4": {
       "planned": 4,
-      "observed": 0,
+      "observed": 4,
       "k": 0,
-      "n": 0,
-      "p": null,
-      "wilson95": null,
-      "unknown": {
-       "label pending": 4
+      "n": 4,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.48990002040399916
+      ],
+      "unknown": {},
+      "labels": {
+       "absent": 4
       },
-      "labels": {},
-      "by_chain": {},
-      "cells_by_chain": {},
+      "by_chain": {
+       "u1": 0.0,
+       "u2": 0.0,
+       "u3": 0.0,
+       "u4": 0.0
+      },
+      "cells_by_chain": {
+       "u1": 1,
+       "u2": 1,
+       "u3": 1,
+       "u4": 1
+      },
       "pos_by_chain": {
        "u1": 0,
        "u2": 0,
@@ -9428,10 +9848,10 @@
        "u4": 0
       },
       "unknown_by_chain": {
-       "u1": 1,
-       "u2": 1,
-       "u3": 1,
-       "u4": 1
+       "u1": 0,
+       "u2": 0,
+       "u3": 0,
+       "u4": 0
       },
       "universe": [
        "u1",
@@ -9439,7 +9859,7 @@
        "u3",
        "u4"
       ],
-      "chain_mean": null,
+      "chain_mean": 0.0,
       "candidates": {
        "k": 0,
        "n": 4,
@@ -12189,19 +12609,29 @@
  "chain_measures": {
   "facts_full_fresh_push_attempted": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 1.0,
+    "u2": 1.0,
+    "u3": 1.0,
+    "u4": 1.0
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
     "u1": 2,
     "u2": 3,
     "u3": 3,
     "u4": 3
+   },
+   "pos_by_chain": {
+    "u1": 2,
+    "u2": 3,
+    "u3": 3,
+    "u4": 3
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12233,19 +12663,27 @@
   },
   "facts_full_fresh_push_rejected": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 1.0,
+    "u2": 1.0,
+    "u4": 1.0
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
+    "u1": 2,
+    "u2": 3,
+    "u4": 3
+   },
+   "pos_by_chain": {
     "u1": 2,
     "u2": 3,
     "u3": 0,
     "u4": 3
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12275,19 +12713,29 @@
   },
   "facts_full_fresh_all": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 1.0,
+    "u2": 1.0,
+    "u3": 1.0,
+    "u4": 1.0
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
     "u1": 4,
     "u2": 6,
     "u3": 3,
     "u4": 6
+   },
+   "pos_by_chain": {
+    "u1": 4,
+    "u2": 6,
+    "u3": 3,
+    "u4": 6
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12319,8 +12767,18 @@
   },
   "facts_full_later_push_attempted": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
+   "by_chain": {
+    "u1": 0.0,
+    "u2": 0.0,
+    "u3": 0.0,
+    "u4": 0.0
+   },
+   "cells_by_chain": {
+    "u1": 1,
+    "u2": 4,
+    "u3": 1,
+    "u4": 5
+   },
    "pos_by_chain": {
     "u1": 0,
     "u2": 0,
@@ -12328,10 +12786,10 @@
     "u4": 0
    },
    "unknown_by_chain": {
-    "u1": 1,
-    "u2": 4,
-    "u3": 1,
-    "u4": 5
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12363,8 +12821,16 @@
   },
   "facts_full_later_push_rejected": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
+   "by_chain": {
+    "u1": 0.0,
+    "u2": 0.0,
+    "u4": 0.0
+   },
+   "cells_by_chain": {
+    "u1": 1,
+    "u2": 4,
+    "u4": 5
+   },
    "pos_by_chain": {
     "u1": 0,
     "u2": 0,
@@ -12372,10 +12838,10 @@
     "u4": 0
    },
    "unknown_by_chain": {
-    "u1": 1,
-    "u2": 4,
+    "u1": 0,
+    "u2": 0,
     "u3": 0,
-    "u4": 5
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12405,8 +12871,18 @@
   },
   "facts_full_later_all": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
+   "by_chain": {
+    "u1": 0.0,
+    "u2": 0.0,
+    "u3": 0.0,
+    "u4": 0.0
+   },
+   "cells_by_chain": {
+    "u1": 2,
+    "u2": 8,
+    "u3": 1,
+    "u4": 10
+   },
    "pos_by_chain": {
     "u1": 0,
     "u2": 0,
@@ -12414,10 +12890,10 @@
     "u4": 0
    },
    "unknown_by_chain": {
-    "u1": 2,
-    "u2": 8,
-    "u3": 1,
-    "u4": 10
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12449,19 +12925,29 @@
   },
   "expired_full": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 0.26666666666666666,
+    "u2": 0.2,
+    "u3": 0.3333333333333333,
+    "u4": 0.3333333333333333
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
     "u1": 15,
     "u2": 15,
     "u3": 15,
     "u4": 15
+   },
+   "pos_by_chain": {
+    "u1": 4,
+    "u2": 3,
+    "u3": 5,
+    "u4": 5
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12472,19 +12958,29 @@
   },
   "facts_summary_fresh_push_attempted": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 1.0,
+    "u2": 1.0,
+    "u3": 1.0,
+    "u4": 1.0
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
     "u1": 2,
     "u2": 3,
     "u3": 3,
     "u4": 3
+   },
+   "pos_by_chain": {
+    "u1": 2,
+    "u2": 3,
+    "u3": 3,
+    "u4": 3
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12516,19 +13012,27 @@
   },
   "facts_summary_fresh_push_rejected": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 1.0,
+    "u2": 1.0,
+    "u4": 1.0
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
+    "u1": 2,
+    "u2": 3,
+    "u4": 3
+   },
+   "pos_by_chain": {
     "u1": 2,
     "u2": 3,
     "u3": 0,
     "u4": 3
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12558,19 +13062,29 @@
   },
   "facts_summary_fresh_all": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 1.0,
+    "u2": 1.0,
+    "u3": 1.0,
+    "u4": 1.0
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
     "u1": 4,
     "u2": 6,
     "u3": 3,
     "u4": 6
+   },
+   "pos_by_chain": {
+    "u1": 4,
+    "u2": 6,
+    "u3": 3,
+    "u4": 6
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12602,8 +13116,18 @@
   },
   "facts_summary_later_push_attempted": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
+   "by_chain": {
+    "u1": 0.0,
+    "u2": 0.0,
+    "u3": 0.0,
+    "u4": 0.0
+   },
+   "cells_by_chain": {
+    "u1": 1,
+    "u2": 4,
+    "u3": 1,
+    "u4": 5
+   },
    "pos_by_chain": {
     "u1": 0,
     "u2": 0,
@@ -12611,10 +13135,10 @@
     "u4": 0
    },
    "unknown_by_chain": {
-    "u1": 1,
-    "u2": 4,
-    "u3": 1,
-    "u4": 5
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12646,8 +13170,16 @@
   },
   "facts_summary_later_push_rejected": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
+   "by_chain": {
+    "u1": 0.0,
+    "u2": 0.0,
+    "u4": 0.0
+   },
+   "cells_by_chain": {
+    "u1": 1,
+    "u2": 4,
+    "u4": 5
+   },
    "pos_by_chain": {
     "u1": 0,
     "u2": 0,
@@ -12655,10 +13187,10 @@
     "u4": 0
    },
    "unknown_by_chain": {
-    "u1": 1,
-    "u2": 4,
+    "u1": 0,
+    "u2": 0,
     "u3": 0,
-    "u4": 5
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12688,8 +13220,18 @@
   },
   "facts_summary_later_all": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
+   "by_chain": {
+    "u1": 0.0,
+    "u2": 0.0,
+    "u3": 0.0,
+    "u4": 0.0
+   },
+   "cells_by_chain": {
+    "u1": 2,
+    "u2": 8,
+    "u3": 1,
+    "u4": 10
+   },
    "pos_by_chain": {
     "u1": 0,
     "u2": 0,
@@ -12697,10 +13239,10 @@
     "u4": 0
    },
    "unknown_by_chain": {
-    "u1": 2,
-    "u2": 8,
-    "u3": 1,
-    "u4": 10
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12732,19 +13274,29 @@
   },
   "expired_summary": {
    "unit": "cells",
-   "by_chain": {},
-   "cells_by_chain": {},
-   "pos_by_chain": {
-    "u1": 0,
-    "u2": 0,
-    "u3": 0,
-    "u4": 0
+   "by_chain": {
+    "u1": 0.26666666666666666,
+    "u2": 0.2,
+    "u3": 0.3333333333333333,
+    "u4": 0.3333333333333333
    },
-   "unknown_by_chain": {
+   "cells_by_chain": {
     "u1": 15,
     "u2": 15,
     "u3": 15,
     "u4": 15
+   },
+   "pos_by_chain": {
+    "u1": 4,
+    "u2": 3,
+    "u3": 5,
+    "u4": 5
+   },
+   "unknown_by_chain": {
+    "u1": 0,
+    "u2": 0,
+    "u3": 0,
+    "u4": 0
    },
    "universe": [
     "u1",
@@ -12972,14 +13524,14 @@
   {
    "n": 4,
    "text": "historical facts, full readable context: at least 80% at b = j of known push-attempted and push-rejected cells are recorded",
-   "verdict": "unresolved",
-   "data": "0/0 recorded (adjudicated); 19 unknown"
+   "verdict": "held",
+   "data": "19/19 recorded (adjudicated); 0 unknown"
   },
   {
    "n": 4,
    "text": "historical facts, full readable context: at most 30% at b >= j + 2 of known push-attempted and push-rejected cells are recorded",
-   "verdict": "unresolved",
-   "data": "0/0 recorded (adjudicated); 21 unknown"
+   "verdict": "held",
+   "data": "0/21 recorded (adjudicated); 0 unknown"
   },
   {
    "n": 5,

@@ -37,6 +37,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results" / "sprint" / "week2" / "agy_chain5"
 MODEL = "gemini-4-argon-high"
+# agy's plan quota ran out at 16:14Z on 29 Oct (Argon included); the Advisor's fallback: Codex
+# gpt-6-astra through `codex exec`, read-only, the sheet item inline (a further logged deviation)
+BACKENDS = {"argon": MODEL, "codex": "gpt-6-astra"}
+BACKEND = "argon"
 SEED = 20261030
 
 
@@ -70,6 +74,13 @@ def prompt(item: dict) -> str:
 
 def ask(text: str) -> str:
     with tempfile.TemporaryDirectory() as td:
+        if BACKEND == "codex":
+            last = Path(td) / "last.txt"
+            subprocess.run(["codex", "exec", "-m", BACKENDS["codex"], "--sandbox", "read-only",
+                            "--skip-git-repo-check", "-C", td, "--output-last-message",
+                            str(last), "-"], input=text, capture_output=True, text=True,
+                           timeout=1500, check=False)
+            return last.read_text() if last.exists() else ""
         p = subprocess.run(["agy", "-p", text, "--model", MODEL, "--output-format", "text",
                             "--print-timeout", "1200s", "--disable-slash-commands"], cwd=td,
                            capture_output=True, text=True, timeout=1500, check=False)
@@ -105,12 +116,12 @@ def cmd_run(a) -> int:
     with ThreadPoolExecutor(a.workers) as ex:
         res = list(ex.map(label_item, items))
     rows = [{"id": qid, "label": g["label"], "evidence": (g.get("evidence") or "")[:400],
-             "item": iid, "model": MODEL, "tries": tries}
+             "item": iid, "model": BACKENDS[BACKEND], "tries": tries}
             for iid, got, tries in res for qid, g in got.items()]
     (d / "adjudication_labels.argon.jsonl").write_text(
         "".join(json.dumps(r) + "\n" for r in rows))
     (d / "adjudication_labels.jsonl").write_text("".join(
-        json.dumps({"id": r["id"], "label": r["label"], "source": "argon"}) + "\n" for r in rows))
+        json.dumps({"id": r["id"], "label": r["label"], "source": BACKEND}) + "\n" for r in rows))
     n = sum(len(i["questions"]) for i in items)
     print(f"labelled {len(rows)} of {n} questions over {len(items)} items "
           f"({sum(t for *_, t in res)} Argon calls)")
@@ -160,11 +171,14 @@ def main() -> int:
         s.add_argument("--harness", default="agy")
         if name == "run":
             s.add_argument("--workers", type=int, default=4)
+            s.add_argument("--backend", choices=list(BACKENDS), default="argon")
         if name == "sample":
             s.add_argument("--n", type=int, default=30)
         if name == "agree":
             s.add_argument("labels")
     a = ap.parse_args()
+    global BACKEND
+    BACKEND = getattr(a, "backend", BACKEND)
     return {"run": cmd_run, "sample": cmd_sample, "agree": cmd_agree}[a.cmd](a)
 
 
