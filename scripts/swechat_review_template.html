@@ -1,0 +1,258 @@
+<title>SWE-chat Claim Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: deck tabs and a card strip on top; one card at a time below: claim and labels at the top, then search and the full history in its own scroll pane. Same system as the earlier audit pages. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1d2430; --muted: #5d6878; --line: #d9dee6;
+  --accent: #2f5d8a; --accent-soft: #e3ecf6; --mark: #ffe08a; --mark-fg: #1d2430; --cur: #f2a33a; --ok: #2e7d4f;
+  --claim: #fff4e0; --claim-line: #e2b25c;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161c; --panel: #1a2029; --fg: #e3e8ef; --muted: #9aa6b6; --line: #2c3542;
+  --accent: #7fb0e0; --accent-soft: #1f3044; --mark: #8a6d1a; --mark-fg: #fff6da; --cur: #c46a10; --ok: #6cc28f;
+  --claim: #2b2416; --claim-line: #a07a2e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12161c; --panel: #1a2029; --fg: #e3e8ef; --muted: #9aa6b6; --line: #2c3542;
+  --accent: #7fb0e0; --accent-soft: #1f3044; --mark: #8a6d1a; --mark-fg: #fff6da; --cur: #c46a10; --ok: #6cc28f;
+  --claim: #2b2416; --claim-line: #a07a2e; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 64px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 16px; }
+h1 { font-size: 1.45rem; font-weight: 600; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.05rem; font-weight: 600; margin: 0; }
+p { margin: 0; max-width: 72ch; }
+.muted { color: var(--muted); }
+.intro { display: grid; gap: 8px; }
+.tabs, .strip, .opts, .tools, .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab, .chip, .btn { font: inherit; font-size: 0.9rem; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; padding: 5px 11px; cursor: pointer; }
+.tab[aria-selected="true"], .chip[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 500; }
+.chip { min-width: 2.6em; text-align: center; font-variant-numeric: tabular-nums; padding: 4px 8px; }
+.chip.done { border-color: var(--ok); color: var(--ok); }
+.progress { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.9rem; align-self: center; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; display: grid; min-width: 0; }
+.pin { background: var(--panel); border-bottom: 1px solid var(--line);
+  padding: 14px 16px; display: grid; gap: 10px; border-radius: 8px 8px 0 0; }
+.meta { gap: 4px 16px; font-size: 0.88rem; color: var(--muted); }
+.meta b { font-weight: 500; color: var(--fg); }
+.claim { background: var(--claim); border-left: 3px solid var(--claim-line); border-radius: 4px; padding: 8px 12px; font-family: var(--mono); font-size: 0.88rem;
+  white-space: pre-wrap; word-break: break-word; max-height: 22vh; overflow: auto; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.opts label { display: flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.92rem; }
+.opts label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.opts input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.qlabel { font-weight: 500; font-size: 0.92rem; }
+textarea { font: inherit; font-size: 0.92rem; width: 100%; box-sizing: border-box; min-height: 44px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); }
+.why { font-size: 0.9rem; border: 1px dashed var(--line); border-radius: 6px; padding: 6px 10px; }
+.body { padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.searchbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.searchbar input { flex: 1 1 220px; min-width: 0; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); }
+.count { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.9rem; min-width: 7em; }
+details { border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+summary { cursor: pointer; padding: 8px 12px; font-weight: 500; }
+summary:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+pre { margin: 0; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; font-family: var(--mono); font-size: 0.78rem; line-height: 1.45; border-top: 1px solid var(--line); }
+#hist { max-height: 70vh; overflow: auto; position: relative; }
+.summ { max-height: 50vh; overflow: auto; }
+.role { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 0; }
+mark { background: var(--mark); color: var(--mark-fg); border-radius: 2px; }
+mark.cur { background: var(--cur); color: #fff; }
+.saved { font-size: 0.85rem; color: var(--ok); }
+.fallback { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; }
+.fallback textarea { font-family: var(--mono); font-size: 0.78rem; min-height: 80px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<main>
+  <section class="intro">
+    <h1>SWE-chat claim review</h1>
+    <p>Each card is one line from a compaction summary in SWE-chat, from a real user's Claude Code session, summarised by the session's own model. The question: does the full history before the compaction show the line is false?</p>
+    <p class="muted">Search the full history from the box under the claim; Enter and Shift+Enter step through hits. "Jump to the cited message" goes to the message a reader pointed at, which is not a verdict. Deck A holds candidate examples for the slides, each with Claude's reason for picking it. Deck B is a random rate check and shows no reasons. Answers save as you go.</p>
+  </section>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="row"><div class="strip" id="strip"></div><span class="progress" id="progress"></span></div>
+  <article class="card" id="card"></article>
+  <section class="fallback">
+    <h2>Copyable answers</h2>
+    <p class="muted">Only needed if saving fails. Copy this and paste it to Claude.</p>
+    <textarea id="dump" readonly aria-label="Copyable answers"></textarea>
+    <div class="tools"><button class="btn" id="copy" type="button">Copy answers</button><span class="saved" id="copied"></span></div>
+  </section>
+</main>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const CARDS = JSON.parse(document.getElementById("data").textContent);
+const DECKS = {A: "Deck A: examples", B: "Deck B: rate check"};
+const VERDICT = [["false", "Claim false"], ["true", "Claim true"], ["cant_tell", "Can't tell"]];
+const USE = [["yes", "Use in deck"], ["no", "Don't use"]];
+const answers = {}, chains = {}, histCache = {};
+let db = null;
+const decks = Object.keys(DECKS).filter(d => CARDS.some(c => c.deck === d));
+let deck = decks[0] || "A";
+let idx = 0;
+let hits = [], cur = -1;
+let searchTimer = null, renderGen = 0;
+let ready = false;  // label controls stay disabled until saved labels are restored
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function reEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function inDeck() { return CARDS.filter(c => c.deck === deck); }
+function done(c) { const a = answers[c.id] || {}; return !!a.choice && (c.deck !== "A" || !!a.use); }
+
+function renderTop() {
+  document.getElementById("tabs").innerHTML = decks.map(d =>
+    `<button class="tab" role="tab" type="button" data-deck="${d}" aria-selected="${d === deck}">${DECKS[d]} (${CARDS.filter(c => c.deck === d).length})</button>`).join("");
+  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => { deck = b.dataset.deck; idx = 0; renderAll(); }));
+  const list = inDeck();
+  document.getElementById("strip").innerHTML = list.map((c, i) =>
+    `<button class="chip ${done(c) ? "done" : ""}" type="button" data-i="${i}" aria-current="${i === idx}" aria-label="Card ${c.n}${done(c) ? ", answered" : ""}">${c.n}</button>`).join("");
+  document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { idx = +b.dataset.i; renderAll(); }));
+  document.getElementById("progress").textContent = `${list.filter(done).length} of ${list.length} answered`;
+}
+
+function radios(name, opts, val) {
+  return opts.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}" ${val === v ? "checked" : ""}><span>${l}</span></label>`).join("");
+}
+
+function renderCard() {
+  clearTimeout(searchTimer);
+  const gen = ++renderGen;
+  hits = []; cur = -1;
+  const c = inDeck()[idx];
+  const el = document.getElementById("card");
+  if (!c) { el.innerHTML = `<div class="body muted">No cards in this deck.</div>`; return; }
+  const a = answers[c.id] || {};
+  el.innerHTML = `
+    <div class="pin">
+      <div class="row"><h2>Card ${c.n} of ${inDeck().length}</h2>
+        <div class="tools"><button class="btn" id="prev" type="button">Previous</button><button class="btn" id="next" type="button">Next</button></div></div>
+      <div class="meta"><span>${esc(c.source)}</span><span>Session model: <b>${esc(c.model)}</b></span><span>Harness: <b>${esc(c.harness)}</b></span><span>${c.n_history} messages, ${c.hist_chars.toLocaleString()} characters</span></div>
+      <div class="claim">${esc(c.claim)}</div>
+      ${c.claim_found ? "" : `<div class="muted" style="font-size:0.85rem">Not word for word in the summary; search the summary for its wording.</div>`}
+      <div class="row"><span class="qlabel">Is the claim false, given the history?</span><div class="opts" role="radiogroup" aria-label="Verdict">${radios("v-" + c.id, VERDICT, a.choice)}</div></div>
+      ${c.deck === "A" ? `<div class="row"><span class="qlabel">Use as a slide example?</span><div class="opts" role="radiogroup" aria-label="Use in deck">${radios("u-" + c.id, USE, a.use)}</div></div>` : ""}
+      <textarea id="note" placeholder="Note (optional): what the history shows" aria-label="Note">${esc(a.note || "")}</textarea>
+      <span class="saved" id="saved"></span>
+      ${c.why ? `<div class="why"><b>Why Claude picked it:</b> ${esc(c.why)}</div>` : ""}
+      <div class="searchbar">
+        <input id="q" type="search" placeholder="Search the full history" aria-label="Search the full history">
+        <button class="btn" id="qprev" type="button" aria-label="Previous hit">&uarr;</button>
+        <button class="btn" id="qnext" type="button" aria-label="Next hit">&darr;</button>
+        <span class="count" id="count"></span>
+        ${Number.isInteger(c.msg) ? `<button class="btn" id="jump" type="button">Jump to the cited message (m${c.msg})</button>` : ""}
+      </div>
+    </div>
+    <div class="body">
+      <details open><summary>Full history before the compaction</summary><pre id="hist">Loading the history…</pre></details>
+      <details><summary>The summary (${c.summary.length.toLocaleString()} characters)</summary><pre class="summ" id="summ">${esc(c.summary)}</pre></details>
+      <details><summary>Messages kept beside the summary (${c.kept.length})</summary>${c.kept.map(m => `<div class="role">${esc(m.role)}</div><pre>${esc(m.text)}</pre>`).join("")}</details>
+    </div>`;
+  if (!ready) el.querySelectorAll(".pin input[type=radio], #note").forEach(x => { x.disabled = true; });
+  if (!ready) document.getElementById("saved").textContent = "Loading saved answers…";
+  el.querySelectorAll(`input[name="v-${c.id}"]`).forEach(i => i.addEventListener("change", () => save(c.id, {choice: i.value})));
+  el.querySelectorAll(`input[name="u-${c.id}"]`).forEach(i => i.addEventListener("change", () => save(c.id, {use: i.value})));
+  const ta = el.querySelector("#note"); let t = null;
+  ta.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => save(c.id, {note: ta.value}), 800); });
+  ta.addEventListener("blur", () => { clearTimeout(t); save(c.id, {note: ta.value}); });
+  el.querySelector("#prev").addEventListener("click", () => { if (idx > 0) { idx--; renderAll(); } });
+  el.querySelector("#next").addEventListener("click", () => { if (idx < inDeck().length - 1) { idx++; renderAll(); } });
+  const q = el.querySelector("#q");
+  q.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => search(c, q.value, gen), 250); });
+  q.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); step(e.shiftKey ? -1 : 1); } });
+  el.querySelector("#qnext").addEventListener("click", () => step(1));
+  el.querySelector("#qprev").addEventListener("click", () => step(-1));
+  const j = el.querySelector("#jump");
+  if (j) j.addEventListener("click", () => { q.value = `[m${c.msg}] `; search(c, q.value, gen); });
+  loadHist(c, gen);
+}
+
+async function loadHist(c, gen) {
+  const pre = document.getElementById("hist");
+  try {
+    if (!(c.id in histCache)) {
+      const r = await fetch(c.hist);
+      if (!r.ok) throw new Error(String(r.status));
+      histCache[c.id] = await r.text();
+    }
+    if (gen !== renderGen) return;  // the reader moved to another card meanwhile
+    pre.textContent = histCache[c.id];
+    hits = []; cur = -1; document.getElementById("count").textContent = "";
+  } catch (e) { if (gen === renderGen) pre.textContent = "The history didn't load (" + e.message + "). Reload the page to try again."; }
+}
+
+function search(c, q, gen) {
+  if (gen !== renderGen) return;  // a search typed on a card the reader has left
+  const pre = document.getElementById("hist"), summ = document.getElementById("summ");
+  const text = histCache[c.id];
+  const count = document.getElementById("count");
+  if (text === undefined) return;
+  if (q.length < 2) { pre.textContent = text; summ.textContent = c.summary; hits = []; cur = -1; count.textContent = ""; return; }
+  const re = new RegExp(reEsc(q), "gi");
+  const mark = s => s.split(new RegExp("(" + reEsc(q) + ")", "gi")).map((p, i) => i % 2 ? "<mark>" + esc(p) + "</mark>" : esc(p)).join("");
+  pre.innerHTML = mark(text);
+  summ.innerHTML = mark(c.summary);
+  const ns = (c.summary.match(re) || []).length;
+  hits = [...pre.querySelectorAll("mark")];
+  count.textContent = hits.length ? `${hits.length} in history` + (ns ? `, ${ns} in summary` : "") : (ns ? `0 in history, ${ns} in summary` : "No hits");
+  cur = -1; if (hits.length) step(1);
+}
+
+function step(d) {
+  if (!hits.length) return;
+  if (cur >= 0) hits[cur].classList.remove("cur");
+  cur = (cur + d + hits.length) % hits.length;
+  const h = hits[cur]; h.classList.add("cur");
+  const pre = document.getElementById("hist");
+  pre.scrollTop = Math.max(0, h.offsetTop - pre.clientHeight / 3);
+  document.getElementById("count").textContent = `${cur + 1} of ${hits.length} in history`;
+}
+
+function dump() {
+  document.getElementById("dump").value = JSON.stringify(CARDS.map(c => {
+    const a = answers[c.id] || {};
+    return {card: c.id, deck: c.deck, choice: a.choice || null, use: a.use || null, note: a.note || ""};
+  }));
+}
+
+async function save(id, patch) {
+  answers[id] = Object.assign({}, answers[id], patch);
+  renderTop(); dump();
+  const s = document.getElementById("saved");
+  if (!db) { if (s) s.textContent = "Not saved online; use the copyable answers below."; return; }
+  chains[id] = (chains[id] || Promise.resolve()).then(async () => {
+    const a = answers[id], c = CARDS.find(x => x.id === id);
+    try {
+      await db.doc("labels/" + id).set({card: id, deck: c.deck, choice: a.choice || null, use: a.use || null, note: a.note || "", utc: new Date().toISOString()});
+      if (s) s.textContent = "Saved";
+    } catch (e) { if (s) s.textContent = "Couldn't save. Use the copyable answers below."; }
+  });
+}
+
+function renderAll() { renderTop(); renderCard(); dump(); }
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const t = document.getElementById("dump");
+  try { await navigator.clipboard.writeText(t.value); document.getElementById("copied").textContent = "Copied"; }
+  catch (e) { t.select(); document.getElementById("copied").textContent = "Selected; press Cmd+C"; }
+});
+
+renderAll();
+(async () => {
+  try {
+    db = await claude.use("db");
+    if (db) {
+      const snaps = await Promise.all(CARDS.map(c => db.doc("labels/" + c.id).get()));
+      snaps.forEach((snap, i) => {
+        const d = snap && snap.data ? snap.data() : null;
+        if (d && (d.choice || d.use || d.note)) answers[CARDS[i].id] = {choice: d.choice || null, use: d.use || null, note: d.note || ""};
+      });
+    }
+  } catch (e) { db = null; /* the copyable answers still work */ }
+  ready = true;  // only now can a label be entered, so a late restore never overwrites one
+  renderAll();
+})();
+</script>

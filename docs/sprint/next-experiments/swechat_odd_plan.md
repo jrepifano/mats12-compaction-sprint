@@ -75,7 +75,14 @@ Each card shows the source, model and harness, the claim, the history around the
 - **Splits:** by model (Opus 4.6, Opus 4.5, Sonnet 4.6, Sonnet 4.5, other) and by harness where n ≥ 30, and by false kind.
 - **Examples:** seeded random false lines with source, model, harness and quote (mistakes.md #15).
 
-**No hand labels (Jacob, 28 Oct ~8:40 PM ET, via the presentation session):** Deck A stays on the page unlabelled. Deck B and a full-history card pane are dropped. The rates go out as Opus's read, not hand-checked, with route, effort and n. A judge precision is not available. What stands in for it is the recheck over the full history, the quote checks, and the seeded examples printed with their quotes for anyone to read.
+**Hand review (Jacob's later instruction, ~8:45 PM ET via the Research Advisor; supersedes "no hand labels" at ~8:40 PM).** After the scan, one private review page with a db (`scripts/swechat_review.py`):
+- **Every card:** the full pre-compaction history, as its own published file loaded when the card opens. In-page search highlights hits and has a hit count and next/previous. Each card also has the claim, labels, source, model and harness, and a "jump to the cited message" button, which Deck B has for both arms so it reveals no verdict.
+- **Deck A, examples:** 6–10 striking candidates for the slides, each with Claude's reason. The pool is final-false scan lines plus the loss-mining cases for invented user actions and flipped user words. Labels: claim false / true / can't tell, use in deck yes / no, and a note. Jacob hand-checks every example that goes in the deck. Deck A never uses a compaction that is in Deck B.
+- **Deck B, rate check:** seeded (`swechat-odd:review-deckB:20261029`).
+  - **Sample:** 20 lines drawn uniformly from the final-false lines and 10 from the final-true lines, shuffled, blind. Opus's verdicts, reasons and quotes go in a gitignored key.
+  - **Labels:** false / true / can't tell, plus a note.
+  - **Readout:** Opus's precision on false as k/20 with a Wilson interval, next to the scan rate, plus agreement on the 10 true lines.
+- **Fallback:** the scan readout stands on its own, as "Opus 5.5's read, not hand-checked". Jacob's result, if he labels, goes beside it as a separate line.
 
 **Examples** (`examples`): 6 final-false lines drawn uniformly at random (`swechat-odd:examples:20261028`), each with source, model, harness, the line, the recheck's history quote and its reason.
 
@@ -87,6 +94,9 @@ Count the other patterns in the 21 odd cases from their Opus notes and quotes: i
 
 - **The slide line** is the per-compaction rate after the recheck, labelled "Opus 5.5's read, not hand-checked".
 - **Hedge:** if the recheck overturns more than half of the first-pass false lines, the slide also says the first pass over-called, and gives both numbers.
+- **If Jacob labels Deck B:**
+  - **At least 14/20 of Opus's false calls confirmed:** the rate stands, with "Jacob confirmed k/20" beside it.
+  - **Fewer than 14/20:** the slide leads with Jacob's confirmed examples, and gives the rate only as Opus's read with its measured precision.
 
 ## Rules followed
 
