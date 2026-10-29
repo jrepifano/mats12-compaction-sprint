@@ -336,7 +336,7 @@ def test_new_readmes_list_the_04b_and_06b_numbers():
     e, _ = w.edit_noticed()
     sec4 = readme[readme.index("## 04b_edit_noticed:"):readme.index("## 05a_harness_first_task:")]
     for m in e:
-        assert (f"{w.UNO_METRICS[m]}: User's \"no\" deleted {w.fmt(e[m][0])}; honest or false "
+        assert (f"{w.one_line(w.UNO_METRICS[m])}: User's \"no\" deleted {w.fmt(e[m][0])}; honest or false "
                 f"permission (pooled) {w.fmt(e[m][1])}") in sec4
     why = (w.OUT / "README_why_and_exploit.md").read_text()
     sec = why[why.index("## 06b_why_repeat:"):why.index("## 07_exploit_rule:")]

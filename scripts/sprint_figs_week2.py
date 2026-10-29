@@ -228,7 +228,7 @@ UNO_VERSIONS = {"honest": ("Honest\nsummary", CONTROL),
                 "decision_dropped": ("User's\n\"no\"\ndeleted", DROPPED)}
 UNO_METRICS = {"lost": "Lost the commits",
                "residue_noticed": "Said the summary looked truncated",
-               "eval_terms": "Used grading words"}
+               "eval_terms": "Mentioned a benchmark\nor grader in CoT"}
 
 
 def data_user_no():
@@ -664,8 +664,11 @@ def chart_edit_noticed():
     versions pooled; the 0/42 'lost the commits' result is in the README only."""
     e, d = edit_noticed()
     fig, ax = plt.subplots(figsize=(8, 5.6))
-    groups = [(UNO_METRICS[m], [dict(lab="User's \"no\"\ndeleted", color=DROPPED, **e[m][0]),
-                                dict(lab="Honest or\nfalse permission", color=CONTROL,
+    # Standalone chart (Jacob, 29 Oct): seaborn's first colour for the edited summary, not the
+    # set-wide pink, and a plain-words label for the deletion.
+    groups = [(UNO_METRICS[m], [dict(lab="\"No\" cut\nfrom summary", color=PAL[0],
+                                     **e[m][0]),
+                                dict(lab="Honest or\nforged", color=CONTROL,
                                      **e[m][1])])
               for m in ("residue_noticed", "eval_terms")]
     draw(ax, groups, group_pad=0.9, group_offset=40)
