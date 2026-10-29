@@ -1,0 +1,147 @@
+{
+  "stage": "S1",
+  "what": "context length in tokens just before each sampled Part A compaction, per source",
+  "unit": "tokens",
+  "field": "pre_tokens",
+  "method": "the record's own `pre_tokens` field (dataset-recorded context size before the compaction, as carried by the S1 pipeline); statistics over the analysed records (judge roster ok); percentiles by numpy.percentile, linear interpolation; tokens_sampled covers all sampled records",
+  "inputs": {
+    "manifest": "results/sprint/S1/manifest.json",
+    "roster": "results/sprint/S1/sealed/main/partA_roster_haiku-max.json",
+    "seed": 20261020,
+    "files": [
+      {
+        "source": "jacob",
+        "path": "data/raw/sprint/sessions/compactions.jsonl",
+        "sha256": "2a6d4c317a935641d23a87b9538c813aea7036ff991cc31005a5bed1afd9219e",
+        "meta_sha256": "970ffd167c00ae634183e6447eebf2bba11d267515539117ed9b9e6d49df50a7"
+      },
+      {
+        "source": "swe-chat-v1",
+        "path": "data/raw/sprint/public/swe-chat-v1.jsonl",
+        "sha256": "aaf86b24011d76e67d9e661869d3cb524bfebaf8535ed5850e53024df0f7a738"
+      },
+      {
+        "source": "posttrainbench",
+        "path": "data/raw/sprint/public/posttrainbench.jsonl",
+        "sha256": "20d83bbdf2b88ceb3405bee4d0ee238b39718f2fa5e8c648a328a7730b1be734"
+      },
+      {
+        "source": "frontierml",
+        "path": "data/raw/sprint/public/frontierml.jsonl",
+        "sha256": "9a55ea59fb9e69901f5663f41fff355c1f00ff60e7d5dfa98aad530b78163417"
+      }
+    ],
+    "sha256_checked": true,
+    "line_sha256_checked": 650
+  },
+  "n_sampled": 650,
+  "n_analysed": 649,
+  "sources": {
+    "jacob": {
+      "n_sampled": 50,
+      "n_analysed": 50,
+      "excluded_ids": [],
+      "harness": {
+        "claude-code": 50
+      },
+      "field_origin": {
+        "claude-code": "Claude Code compactMetadata.preTokens (compaction.sessions)"
+      },
+      "tokens": {
+        "median": 466577.5,
+        "p10": 284642.7,
+        "p90": 968714.6,
+        "min": 205152,
+        "max": 972033
+      },
+      "tokens_sampled": {
+        "median": 466577.5,
+        "p10": 284642.7,
+        "p90": 968714.6,
+        "min": 205152,
+        "max": 972033
+      }
+    },
+    "swe-chat-v1": {
+      "n_sampled": 250,
+      "n_analysed": 250,
+      "excluded_ids": [],
+      "harness": {
+        "claude-code": 243,
+        "opencode": 7
+      },
+      "field_origin": {
+        "claude-code": "Claude Code compactMetadata.preTokens (compaction.public_sets.cc_events)",
+        "opencode": "input tokens of OpenCode's summarizer call (compaction.public_sets.opencode_events)"
+      },
+      "tokens": {
+        "median": 167268.0,
+        "p10": 155125.2,
+        "p90": 176900.19999999998,
+        "min": 30123,
+        "max": 1410364
+      },
+      "tokens_sampled": {
+        "median": 167268.0,
+        "p10": 155125.2,
+        "p90": 176900.19999999998,
+        "min": 30123,
+        "max": 1410364
+      }
+    },
+    "posttrainbench": {
+      "n_sampled": 150,
+      "n_analysed": 150,
+      "excluded_ids": [],
+      "harness": {
+        "claude-code": 149,
+        "kimi-claude": 1
+      },
+      "field_origin": {
+        "claude-code": "Claude Code compactMetadata.preTokens (compaction.public_sets.cc_events)",
+        "kimi-claude": "Claude Code compactMetadata.preTokens (Claude Code harness; compaction.public_sets.cc_events)"
+      },
+      "tokens": {
+        "median": 167722.0,
+        "p10": 167066.7,
+        "p90": 172685.5,
+        "min": 155042,
+        "max": 185085
+      },
+      "tokens_sampled": {
+        "median": 167722.0,
+        "p10": 167066.7,
+        "p90": 172685.5,
+        "min": 155042,
+        "max": 185085
+      }
+    },
+    "frontierml": {
+      "n_sampled": 200,
+      "n_analysed": 199,
+      "excluded_ids": [
+        "frontierml:pii-redaction-2abnd8:1"
+      ],
+      "harness": {
+        "claude-code": 199
+      },
+      "field_origin": {
+        "claude-code": "input tokens of the last main-thread call before the summary (compaction.public_sets.fml_events)"
+      },
+      "tokens": {
+        "median": 165676.0,
+        "p10": 161050.4,
+        "p90": 166808.8,
+        "min": 145575,
+        "max": 167290
+      },
+      "tokens_sampled": {
+        "median": 165667.0,
+        "p10": 161062.7,
+        "p90": 166807.9,
+        "min": 145575,
+        "max": 167290
+      }
+    }
+  }
+}
