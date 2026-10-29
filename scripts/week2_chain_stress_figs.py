@@ -34,7 +34,6 @@ CONFIG = ROOT / "configs" / "week2" / "chain_stress.toml"
 NAME = "chain_stress_backup"
 SEED = 20261029
 BOOT = 10_000
-INK, MUTED, GRID = "#2b2926", "#7a736a", "#e8e2d8"  # as scripts/week2_summary_rot.py
 ARM_WORDS = {"unrelated": "Unrelated", "within_task": "Unrelated + in-task"}
 OUTCOME = {"recovered on retry": ("Recovered on one retry", 2),
            "phase redone, ok": ("Task redone from its start, then ok", 0),
@@ -50,14 +49,8 @@ def _style():
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    sns.set_theme(style="whitegrid")
-    plt.rcParams.update({
-        "font.family": ["Avenir Next", "Helvetica Neue", "Arial"], "font.size": 12,
-        "text.color": INK, "axes.labelcolor": MUTED, "xtick.color": INK, "ytick.color": MUTED,
-        "axes.facecolor": "white", "figure.facecolor": "white", "grid.color": GRID,
-        "axes.spines.top": False, "axes.spines.right": False, "axes.spines.left": False,
-        "svg.fonttype": "none"})
-    return plt, sns.color_palette("deep").as_hex()
+    sns.set_theme(style="whitegrid")  # AGENTS.md "Figures": seaborn defaults only
+    return plt, sns.color_palette().as_hex()
 
 
 def boot_ci(values: list[int], seed: int) -> tuple[float, float]:
@@ -97,25 +90,23 @@ def panel_force_push(ax, deep, d: dict) -> dict:
     for x, v, (lo, hi), (k, n), col in zip(xs, vals, cis, ks, colors, strict=True):
         ax.bar(x, 100 * v, 0.62, color=col, zorder=2)
         ax.errorbar(x, 100 * v, yerr=[[100 * (v - lo)], [100 * (hi - v)]], fmt="none",
-                    ecolor=INK, elinewidth=1.2, capsize=4, zorder=3)
+                    ecolor="black", zorder=3)
         ax.annotate(f"{k} of {n}", (x, 100 * hi), xytext=(0, 5), textcoords="offset points",
-                    ha="center", va="bottom", fontsize=11, color=MUTED)
+                    ha="center", va="bottom")
     ax.set_xticks(xs)
-    ax.set_xticklabels([f"Task {p}" for p in range(1, 6)] + ["Fresh run\n(task alone)"],
-                       fontsize=11.5)
+    ax.set_xticklabels([f"Task {p}" for p in range(1, 6)] + ["Fresh run\n(task alone)"])
     ax.set_ylim(0, 100)
-    ax.set_ylabel("Runs that rewrote the shared branch (%)", fontsize=11.5)
+    ax.set_ylabel("Runs that rewrote the shared branch (%)")
     ax.tick_params(axis="both", length=0)
-    ax.grid(axis="x", visible=False)
     ax.text(2, 97, f"Position in a chain of five unrelated tasks ({cells[0]['n']} chains)",
-            ha="center", va="top", fontsize=10.5, color=MUTED)
+            ha="center", va="top")
     t = R.p5_minus_p2(d["rows"])
     dp = round(100 * t["diff"])
     dps = "0" if dp == 0 else f"{dp:+d}"
     caution = (f"Task 5 minus task 2: {dps} points, 95% chain-bootstrap "
                f"[{100 * t['ci'][0]:+.0f}, {100 * t['ci'][1]:+.0f}];\na large rise is not "
                "ruled out.")
-    ax.text(2, 90, caution, ha="center", va="top", fontsize=10.5, color=INK)
+    ax.text(2, 90, caution, ha="center", va="top")
     per_chain = {ch: [c["position"] for c in cells if ch in c["chains"]]
                  for ch in sorted({ch for c in cells for ch in c["chains"]})}
     multi = sorted((p for p in per_chain.values() if len(p) > 1), key=lambda p: (-len(p), p))
@@ -125,9 +116,9 @@ def panel_force_push(ax, deep, d: dict) -> dict:
         parts.append(f"{len(once)} once each (task " + ", task ".join(map(str, once)) + ")")
     note = (f"{len(per_chain)} chains made all {sum(c['k'] for c in cells)} rewrites:\n"
             + ", ".join(parts) + ".")
-    ax.set_title("Force-push that lost a teammate's commit", fontsize=13, color=INK, loc="left",
+    ax.set_title("Force-push that lost a teammate's commit", loc="left",
                  pad=58)
-    ax.text(0, 1.015, note, transform=ax.transAxes, fontsize=10.5, color=MUTED, ha="left",
+    ax.text(0, 1.015, note, transform=ax.transAxes, ha="left",
             va="bottom")
     nums = [f"Task {c['position']}: {c['k']} of {c['n']} chains ({100 * c['rate']:.1f}%), 95% "
             f"[{100 * c['ci95'][0]:.1f}, {100 * c['ci95'][1]:.1f}]; chains {', '.join(c['chains'])}"
@@ -155,30 +146,26 @@ def panel_failures(ax, deep, d: dict) -> dict:
         x = k + 0.5 if between else k
         ci = OUTCOME[final[(ch, where)]][1]
         for j in range(len(fs)):
-            ax.scatter(x + 0.14 * (j - (len(fs) - 1) / 2), y[ch], s=140, color=deep[ci],
-                       marker="o" if between else "s", edgecolor="white", linewidth=1.2,
-                       zorder=3)
+            ax.scatter(x + 0.14 * (j - (len(fs) - 1) / 2), y[ch], color=deep[ci],
+                       marker="o" if between else "s", zorder=3)
         place = ((f"after task {k}" + (" (end of chain)" if k == 5 else "")) if between
                  else f"inside task {k}")
         nums.append(f"{names[ch]}: {place}, {len(fs)} failed attempt"
                     f"{'s' if len(fs) > 1 else ''}; {OUTCOME[final[(ch, where)]][0]}")
     ax.set_yticks(list(y.values()))
-    ax.set_yticklabels([names[c] for c in y], fontsize=11)
+    ax.set_yticklabels([names[c] for c in y])
     ax.set_xticks([1, 2, 3, 4, 5])
-    ax.set_xticklabels([f"Task {k}" for k in range(1, 6)], fontsize=11.5)
+    ax.set_xticklabels([f"Task {k}" for k in range(1, 6)])
     ax.set_xlim(0.5, 5.9)
     ax.set_ylim(-0.6, len(chains) - 0.4)
     ax.tick_params(axis="both", length=0)
-    ax.grid(axis="y", visible=False)
     n_rec = sum(o in ("recovered on retry", "phase redone, ok") for o in final.values())
     n_term = sum(o == "terminal" for o in final.values())
-    ax.set_title(f"Empty summaries: {len(comps)} compactions failed, {n_rec} recovered",
-                 fontsize=13, color=INK, loc="left", pad=58)
+    ax.set_title(f"Empty summaries: {len(comps)} compactions failed, {n_rec} recovered", loc="left", pad=58)
     ax.text(0, 1.015, f"{len(fails)} failed attempts in {len(chains)} of {len(d['chains'])} "
             f"chains; {n_term} failed again on the retry.\nOne mark per failed attempt, "
             "coloured by the compaction's final outcome.\nCircle: between tasks (after the "
-            "task); square: inside a task.", transform=ax.transAxes, fontsize=10.5,
-            color=MUTED, ha="left", va="bottom")
+            "task); square: inside a task.", transform=ax.transAxes, ha="left", va="bottom")
     return {"n_fails": len(fails), "n_comps": len(comps), "n_chains": len(chains),
             "n_rec": n_rec, "n_term": n_term, "nums": nums}
 
@@ -200,12 +187,11 @@ def main() -> None:
                 f"{min(c['k'] for c in fp['cells'])}–{max(c['k'] for c in fp['cells'])} of "
                 f"{c0['n']} chains per chain position")
              + f" (fresh runs {fr['k']} of {fr['n']})")
-    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top", fontsize=16, fontweight="bold",
-                 color=INK)
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
     handles = [Line2D([], [], marker="s" if lab.startswith("Task redone") else "o", ls="",
-                      ms=10, color=deep[ci], label=lab)
+                      color=deep[ci], label=lab)
                for lab, ci in dict.fromkeys(OUTCOME.values())]
-    fig.legend(handles=handles, loc="lower right", ncol=3, frameon=False, fontsize=10.5,
+    fig.legend(handles=handles, loc="lower right", ncol=3,
                bbox_to_anchor=(0.985, 0.095))
     fig.text(0.02, 0.012,
              "Left: black whiskers are 95% bootstrap intervals over chains (fresh: over runs), "
@@ -213,8 +199,7 @@ def main() -> None:
              "summarising model hit its output-length limit three times. Failed compactions "
              "between tasks were retried once; a task whose in-task compaction failed was "
              f"restarted from its start. {fl['n_term']} between-task compactions failed again "
-             "and were final.",
-             fontsize=10, color=MUTED, ha="left", va="bottom", wrap=True)
+             "and were final.", ha="left", va="bottom", wrap=True)
     for ext in ("png", "svg"):
         fig.savefig(FIG / f"{NAME}.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)

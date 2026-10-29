@@ -461,21 +461,14 @@ FIG_CATS = ("back_3", "back_2", "back_1", "current", "generic")  # bottom to top
 CAT_LABEL = {"back_3": "3 tasks back", "back_2": "2 tasks back", "back_1": "1 task back",
              "current": "Task just finished", "generic": "No one task (harness rules, "
                                                          "boilerplate)"}
-INK, MUTED, GRID = "#2b2926", "#7a736a", "#e8e2d8"  # the v2 deck's (scripts/sprint_figs_v2.py)
 
 
 def _style():
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    sns.set_theme(style="whitegrid")
-    deep = sns.color_palette("deep").as_hex()
-    plt.rcParams.update({
-        "font.family": ["Avenir Next", "Helvetica Neue", "Arial"], "font.size": 12,
-        "text.color": INK, "axes.labelcolor": MUTED, "xtick.color": INK, "ytick.color": MUTED,
-        "axes.facecolor": "white", "figure.facecolor": "white", "grid.color": GRID,
-        "axes.spines.top": False, "axes.spines.right": False, "axes.spines.left": False,
-        "svg.fonttype": "none"})
+    sns.set_theme(style="whitegrid")  # AGENTS.md "Figures": seaborn defaults only
+    deep = sns.color_palette().as_hex()
     return plt, {"current": deep[0], "back_1": deep[1], "back_2": deep[2], "back_3": deep[3],
                  "generic": deep[7]}
 
@@ -485,11 +478,10 @@ def _stack(ax, x, shares: dict, colors: dict, width: float, min_label: float = 6
     for cat in FIG_CATS:
         v = 100 * (shares.get(cat) or 0.0)
         if v > 0:
-            ax.bar(x, v, width, bottom=bottom, color=colors[cat], edgecolor="white",
-                   linewidth=0.8, zorder=2)
+            ax.bar(x, v, width, bottom=bottom, color=colors[cat], zorder=2)
             if v >= min_label:
-                ax.text(x, bottom + v / 2, f"{v:.0f}%", ha="center", va="center", fontsize=10.5,
-                        color="white", fontweight="bold", zorder=3)
+                ax.text(x, bottom + v / 2, f"{v:.0f}%", ha="center", va="center",
+                        zorder=3)
         bottom += v
     return bottom
 
@@ -503,24 +495,23 @@ def _panel(ax, cells: dict, colors: dict, title: str, single_note: str = "") -> 
         lo, hi = c["earlier_ci95"]
         e = 100 * c["earlier"]
         if c["n_chains"] > 1 and e > 0:
-            ax.errorbar(i + 0.36, e, yerr=[[e - 100 * lo], [100 * hi - e]], fmt="o", ms=3.5,
-                        color=INK, elinewidth=1.1, capsize=3, zorder=4)
+            ax.errorbar(i + 0.36, e, yerr=[[e - 100 * lo], [100 * hi - e]], fmt="o",
+                        color="black", zorder=4)
         ax.annotate(f"n = {c['n_chains']} chain{'s' if c['n_chains'] != 1 else ''}",
                     (i, top), xytext=(0, 4), textcoords="offset points", ha="center",
-                    va="bottom", fontsize=10.5, color=MUTED)
+                    va="bottom")
         ci = (f"[95% CI {100 * lo:.1f}, {100 * hi:.1f}]" if c["n_chains"] > 1
               else f"one chain{single_note}; interval unavailable")
         nums.append(f"{title}, boundary {k} (n = {c['n_chains']}): "
                     + "; ".join(f"{CAT_LABEL[cat]} {100 * c[cat]:.1f}%" for cat in FIG_CATS[::-1])
                     + f"; earlier tasks total {e:.1f}%; {ci}")
     ax.set_xticks(range(len(ks)))
-    ax.set_xticklabels([f"After task {k}" for k in ks], fontsize=11.5)
+    ax.set_xticklabels([f"After task {k}" for k in ks])
     ax.set_xlim(-0.6, len(ks) - 0.4)
-    ax.set_ylim(0, 108)
+    ax.set_ylim(0, 114)
     ax.set_yticks(range(0, 101, 20))
     ax.tick_params(axis="both", length=0)
-    ax.grid(axis="x", visible=False)
-    ax.set_title(title, fontsize=13, color=INK, loc="left", pad=8)
+    ax.set_title(title, loc="left", pad=8)
     return nums
 
 
@@ -548,9 +539,8 @@ def cmd_figure(args) -> None:
     nums += _panel(axes[1], re_, colors, "Several tasks in one repository",
                    " (the only four-task repository chain)")
     nums += _panel(axes[2], wi, colors, "Unrelated, also compacted inside tasks")
-    axes[0].set_ylabel("Share of summary entries (%)", fontsize=11.5)
-    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top", fontsize=16, fontweight="bold",
-                 color=INK)
+    axes[0].set_ylabel("Share of summary entries (%)")
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
     lo, hi = k4["earlier_ci95"]
     th = 100 * p["threshold"]
     if p["met"]:
@@ -561,10 +551,10 @@ def cmd_figure(args) -> None:
         verdict = f"the whole interval is below {th:.0f}%"
     fig.text(0.02, 0.855, f"The plan predicted at least {th:.0f}% about earlier tasks after task "
              f"4; observed mean {100 * k4['earlier']:.0f}% [{100 * lo:.0f}, {100 * hi:.0f}], so "
-             f"{verdict}.", fontsize=11, color=MUTED, ha="left", va="top")
+             f"{verdict}.", ha="left", va="top")
     handles = [Patch(color=colors[c], label=CAT_LABEL[c]) for c in FIG_CATS[::-1]]
-    fig.legend(handles=handles, loc="lower center", ncol=5, frameon=False, fontsize=10.5,
-               bbox_to_anchor=(0.5, 0.075), handlelength=1.1, handleheight=1.1)
+    fig.legend(handles=handles, loc="lower center", ncol=5,
+               bbox_to_anchor=(0.5, 0.075))
     un_ch = sorted({c for v in un.values() for c in v["chains"]})
     re_ch = sorted({c for v in re_.values() for c in v["chains"]})
     wi_ch = sorted({c for v in wi.values() for c in v["chains"]})
@@ -574,7 +564,7 @@ def cmd_figure(args) -> None:
              f"matching, else Claude Opus 5.5. Chains: {', '.join(un_ch)}; {', '.join(re_ch)}; "
              f"{', '.join(wi_ch)} (the task orders of {', '.join('u' + c[1:] for c in wi_ch)}, "
              f"compacted at 169k tokens inside tasks as well; w1 ended after task 2).",
-             fontsize=8.5, color=MUTED, ha="left", va="bottom", wrap=True)
+             ha="left", va="bottom", wrap=True)
     for ext in ("png", "svg"):
         fig.savefig(FIG / f"summary_rot.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)
@@ -673,22 +663,20 @@ def _by_chain(plt, colors, sh) -> tuple[list[str], str]:
                                     for c in FIG_CATS[::-1])
                         + f"; {p['n_labelled']} entries")
         ax.set_xticks(range(len(ps)))
-        ax.set_xticklabels([str(p["boundary"]) for p in ps], fontsize=10.5)
+        ax.set_xticklabels([str(p["boundary"]) for p in ps])
         ax.set_ylim(0, 100)
         ax.tick_params(axis="both", length=0)
-        ax.grid(axis="x", visible=False)
-        ax.set_title(f"Chain {n}", fontsize=11.5, color=INK, loc="left")
+        ax.set_title(f"Chain {n}", loc="left")
         if n > 4:
-            ax.set_xlabel("After task", fontsize=10.5)
-    axes[0][0].set_ylabel("Summary entries (%)", fontsize=11)
-    axes[1][0].set_ylabel("Summary entries (%)", fontsize=11)
-    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top", fontsize=16, fontweight="bold",
-                 color=INK)
+            ax.set_xlabel("After task")
+    axes[0][0].set_ylabel("Summary entries (%)")
+    axes[1][0].set_ylabel("Summary entries (%)")
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
     handles = [Patch(color=colors[c], label=CAT_LABEL[c]) for c in FIG_CATS[::-1]]
-    fig.legend(handles=handles, loc="lower center", ncol=5, frameon=False, fontsize=10.5,
-               bbox_to_anchor=(0.5, 0.035), handlelength=1.1, handleheight=1.1)
+    fig.legend(handles=handles, loc="lower center", ncol=5,
+               bbox_to_anchor=(0.5, 0.035))
     fig.text(0.02, 0.005, f"Five unrelated projects per chain. Chains 1–8 = {', '.join(chains)}.",
-             fontsize=8.5, color=MUTED, ha="left", va="bottom")
+             ha="left", va="bottom")
     for ext in ("png", "svg"):
         fig.savefig(FIG / f"summary_rot_by_chain.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)
