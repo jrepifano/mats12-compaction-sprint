@@ -582,6 +582,12 @@ def cmd_figure(args) -> None:
               f"**Prediction (slide notes, not on the figure):** {pred_line}", "",
               f"**Footnote (not on the figure):** {foot}", "",
               "**Numbers plotted:**"] + [f"- {n}" for n in nums]
+    nums_l, title_l = _left(plt, colors, sh)
+    readme += ["", f"## summary_rot_left: {title_l}", "", "![summary_rot_left](summary_rot_left.png)",
+               "", (f"**Source:** `{rel(SHARES)}`, field `cells.unrelated.boundary.<k>`: the left "
+                    "panel of summary_rot alone (slide version; the three-panel figure is the "
+                    "backup). The prediction line, footnote and limitations of summary_rot apply."),
+               "", "**Numbers plotted:**"] + [f"- {n}" for n in nums_l]
     nums2, title2 = _by_chain(plt, colors, sh)
     readme += ["", f"## summary_rot_by_chain: {title2}", "",
                "![summary_rot_by_chain](summary_rot_by_chain.png)", "",
@@ -647,6 +653,30 @@ def cmd_figure(args) -> None:
                "hand-checked yet (30-card sample in hand_check_sample.jsonl).")]
     (FIG / "README.md").write_text("\n".join(readme) + "\n")
     print(f"wrote {rel(FIG)}")
+
+
+def _left(plt, colors, sh) -> tuple[list[str], str]:
+    """summary_rot's left panel (unrelated chains, compacted only between tasks) on its own."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+
+    un = sh["cells"]["unrelated"]["boundary"]
+    later = [100 * un[k]["earlier"] for k in sorted(un, key=int) if int(k) >= 2]
+    title = (f"Earlier tasks make up {min(later):.0f}–{max(later):.0f}% of the summary on average "
+             "after tasks 2–4")
+    fig, ax = plt.subplots(figsize=(10, 6.2))
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.86, bottom=0.2)
+    nums = _panel(ax, un, colors, "Five unrelated projects, compacted between tasks")
+    ax.set_ylabel("Share of summary entries (%)")
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
+    handles = [Patch(color=colors[c], label=CAT_LABEL[c]) for c in FIG_CATS[::-1]]
+    handles.append(Line2D([], [], marker="o", color="black",
+                          label="Earlier tasks total (95% CI)"))
+    fig.legend(handles=handles, loc="lower center", ncol=3, bbox_to_anchor=(0.5, 0.0))
+    for ext in ("png", "svg"):
+        fig.savefig(FIG / f"summary_rot_left.{ext}", dpi=200 if ext == "png" else None)
+    plt.close(fig)
+    return nums, title
 
 
 def _by_chain(plt, colors, sh) -> tuple[list[str], str]:
