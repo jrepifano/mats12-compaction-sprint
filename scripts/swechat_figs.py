@@ -1,10 +1,9 @@
 """Deck figure for the SWE-chat completion-claim scan: the false-"done" rate by session model.
 
-One chart, drawn in the v2 deck's warm style (the rcParams, rounded bars and error bars are copied
-from scripts/sprint_figs_v2.py in the sprint/prep worktree, which Jacob approved as an exception to
-AGENTS.md "Figures" on style and palette for that deck, 26 Oct). The rest of that rule applies:
-the title states the claim with its number, plain labels, Wilson 95% intervals, n under each bar,
-every number read from a committed file.
+One chart in plain seaborn defaults (AGENTS.md "Figures", Jacob 29 Oct: `sns.set_theme(style=
+"whitegrid")`, the "deep" palette, default bars, fonts and sizes). The title states the claim with
+its number, plain labels, Wilson 95% intervals, n under each bar, every number read from a
+committed file.
 
 Source: results/sprint/swechat_odd/scan_summary.json (final.per_compaction and
 by_model.<group>.per_compaction; k, n, rate and the Wilson lo/hi). The Wilson bounds are recomputed
@@ -19,7 +18,8 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch
+import pandas as pd
+import seaborn as sns
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -27,98 +27,66 @@ from compaction.s2.gate import wilson  # the scan's own interval
 
 SRC = "results/sprint/swechat_odd/scan_summary.json"
 OUT = ROOT / "docs" / "sprint" / "figs" / "swechat_odd"
-INK, MUTED, GRID, EDGE = "#2b2926", "#7a736a", "#e8e2d8", "#b8afa3"
-# Overall in dark warm grey; each model group its own colour from the v2 palette.
 GROUPS = [
-    ("Opus 4.6", "Opus 4.6", "#6c8eb5"),
-    ("Opus 4.5", "Opus 4.5", "#6aa3a0"),
-    ("Sonnet 4.6", "Sonnet 4.6", "#7fa37a"),
-    ("Sonnet 4.5", "Sonnet 4.5", "#9c7ba0"),
-    ("other", "Other models", "#8c6d55"),
+    ("Opus 4.6", "Opus 4.6"),
+    ("Opus 4.5", "Opus 4.5"),
+    ("Sonnet 4.6", "Sonnet 4.6"),
+    ("Sonnet 4.5", "Sonnet 4.5"),
+    ("other", "Other models"),
 ]
-OVERALL = "#5a524a"
 LABEL = "Opus 5.5's read, not hand-checked"
-plt.rcParams.update({
-    "font.family": ["Avenir Next", "Helvetica Neue", "Arial"],
-    "font.size": 12,
-    "text.color": INK,
-    "axes.labelcolor": MUTED,
-    "xtick.color": INK,
-    "ytick.color": MUTED,
-    "axes.edgecolor": EDGE,
-    "axes.facecolor": "white",
-    "figure.facecolor": "white",
-    "axes.grid": True,
-    "axes.grid.axis": "y",
-    "grid.color": GRID,
-    "grid.linewidth": 0.8,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-    "axes.spines.left": False,
-    "svg.fonttype": "none",
-})  # fmt: skip
-
-
-def rbar(ax, x, h, w, color):
-    """A bar with rounded top corners (from sprint_figs_v2.py)."""
-    ax.bar(x, h, width=w, color="none", zorder=1)
-    bb = ax.get_window_extent()
-    (x0, x1), (y0, y1) = ax.get_xlim(), ax.get_ylim()
-    aspect = ((y1 - y0) / bb.height) / ((x1 - x0) / bb.width)
-    r = min(0.05, w / 3, h / aspect) if h > 0 else 0
-    ax.add_patch(FancyBboxPatch((x - w / 2, -r * aspect), w, h + r * aspect,
-                                boxstyle=f"round,pad=0,rounding_size={r}", mutation_aspect=aspect,
-                                facecolor=color, edgecolor="none", zorder=2))  # fmt: skip
 
 
 def rows() -> list[dict]:
     s = json.loads((ROOT / SRC).read_text())
     assert not s["provisional"] and s["pending_recheck"] == 0, "summary is provisional"
-    out = [("final.per_compaction", "All compactions", OVERALL, s["final"]["per_compaction"])]
-    out += [(f"by_model.{g}.per_compaction", lab, col, s["by_model"][g]["per_compaction"])
-            for g, lab, col in GROUPS]  # fmt: skip
+    out = [("final.per_compaction", "All compactions", s["final"]["per_compaction"])]
+    out += [(f"by_model.{g}.per_compaction", lab, s["by_model"][g]["per_compaction"])
+            for g, lab in GROUPS]  # fmt: skip
     for f in ("k", "n"):
-        assert sum(r[3][f] for r in out[1:]) == out[0][3][f], f"model groups' {f} != the total"
+        assert sum(r[2][f] for r in out[1:]) == out[0][2][f], f"model groups' {f} != the total"
     res = []
-    for field, lab, col, pc in out:
+    for field, lab, pc in out:
         lo, hi = wilson(pc["k"], pc["n"])
         assert math.isclose(lo, pc["lo"], abs_tol=1e-9) and math.isclose(hi, pc["hi"], abs_tol=1e-9)
         assert math.isclose(pc["rate"], pc["k"] / pc["n"], abs_tol=1e-12)
-        res.append({"field": field, "lab": lab, "col": col, "k": pc["k"], "n": pc["n"],
+        res.append({"field": field, "lab": lab, "k": pc["k"], "n": pc["n"],
                     "v": pc["rate"], "lo": pc["lo"], "hi": pc["hi"]})  # fmt: skip
     return res
 
 
 def main() -> None:
+    sns.set_theme(style="whitegrid")
     rs = rows()
-    xs = [0] + [i + 1.4 for i in range(len(rs) - 1)]  # a gap between the total and the models
-    fig, ax = plt.subplots(figsize=(10, 5.8))
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.76, bottom=0.17)
+    # seaborn's own barplot over 0/100 rows (k of them 100) gives each bar the plotted rate; the
+    # error bar is the Wilson interval of those rows, so bars and error bars are seaborn defaults
+    data = pd.DataFrame([{"g": f"{r['lab']}\nn = {r['n']:,}", "y": 100.0 * (j < r["k"])}
+                         for r in rs for j in range(r["n"])])  # fmt: skip
+
+    def ci(y: pd.Series) -> tuple[float, float]:
+        lo, hi = wilson(int((y > 0).sum()), len(y))
+        return 100 * lo, 100 * hi
+
+    fig, ax = plt.subplots(figsize=(10, 6))  # the default 6.4 x 4.8 in can't fit six labels
+    sns.barplot(data=data, x="g", y="y", hue="g", errorbar=ci, ax=ax)
+    for bar, line, r in zip(ax.patches, ax.lines, rs, strict=True):  # drawn == file
+        assert math.isclose(bar.get_height(), 100 * r["v"], abs_tol=1e-9)
+        assert all(math.isclose(y, 100 * r[f], abs_tol=1e-9)
+                   for y, f in zip(sorted(line.get_ydata()), ("lo", "hi"), strict=True))  # fmt: skip
+    for x, r in enumerate(rs):
+        ax.annotate(f"{100 * r['v']:.0f}%", (x, 100 * r["hi"]), xytext=(0, 6),
+                    textcoords="offset points", ha="center", va="bottom")  # fmt: skip
     ax.set_ylim(0, 40)
-    ax.set_xlim(-0.6, xs[-1] + 0.6)
-    ax.set_xticks(xs)
-    ax.set_xticklabels([f"{r['lab']}\nn = {r['n']:,}" for r in rs], fontsize=11.5,
-                       linespacing=1.2)  # fmt: skip
-    ax.tick_params(axis="x", length=0, pad=8)
-    ax.tick_params(axis="y", length=0)
-    ax.set_ylabel('Compactions with a false "done" line (%)', fontsize=11.5)
-    ax.set_axisbelow(True)
-    for x, r in zip(xs, rs, strict=True):
-        v, lo, hi = (100 * r[f] for f in ("v", "lo", "hi"))
-        rbar(ax, x, v, 0.62, r["col"])
-        ax.errorbar(x, v, yerr=[[v - lo], [hi - v]], fmt="none", ecolor=INK, elinewidth=1.1,
-                    capsize=3, zorder=3)  # fmt: skip
-        ax.annotate(f"{v:.0f}%", (x, hi), xytext=(0, 4), textcoords="offset points", ha="center",
-                    va="bottom", fontsize=11, color=INK,
-                    fontweight="bold" if x == 0 else "normal")  # fmt: skip
+    ax.set_xlabel("")
+    ax.set_ylabel('Compactions with a false "done" line (%)')
     tot = rs[0]
     title = (f"About 1 in 10 real SWE-chat compactions ({100 * tot['v']:.0f}%) has a \"done\" claim\n"
              "that Opus 5.5 finds the session's own history contradicts")  # fmt: skip
     assert round(100 * tot["v"]) == 10, "the title says about 1 in 10"
-    fig.suptitle(title, x=0.02, y=0.97, ha="left", va="top", fontsize=16, fontweight="bold",
-                 color=INK)  # fmt: skip
-    fig.text(0.02, 0.825, f"SWE-chat: real users' coding-agent sessions, summarised by the "
-             f"session's own model.  {LABEL}.", fontsize=11, color=MUTED, ha="left")  # fmt: skip
+    fig.suptitle(title)
+    ax.set_title(f"SWE-chat: real users' coding-agent sessions, summarised by the session's own "
+                 f"model. {LABEL}.")  # fmt: skip
+    fig.tight_layout()
     OUT.mkdir(parents=True, exist_ok=True)
     name = "false_done_by_model"
     fig.savefig(OUT / f"{name}.png", dpi=200)
@@ -130,8 +98,7 @@ def main() -> None:
         (
             "Generated by `scripts/swechat_figs.py` (`uv run python scripts/swechat_figs.py`); every "
             "number is read from the committed file below at run time. PNG (200 dpi) and SVG. Style: "
-            "the v2 deck's warm look (from `scripts/sprint_figs_v2.py`, Jacob's exception to AGENTS.md "
-            '"Figures" for that deck).'
+            'plain seaborn defaults (AGENTS.md "Figures").'
         ),
         "",
         f"## {name}: {title.replace(chr(10), ' ')}",
