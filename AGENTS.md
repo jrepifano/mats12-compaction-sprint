@@ -434,7 +434,7 @@ These lived only in Claude's per-user memory, which Codex can't see. They apply 
 ## Figures (Jacob, 2026-10-25)
 
 Every chart made for Jacob, a slide, a doc or a report follows these rules. Cite this section in any figure brief you give a sub-agent.
-- **Style:** seaborn, with `sns.set_theme(style="whitegrid")`.
+- **Style:** seaborn, with `sns.set_theme(style="whitegrid")`, and every other setting left at seaborn's default: the default bars, fonts, text sizes and colours (Jacob, 2026-10-29: "can we use the default seaborn pallette and settings for all plots?"). No custom rcParams, rounded bars, custom palettes or restyled text, and no per-deck exceptions; this ends the 26 Oct warm-style exception for the v2 deck.
 - **Colours:** seaborn's default palette (`sns.color_palette()`, "deep": #4C72B0, #DD8452, #55A868, #C44E52, ...). Give each bar category its own colour, never shades of one colour. Keep a condition's colour the same across all charts and diagrams in a set.
 - **Chart type:** vertical bar charts by default. Show 95% intervals as error bars where a count supports one (Wilson for proportions). Use no horizontal dot-and-whisker plots unless asked.
 - **Labels:** the title states the claim, with its number. Axes and categories are in plain words, never internal codes (P<NN>, run keys, arm codes). Ids may appear only in a source footnote.
