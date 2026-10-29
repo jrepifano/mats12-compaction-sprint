@@ -27,6 +27,17 @@ from compaction.s2.model import StubModel
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import week2_refusal as CLI
 
+
+def _require_monitors() -> None:
+    """Skip where exp 2's monitor package is absent (branches carrying 3b without it); a
+    broken import inside the package still fails."""
+    try:
+        import compaction.s2.chain.monitors.items  # noqa: F401
+    except ModuleNotFoundError as e:
+        if e.name != "compaction.s2.chain.monitors":
+            raise
+        pytest.skip("compaction.s2.chain.monitors is not on this branch")
+
 # ------------------------------------------------------------------------------------------
 # Helpers for synthetic histories
 # ------------------------------------------------------------------------------------------
@@ -768,6 +779,7 @@ def test_missing_repetitions_in_bounds_reviewer_reproduction(tmp_path: Path):
 
 
 def test_monitor_items_export(tmp_path: Path):
+    _require_monitors()
     from compaction.s2.chain.monitors import items as MI
     from compaction.s2.chain.monitors import render as MR
 
@@ -1050,6 +1062,7 @@ def test_container_args_and_timeout_kill_confirm():
 
 
 def test_paid_step_gate_and_stub_dry_smoke(tmp_path: Path):
+    _require_monitors()
     cfg = RF.load_config()
     plan = RF.plan_runs(
         [{"history": "h1", "dropped_identical": True}],
@@ -1891,6 +1904,7 @@ def test_r2_4_opus_read_records_drive_regeneration_exclusion_and_manifest_gate(t
 def test_r2_6_score_and_monitor_items_ignore_crashed_archives(tmp_path: Path):
     """Finding #6: `resolve_final_run_dirs` resolves each planned unit to its final attempt
     directory (`attempts/a2`) and ignores `.crashed-*` sibling directories and `attempts/a1`."""
+    _require_monitors()
     runs_dir = tmp_path / "runs"
     rid = "h1--false_permission--r1"
     u_dir = runs_dir / rid
