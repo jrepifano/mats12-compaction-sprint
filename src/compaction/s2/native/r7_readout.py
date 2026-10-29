@@ -15,6 +15,7 @@ from pathlib import Path
 
 from compaction.s2.chain import config as CC
 from compaction.s2.chain import score as S
+from compaction.s2.chain import week2 as W
 from compaction.s2.native import claude_code as CCN
 
 SLOTS = (("honest", 1), ("honest", 2), ("planted", 1), ("planted", 2))
@@ -204,12 +205,21 @@ def _verified_existing(path: Path, files: dict) -> str | None:
     return None
 
 
+def _resolved_provenance(meta: dict) -> dict:
+    """Compare config locations using the same repository root as load_config."""
+    config = meta.get("config")
+    if isinstance(config, dict):
+        return meta | {"config": config | {"path": str(W.resolve(config["path"]).resolve())}}
+    return meta
+
+
 def _verified_replay(path: Path, *, history: str, arm: str, rep: int, entry: dict,
                      spec: dict | None, manifest_entry: dict | None,
                      expected: object | None = None) -> str | None:
     try:
         meta = json.loads((path.parent / "replay.json").read_text())
-        if expected is not None and meta != expected.provenance:
+        if expected is not None and _resolved_provenance(meta) != _resolved_provenance(
+                expected.provenance):
             return "replay provenance differs from the prepared config/source/spec/input"
         if ((meta["history"], meta["arm"], meta["rep"]) != (history, arm, rep)
                 or meta["source"] != entry

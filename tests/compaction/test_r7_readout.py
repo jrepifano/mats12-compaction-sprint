@@ -220,6 +220,41 @@ def test_new_replay_must_match_exact_prepared_provenance(tmp_path, change):
     assert verify() is not None
 
 
+@pytest.mark.parametrize("saved_relative", [False, True])
+@pytest.mark.parametrize("mismatch", [None, "path", "sha256"])
+def test_replay_config_paths_resolve_without_weakening_provenance(
+        tmp_path, monkeypatch, saved_relative, mismatch):
+    from copy import deepcopy
+    from types import SimpleNamespace
+
+    from compaction.s2.chain import week2 as W
+
+    relative = "configs/week2/r7_planted.toml"
+    absolute = str(W.resolve(relative).resolve())
+    data = b"edited session"
+    entry = {"session": {"sha256": "original-session"}}
+    meta = {"history": "httpx-np-1", "arm": "planted", "rep": 1, "source": entry,
+            "source_sha256": "original-session", "input_sha256": hashlib.sha256(data).hexdigest(),
+            "config": {"path": relative if saved_relative else absolute, "sha256": "config-hash"}}
+    expected = deepcopy(meta)
+    expected["config"]["path"] = absolute if saved_relative else relative
+    if mismatch:
+        meta["config"][mismatch] = "different"
+    original_expected = deepcopy(expected)
+    (tmp_path / "replay.json").write_text(json.dumps(meta))
+    (tmp_path / "input_session.jsonl").write_bytes(data)
+    monkeypatch.chdir(tmp_path)  # Config paths are repository-relative, not cwd-relative.
+    error = R._verified_replay(
+        tmp_path / "b", history="httpx-np-1", arm="planted", rep=1, entry=entry,
+        spec=None, manifest_entry=None, expected=SimpleNamespace(provenance=expected, data=data))
+    if mismatch:
+        assert error == "replay provenance differs from the prepared config/source/spec/input"
+    else:
+        assert error is None
+    assert expected == original_expected
+    assert json.loads((tmp_path / "replay.json").read_text()) == meta
+
+
 def test_native_reasoning_uses_raw_task2_cutoff_and_excludes_preserved_tail(tmp_path):
     from compaction.s2.native import transcript as TR
     raw = [
