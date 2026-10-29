@@ -1,4 +1,4 @@
-# Week 2: five-task chains in native harnesses, agy first (plan v0.3.1, 29 Oct)
+# Week 2: five-task chains in native harnesses, agy first (plan v0.4, 29 Oct)
 
 **Go:** Jacob, 29 Oct, relayed by the Research Advisor.
 - agy: "Yeah go for 5 task chains on agy. It's possible we can come out with some evidence that agy's compaction method needs some work compared to cc and codex which would be a useful outcome."
@@ -178,9 +178,53 @@ The smoke is not reused in the bulk.
 - The host is the laptop, with at most 4 chains live; experiment 4 ran on rig.
 - Claude Code has a $6 per-task cost cap (experiment 4's per-run cap was $2.50 on pi's model).
 
+## Amendment v0.4 (29 Oct): Codex and Claude Code adapters, and the Sonnet pair
+
+**Go:**
+- **Paid arms:** Jacob's "go" (29 Oct, relayed by the Advisor), answering "Claude Code + Haiku (4 chains, about $10, cap $20) and Claude Code + Sonnet 5.5 (2 chains, about $35, cap $50)".
+- Phase 2 (Codex luna, Claude Code Haiku) was already pre-registered and approved. Jacob added the Sonnet pair, relayed by the Advisor: "ok then sonnet and we can asterisk that haiku is not offered" (agy offers no Haiku).
+- **Gate:** the pair was conditional on agy's summary following the session model. The $0 probe (`results/sprint/week2/agy_model_probe/report.md`, a9a6d023) found the summary style follows the session model: Sonnet-session summaries are first person in 3/3, Gemini's in 0/3. That is suggestive only (n = 3 each), and is reported as such.
+
+**Harnesses, in run order:**
+1. agy, Gemini Flash-low, u1–u4 (running);
+2. Codex luna, u1–u4;
+3. Claude Code Haiku, u1–u4;
+4. **agy with `claude-sonnet-5-5-low`** on u1–u2;
+5. **Claude Code with `claude-sonnet-5-5` at effort low** on u1–u2.
+
+Each harness gets a smoke (u1, tasks 1–2, end compaction) before its bulk.
+
+**Matching is nominal** (astra amendment r1 B1). Both arms use the same model id and the same effort label (agy's `-low` tier, Claude Code's effort low). Neither the underlying settings nor which model writes agy's summaries can be verified:
+- agy records neither the summarizer model nor its tokens;
+- the probe shows only that summary style follows the session model, which a fixed summarizer could also inherit.
+
+So the gate got suggestive, not identifying, evidence. The pair is reported as nominally model-matched, with these limits stated. agy offers no Haiku, so the Haiku arm has no agy counterpart; this is reported with an asterisk. The Claude Code Sonnet context window is checked at its smoke, where the CLI reports `contextWindow`.
+
+**Workload and schedule (v0.4):**
+- **The pair adds** 20 bulk tasks, 4 smoke tasks and 20 plaintext bulk summaries. That makes about 60 plaintext bulk summaries in all (agy, Claude Code Haiku and the pair), coded code-first, with the rest through Argon via agy rather than Opus on Max (the Advisor, to save Claude usage).
+- **Sequence:** Codex smoke and bulk (~1.5 h), Claude Code Haiku smoke and bulk (~2.5 h), then the pair's two smokes and bulks (~2.5–3 h; 2 + 2 chains fit the 4-chain limit together).
+
+**Build:**
+- The chain loop is harness-agnostic (`agy_nchain.Harness`). The Codex and Claude Code adapters follow the existing two-task drivers: `cx_chain` (thread/compact/start, rollout transfer) and `cc_chain` (`/compact` via `-p --resume`, session-file transfer, key proxy, $6 per-task cap).
+- agy-Sonnet reuses the agy adapter, with the model taken from the config.
+- Codex workers build these adapters (gpt-6-astra, through Orca), and the cross-family review is by Argon via agy, to save Claude usage. Both are logged.
+
+**Costs (estimates; sent to the Advisor before any paid run):**
+- **Claude Code Haiku, 4 chains (20 tasks):** about $7, from the harness replication's mean of $0.34 per task. Experiment 4's tasks and the context carried across five tasks may raise it about 1.5×, to ~$10. Cap $20.
+- **Claude Code Sonnet, 2 chains (10 tasks):** about $22. The Haiku runs' token usage (`prompt_tokens`, `cached_tokens` and `completion_tokens` in `data/raw/sprint/s2/harness/cc/*/attempt*/{a,b}/result.json`, 48 tasks) is repriced at Sonnet 5.5's list prices: $2 input, $10 output, $0.20 cache reads, and uncached prompt tokens at the $2.50 five-minute cache-write rate as an upper bound. Prices are from the claude-api skill's model docs (`shared/models.md`, read 29 Oct). That gives a mean of $2.20 per task (max $4.71); with the 1.5× allowance, ~$35. Cap $50, $6 per task.
+- **Smokes:** these totals exclude the smokes (Haiku ~$1, Sonnet ~$5–7), which count within each arm's cap.
+- agy and Codex: $0 on their plans.
+
+**Predictions (Sonnet pair; written before it runs):**
+- **S1.** agy-Sonnet's compactions succeed at every boundary, 10/10 (80%).
+- **S2.** agy-Sonnet's boundary summaries keep the first-person narrative style in at least 8 of its 10 summaries (70%). The rule is the probe's `style()`: a first-person marker (I, I'm, I've, my) appears in the `<summary>` text. Quoted text counts too, since the rule is mechanical; a summary that is missing or failed its screen is unknown.
+- **S3.** Historical facts, scored on the full readable carried context. The cells are measure 2's: known events at b ≥ j + 2, labelled recorded = asserted completed event. The pooled recorded share is at least as high for Claude Code-Sonnet as for agy-Sonnet (55%). If either side has no such cells, the prediction is unresolved.
+  - This is descriptive. With 2 chains, the paired verdict is "too few observations" by the precedence rule, so no paired claim is made.
+  - The pair's value is a matched side-by-side, read with the composition and compaction measures.
+
 ## Build contract
 
-The plan check (`scripts/week2_plan_check.py`) parses this table and compares it, key by key, with `configs/week2/agy_chain5.toml`. Per-harness settings sit in `native_chain.<harness>`. `caps.stage_usd` and `caps.run_usd` are Claude Code's, since agy and Codex are $0.
+The plan check (`scripts/week2_plan_check.py`) parses this table and compares it, key by key, with `configs/week2/agy_chain5.toml`. Per-harness settings sit in `native_chain.<harness>`. `caps.stage_usd` is the sum of the harnesses' `cap_usd` (Claude Code Haiku $20 + Claude Code Sonnet $50; agy and Codex are $0), and `caps.run_usd` is the largest per-task cap ($6).
 
 | parameter | value |
 |---|---|
@@ -189,22 +233,42 @@ The plan check (`scripts/week2_plan_check.py`) parses this table and compares it
 | `design.seed` | 20261027 |
 | `design.n_phases` | 5 |
 | `design.log_reasoning` | false |
-| `native_chain.harnesses` | agy, codex, claude_code |
+| `native_chain.harnesses` | agy, codex, claude_code, agy_sonnet, claude_code_sonnet |
 | `native_chain.agy.cli_version` | 1.4.7 |
 | `native_chain.agy.model` | gemini-3.8-flash-low |
+| `native_chain.agy.effort` | low |
 | `native_chain.agy.stage` | SPRINT-S2-AGY-CHAIN |
 | `native_chain.agy.cap_usd` | 0 |
 | `native_chain.agy.task_cap_usd` | 0 |
+| `native_chain.agy.chains` | u1, u2, u3, u4 |
 | `native_chain.codex.cli_version` | 0.162.1 |
 | `native_chain.codex.model` | gpt-6-luna |
+| `native_chain.codex.effort` | high |
 | `native_chain.codex.stage` | SPRINT-S2-CX-CHAIN |
 | `native_chain.codex.cap_usd` | 0 |
 | `native_chain.codex.task_cap_usd` | 0 |
+| `native_chain.codex.chains` | u1, u2, u3, u4 |
 | `native_chain.claude_code.cli_version` | 2.1.310 |
 | `native_chain.claude_code.model` | claude-haiku-5-5[1m] |
+| `native_chain.claude_code.effort` | high |
 | `native_chain.claude_code.stage` | SPRINT-S2-CC-CHAIN |
 | `native_chain.claude_code.cap_usd` | 20 |
 | `native_chain.claude_code.task_cap_usd` | 6 |
+| `native_chain.claude_code.chains` | u1, u2, u3, u4 |
+| `native_chain.agy_sonnet.cli_version` | 1.4.7 |
+| `native_chain.agy_sonnet.model` | claude-sonnet-5-5-low |
+| `native_chain.agy_sonnet.effort` | low |
+| `native_chain.agy_sonnet.stage` | SPRINT-S2-AGY-SONNET-CHAIN |
+| `native_chain.agy_sonnet.cap_usd` | 0 |
+| `native_chain.agy_sonnet.task_cap_usd` | 0 |
+| `native_chain.agy_sonnet.chains` | u1, u2 |
+| `native_chain.claude_code_sonnet.cli_version` | 2.1.310 |
+| `native_chain.claude_code_sonnet.model` | claude-sonnet-5-5 |
+| `native_chain.claude_code_sonnet.effort` | low |
+| `native_chain.claude_code_sonnet.stage` | SPRINT-S2-CC-SONNET-CHAIN |
+| `native_chain.claude_code_sonnet.cap_usd` | 50 |
+| `native_chain.claude_code_sonnet.task_cap_usd` | 6 |
+| `native_chain.claude_code_sonnet.chains` | u1, u2 |
 | `native_chain.host` | laptop |
 | `native_chain.source_config.path` | configs/week2/chain_stress.toml |
 | `native_chain.source_config.sha256` | e7ecd5aa330c948d7d4f316e53b383880dd44f2c9870865a1a9139097a530102 |
@@ -221,7 +285,7 @@ The plan check (`scripts/week2_plan_check.py`) parses this table and compares it
 | `native_chain.grade_phases` | true |
 | `native_chain.smoke_chain` | u1 |
 | `native_chain.smoke_phases` | 2 |
-| `caps.stage_usd` | 20 |
+| `caps.stage_usd` | 70 |
 | `caps.run_usd` | 6 |
 | `caps.max_calls` | 400 |
 | `caps.max_seconds` | 7200 |

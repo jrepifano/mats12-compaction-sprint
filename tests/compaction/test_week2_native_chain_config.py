@@ -176,3 +176,20 @@ def test_harness_costs_must_be_finite_and_agree_with_the_global_caps():
     cfg["native_chain"]["claude_code"] |= {"cap_usd": 200.0, "task_cap_usd": 60.0}
     err = _errors(cfg)
     assert "caps.stage_usd: must equal the sum" in err and "caps.run_usd: must equal" in err
+
+
+def test_effort_must_be_one_the_harness_takes():
+    cfg = _cfg()
+    cfg["native_chain"]["agy_sonnet"]["effort"] = "not-an-effort"
+    assert "native_chain.agy_sonnet.effort: one of" in _errors(cfg)
+    cfg = _cfg()
+    cfg["native_chain"]["claude_code"]["effort"] = "xxhigh"
+    assert "native_chain.claude_code.effort: one of" in _errors(cfg)
+
+
+def test_per_harness_chains_are_checked():
+    cfg = _cfg()
+    cfg["native_chain"]["claude_code_sonnet"]["chains"] = ["u2", "u9"]
+    err = _errors(cfg)
+    assert "claude_code_sonnet.chains: distinct ids from" in err
+    assert "claude_code_sonnet.chains: must include the smoke chain" in err

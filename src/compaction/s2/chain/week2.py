@@ -115,7 +115,8 @@ SCHEMA: dict[str, dict] = {
     # 4's chains; tasks, order, tags and setups come from `source_config` (experiment 4's config),
     # and each harness's settings sit in its own table (`native_chain.<harness>`)
     "native_chain": {"harnesses": "list[str]", "agy": "harness", "codex": "harness",
-                     "claude_code": "harness", "host": ("laptop", "rig"),
+                     "claude_code": "harness", "agy_sonnet": "harness",
+                     "claude_code_sonnet": "harness", "host": ("laptop", "rig"),
                      "source_config": "file", "orders": "file", "chains": "list[str]",
                      "boundary": ("native_manual",), "end_compaction": "bool",
                      "compaction_retries": "int", "on_compaction_failure": ("halt_chain",),
@@ -179,8 +180,13 @@ SHORT_ARMS = {"related": (2, None), "fresh": (1, 1)}
 NOT_CONTRACT = ("meta", "_source")  # flatten skips these
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 FILE_KEYS = ("path", "sha256")
-HARNESS_KEYS = ("cli_version", "model", "stage", "cap_usd", "task_cap_usd")
-NATIVE_HARNESSES = ("agy", "codex", "claude_code")
+HARNESS_KEYS = ("cli_version", "model", "effort", "stage", "cap_usd", "task_cap_usd",
+                "chains")
+# plan v0.4: the Sonnet pair (agy and Claude Code on claude-sonnet-5-5) runs as two more harnesses
+NATIVE_HARNESSES = ("agy", "codex", "claude_code", "agy_sonnet", "claude_code_sonnet")
+EFFORTS = {"agy": ("low", "medium", "high"),  # agy's model tiers (-low/-medium/-high)
+           "codex": ("minimal", "low", "medium", "high", "xhigh"),
+           "claude_code": ("low", "medium", "high", "xhigh", "max")}
 PHASE_PROJECTS = ("fork", "switch")
 
 
@@ -213,7 +219,10 @@ def _type_ok(v, t) -> str | None:
           and isinstance(v["seed"], int) and not isinstance(v["seed"], bool)
           and isinstance(v["path"], str),
           "harness": lambda: isinstance(v, dict) and set(v) == set(HARNESS_KEYS)
-          and all(isinstance(v[k], str) and v[k] for k in ("cli_version", "model", "stage"))
+          and all(isinstance(v[k], str) and v[k] for k in ("cli_version", "model", "effort",
+                                                           "stage"))
+          and isinstance(v["chains"], list) and bool(v["chains"])
+          and all(isinstance(x, str) for x in v["chains"])
           and all(isinstance(v[k], int | float) and not isinstance(v[k], bool)
                   and math.isfinite(v[k]) and v[k] >= 0 for k in ("cap_usd", "task_cap_usd")),
           "file": lambda: isinstance(v, dict) and set(v) == set(FILE_KEYS)
@@ -376,6 +385,18 @@ def _native_chain_errors(cfg: dict, n: int) -> list[str]:
         errors.append("native_chain.chains: nonempty, no duplicates")
     if nc["smoke_chain"] not in chains:
         errors.append("native_chain.smoke_chain: must be one of native_chain.chains")
+    for h in NATIVE_HARNESSES:  # each harness's effort is one its CLI takes (amendment r1 #6)
+        t = nc.get(h)
+        ok = EFFORTS[h.removesuffix("_sonnet")]
+        if isinstance(t, dict) and isinstance(t.get("effort"), str) and t["effort"] not in ok:
+            errors.append(f"native_chain.{h}.effort: one of {list(ok)}")
+    for h in NATIVE_HARNESSES:  # each harness runs a subset of the chains, smoke chain included
+        t = nc.get(h)
+        if isinstance(t, dict) and isinstance(t.get("chains"), list):
+            if len(set(t["chains"])) != len(t["chains"]) or set(t["chains"]) - set(chains):
+                errors.append(f"native_chain.{h}.chains: distinct ids from native_chain.chains")
+            if nc["smoke_chain"] not in t["chains"]:
+                errors.append(f"native_chain.{h}.chains: must include the smoke chain")
     src_p = _check_file("native_chain.source_config", nc["source_config"], errors)
     ord_p = _check_file("native_chain.orders", nc["orders"], errors)
     src = None
@@ -503,8 +524,9 @@ def flatten(cfg: dict) -> dict[str, str]:
             continue
         for k, v in body.items():
             if isinstance(v, dict):
-                for kk, vv in v.items():
-                    out[f"{sec}.{k}.{kk}"] = _scalar(vv)
+                for kk, vv in v.items():  # a list in a table (native_chain.<h>.chains) joins
+                    out[f"{sec}.{k}.{kk}"] = (", ".join(_scalar(x) for x in vv)
+                                              if isinstance(vv, list) else _scalar(vv))
             elif isinstance(v, list):
                 # a list of lists (3b's launch_phases) reads "a + b, c": groups by comma
                 out[f"{sec}.{k}"] = ", ".join(" + ".join(_scalar(y) for y in x)
