@@ -6,7 +6,7 @@
 [meta]
 exp = "agy_chain5"
 proposal = "docs/sprint/plans/week2-agy-chain5.md"
-built_against = "8d5fabb9563226d3b391940d4f7383af0840592c8a2beae2d40e90e9ac3bf3bf"
+built_against = "21c0e458be97a36a96737aa133bebadb87392a8a02bb0d019375971502d1e9b3"
 
 [design]
 kind = "native_chain"
@@ -19,10 +19,10 @@ log_reasoning = false  # agy records no reasoning
 harnesses = ["agy", "codex", "claude_code", "agy_sonnet", "claude_code_sonnet"]  # run order (plan v0.4)
 agy = { cli_version = "1.4.7", model = "gemini-3.8-flash-low", effort = "low", stage = "SPRINT-S2-AGY-CHAIN", cap_usd = 0.0, task_cap_usd = 0.0, chains = ["u1", "u2", "u3", "u4"] }
 codex = { cli_version = "0.162.1", model = "gpt-6-luna", effort = "high", stage = "SPRINT-S2-CX-CHAIN", cap_usd = 0.0, task_cap_usd = 0.0, chains = ["u1", "u2", "u3", "u4"] }
-claude_code = { cli_version = "2.1.310", model = "claude-haiku-5-5[1m]", effort = "high", stage = "SPRINT-S2-CC-CHAIN", cap_usd = 20.0, task_cap_usd = 6.0, chains = ["u1", "u2", "u3", "u4"] }
+claude_code = { cli_version = "2.1.310", model = "claude-haiku-5-5[1m]", effort = "high", stage = "SPRINT-S2-CC-CHAIN", cap_usd = 35.0, task_cap_usd = 6.0, chains = ["u1", "u2", "u3", "u4"] }
 # Sonnet pair (plan v0.4; Jacob: "ok then sonnet and we can asterisk that haiku is not offered")
 agy_sonnet = { cli_version = "1.4.7", model = "claude-sonnet-5-5-low", effort = "low", stage = "SPRINT-S2-AGY-SONNET-CHAIN", cap_usd = 0.0, task_cap_usd = 0.0, chains = ["u1", "u2"] }
-claude_code_sonnet = { cli_version = "2.1.310", model = "claude-sonnet-5-5", effort = "low", stage = "SPRINT-S2-CC-SONNET-CHAIN", cap_usd = 50.0, task_cap_usd = 6.0, chains = ["u1", "u2"] }
+claude_code_sonnet = { cli_version = "2.1.310", model = "claude-sonnet-5-5", effort = "low", stage = "SPRINT-S2-CC-SONNET-CHAIN", cap_usd = 35.0, task_cap_usd = 6.0, chains = ["u1", "u2"] }
 host = "laptop"  # agy's auth volume and the other harnesses' credentials are there
 source_config = { path = "configs/week2/chain_stress.toml", sha256 = "e7ecd5aa330c948d7d4f316e53b383880dd44f2c9870865a1a9139097a530102" }
 orders = { path = "configs/week2/orders/chain_stress.json", sha256 = "c73fcc4318809fdefce4508b320ee6fe98037d3cb6938b40886deb7592fe7a00" }
@@ -39,7 +39,7 @@ smoke_chain = "u1"
 smoke_phases = 2
 
 [caps]
-stage_usd = 70.0  # Claude Code Haiku 20 + Claude Code Sonnet 50; agy and Codex run on their plans ($0)
+stage_usd = 70.0  # Claude Code Haiku 35 + Claude Code Sonnet 35 (v0.4.1, Jacob 29 Oct); agy and Codex run on their plans ($0)
 run_usd = 6.0  # the Claude Code arms' per-task cost cap
 max_calls = 400
 max_seconds = 7200

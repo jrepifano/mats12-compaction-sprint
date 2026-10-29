@@ -222,6 +222,17 @@ So the gate got suggestive, not identifying, evidence. The pair is reported as n
   - This is descriptive. With 2 chains, the paired verdict is "too few observations" by the precedence rule, so no paired claim is made.
   - The pair's value is a matched side-by-side, read with the composition and compaction measures.
 
+## Amendment v0.4.1 (29 Oct, ~20:40Z): Haiku cap reallocation
+
+**Jacob's word, relayed by the Research Advisor:** "1b".
+- **Caps:** the Claude Code + Haiku cap rises from $20 to $35, and the Claude Code + Sonnet cap falls from $50 to $35. The stage total stays $70.
+- **Why:**
+  - The Haiku arm cost about $1.3 per task against the ~$0.5 estimate, so it reached its $20 cap with chains u1, u3 and u4 cut by the cap.
+  - The Sonnet arm cost about $3 per chain against the ~$17 estimate.
+- **Rerun:** u3 and u4 run again from scratch in a fresh attempt root, 2 live chains. The cut originals stay on disk and are reported as quota-cut.
+- **Readout:** u1 and u2 from the first root; u3 and u4 from the rerun.
+- **Kept as they are:** u2's boundary-4 /compact failure ("no new compact_boundary row", twice, before the cap) is a compaction failure in the readout, not a quota cut. u1's task 5 is quota-cut (unknown).
+
 ## Build contract
 
 The plan check (`scripts/week2_plan_check.py`) parses this table and compares it, key by key, with `configs/week2/agy_chain5.toml`. Per-harness settings sit in `native_chain.<harness>`. `caps.stage_usd` is the sum of the harnesses' `cap_usd` (Claude Code Haiku $20 + Claude Code Sonnet $50; agy and Codex are $0), and `caps.run_usd` is the largest per-task cap ($6).
@@ -252,7 +263,7 @@ The plan check (`scripts/week2_plan_check.py`) parses this table and compares it
 | `native_chain.claude_code.model` | claude-haiku-5-5[1m] |
 | `native_chain.claude_code.effort` | high |
 | `native_chain.claude_code.stage` | SPRINT-S2-CC-CHAIN |
-| `native_chain.claude_code.cap_usd` | 20 |
+| `native_chain.claude_code.cap_usd` | 35 |
 | `native_chain.claude_code.task_cap_usd` | 6 |
 | `native_chain.claude_code.chains` | u1, u2, u3, u4 |
 | `native_chain.agy_sonnet.cli_version` | 1.4.7 |
@@ -266,7 +277,7 @@ The plan check (`scripts/week2_plan_check.py`) parses this table and compares it
 | `native_chain.claude_code_sonnet.model` | claude-sonnet-5-5 |
 | `native_chain.claude_code_sonnet.effort` | low |
 | `native_chain.claude_code_sonnet.stage` | SPRINT-S2-CC-SONNET-CHAIN |
-| `native_chain.claude_code_sonnet.cap_usd` | 50 |
+| `native_chain.claude_code_sonnet.cap_usd` | 35 |
 | `native_chain.claude_code_sonnet.task_cap_usd` | 6 |
 | `native_chain.claude_code_sonnet.chains` | u1, u2 |
 | `native_chain.host` | laptop |

@@ -797,6 +797,11 @@ def cmd_bulk(a) -> int:
     v = passing_smoke(a.harness, a.smoke_attempt, a.accept_smoke_from, a.accept_reason)
     impl = adapter(a.harness, hs)
     chains, settings = chains_and_settings(cfg, src, a.harness)
+    if a.chains:  # a rerun of some chains in a fresh attempt root (plan v0.4.1)
+        want = a.chains.split(",")
+        if not a.attempt or set(want) - {c.id for c in chains}:
+            sys.exit(f"refused: --chains {a.chains} needs --attempt and the arm's own chain ids")
+        chains = [c for c in chains if c.id in want]
     settings = arm_settings(settings, hs)
     tasks = task_infos(task_ids(chains))
     par = cfg["parallelism"]
@@ -870,6 +875,7 @@ def main() -> int:
         s.add_argument("--memory-mb", type=int)
         if name == "bulk":
             s.add_argument("--max-live", type=int)
+            s.add_argument("--chains", help="comma-separated chain ids to run (with --attempt)")
             s.add_argument("--smoke-attempt", type=int, help="the smoke root whose verdict counts")
             s.add_argument("--accept-smoke-from", help="a smoke_verdict.json made under other "
                            "runner code (CARRY_OVER_FILES only)")
