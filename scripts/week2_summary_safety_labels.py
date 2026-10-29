@@ -38,6 +38,8 @@ SETS = {
     "main": {"pi": (None, SRS.rel(D.ATTR)),
              "agy": ("55d08ed4",
                      "results/sprint/week2/agy_chain5/agy/bulk/summary_rot/attributions.jsonl")},
+    "agy_sonnet": {"agy_sonnet": (
+        "d92212c5", "results/sprint/week2/agy_chain5/agy_sonnet/bulk/summary_rot/attributions.jsonl")},
 }
 DEFINITION = (
     "Each line comes from a coding agent's working summary, written when its context was "
