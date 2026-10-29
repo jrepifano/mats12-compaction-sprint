@@ -1,6 +1,6 @@
 # Five-task chains in agy: code-measure readout, beside pi on the same chains
 
-Run state None (bulk, run a43060f0b53b); written 2026-10-29T16:09:34+00:00. Experiment 4's unrelated chains u1–u4 in agy, with its own compaction after every task. $0: code scorers. Descriptive, n = 4 chains. Every cell is known-positive, known-negative or unknown; tables give planned and observed (known) denominators. Wilson 95% intervals on pooled counts are descriptive (cells are not independent). Wrong-project counts are unadjudicated code flags.
+Run state None (bulk, run a43060f0b53b); written 2026-10-29T16:13:01+00:00. Experiment 4's unrelated chains u1–u4 in agy, with its own compaction after every task. $0: code scorers. Descriptive, n = 4 chains. Every cell is known-positive, known-negative or unknown; tables give planned and observed (known) denominators. Wilson 95% intervals on pooled counts are descriptive (cells are not independent). Wrong-project counts are unadjudicated code flags.
 
 ## Predictions (plan v0.3.1)
 
@@ -12,7 +12,7 @@ Run state None (bulk, run a43060f0b53b); written 2026-10-29T16:09:34+00:00. Expe
 | 4 | historical facts, full readable context: at least 80% at b = j of known push-attempted and push-rejected cells are recorded | **unresolved** | 0/0 recorded (adjudicated); 19 unknown |
 | 4 | historical facts, full readable context: at most 30% at b >= j + 2 of known push-attempted and push-rejected cells are recorded | **unresolved** | 0/0 recorded (adjudicated); 21 unknown |
 | 5 | an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran | **held** | 0 of 16 later tasks; 0 unknown |
-| 6 | agy's earlier-task share at boundary 4 is below pi's u1–u4 share | **unresolved** | 0.0% over 4 chains with labelled entries (possible range 0.0–72.2%) vs pi 23.5%; unlabelled at boundary 4: 188 |
+| 6 | agy's earlier-task share at boundary 4 is below pi's u1–u4 share | **held** | 0.0% over 4 chains with labelled entries (possible range 0.0–0.0%) vs pi 23.5%; unlabelled at boundary 4: 0 |
 | 7 | agy's pass rate over its graded tasks is below pi's u1–u4 rate | **held** | 9/20 graded passed, 0 ungraded; pi 75% |
 
 Held / not held: whatever the unknown cells turn out to be; unresolved: the unknowns could flip it. Prediction 10 is in the comparison (compare.md).
@@ -142,12 +142,12 @@ Builder b's summary-rot coder, unchanged: each summary line labelled by its code
 
 | boundary | agy | pi (u1–u4) | agy code-only | pi code-only | agy bullets | agy − pi, paired |
 |---|---|---|---|---|---|---|
-| 1 | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | +0 [+0, +0], 4 chains (0 dropped), cells 91/198: no difference detected; signs 0+ / 0− / 4= |
-| 2 | 0% [0, 0] (n=4) | 12% [7, 18] (n=4) | 0% [0, 0] (n=4) | 24% [21, 27] (n=4) | 0% [0, 0] (n=4) | -12 [-18, -7], 4 chains (0 dropped), cells 94/256: differs, pi higher; signs 0+ / 4− / 0= |
-| 3 | 0% [0, 0] (n=4) | 34% [24, 45] (n=4) | 0% [0, 0] (n=4) | 45% [33, 65] (n=4) | 0% [0, 0] (n=4) | -34 [-45, -24], 4 chains (0 dropped), cells 73/273: differs, pi higher; signs 0+ / 4− / 0= |
-| 4 | 0% [0, 0] (n=4) | 24% [14, 34] (n=4) | 0% [0, 0] (n=4) | 38% [17, 59] (n=4) | 0% [0, 0] (n=4) | -24 [-34, -14], 4 chains (0 dropped), cells 72/229: differs, pi higher; signs 0+ / 4− / 0= |
+| 1 | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | 0% [0, 0] (n=4) | +0 [+0, +0], 4 chains (0 dropped), cells 300/198: no difference detected; signs 0+ / 0− / 4= |
+| 2 | 0% [0, 0] (n=4) | 12% [7, 18] (n=4) | 0% [0, 0] (n=4) | 24% [21, 27] (n=4) | 0% [0, 0] (n=4) | -12 [-18, -7], 4 chains (0 dropped), cells 524/256: differs, pi higher; signs 0+ / 4− / 0= |
+| 3 | 0% [0, 0] (n=4) | 34% [24, 45] (n=4) | 0% [0, 0] (n=4) | 45% [33, 65] (n=4) | 0% [0, 0] (n=4) | -34 [-45, -24], 4 chains (0 dropped), cells 367/273: differs, pi higher; signs 0+ / 4− / 0= |
+| 4 | 0% [0, 0] (n=4) | 24% [14, 34] (n=4) | 0% [0, 0] (n=4) | 38% [17, 59] (n=4) | 0% [0, 0] (n=4) | -24 [-34, -14], 4 chains (0 dropped), cells 260/229: differs, pi higher; signs 0+ / 4− / 0= |
 
-Summaries coded: 20 (1802 entries); Opus pending: 20, failed: 0. Chain-end summaries (no pi counterpart): u1 0%; u2 0%; u3 0%; u4 0%.
+Summaries coded: 20 (1802 entries); Opus pending: 0, failed: 0. Chain-end summaries (no pi counterpart): u1 0%; u2 0%; u3 0%; u4 0%.
 Hand-check sample: 10 of 1451 boundary entries, blind, seed 20261029 (results/sprint/week2/agy_chain5/agy/bulk/summary_rot/hand_check_sample.jsonl).
 Check: recomputed pi u1–u4 against experiment 4's shares.json: 16 values, largest difference 0.0.
 
