@@ -334,3 +334,10 @@ Every row is a key of `configs/week2/summary_fix.toml`; `scripts/week2_plan_chec
 | `wording.line.sha256` | 299e80c1de8417424daba11f9862e997c1be3912af0100f782514f5ba7978bf6 |
 | `wording.neutral_lead.path` | configs/week2/wording/summary_fix/neutral_lead.txt |
 | `wording.neutral_lead.sha256` | 0176c8625332fff048112bad869cf4d7a5b31987d9bdaa673f142cc17c46c547 |
+
+## What ran (29 Oct, after the bulk)
+Added after the run; nothing above was changed. The final readout is builder b's 98f31570, `results/sprint/week2/summary_fix/final_readout.md`.
+- **Testbed: pi**, by the plan's own rule. agy did not have 7 eligible histories with verified pre-compaction exports by the deadline. Every result is DeepSeek V4.1 Flash in the pi-style loop on experiment 1's histories, and none of it is agy's.
+- **Launch-order deviation:** the compaction retry rule (one more round of pi's three tries in every arm) was added during the bulk, after one placebo summary came back empty three times. It ran as a tail pass after the bulk, so retried slots ran out of their seeded launch position. One run (np-4 r1 placebo) failed both rounds and is a final unknown. 149/150 are known.
+- **Concurrency** was raised from 8 to 14 at 11:25 PM ET on 28 Oct; that changes wall-clock, not the design.
+- **Outcome:** ledger − native −33.3 pts [−50.0, −13.3], but only 6 of 10 histories differ, so the planned sign-flip test can't reject (p 0.031, Holm 0.094). Ledger − placebo has an interval including 0, so the content-specific criterion is not met. Spend: $257.39 of $305.
