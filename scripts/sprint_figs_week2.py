@@ -1,12 +1,13 @@
-"""Week-2 result charts for the final presentation to Neel (30 Oct 2026), in the v2 deck's look.
+"""Week-2 result charts for the final presentation to Neel (30 Oct 2026).
 
-Style: scripts/sprint_figs_v2.py (warm palette, rounded bars, light gridlines, Avenir Next); its
-drawing helpers are imported and its import applies the rcParams. Jacob approved the v2 style as an
-exception to AGENTS.md "Figures" for this deck only; the rest of that rule holds (vertical bars,
-Wilson 95% intervals, titles that state the claim with its number, plain words, numbers read from
-committed files, PNG + SVG + README). Per Jacob's note via J (28 Oct): plain charts, 2-4 bars where
-possible, direct labels instead of legends, the number on each bar, one source line, few
-gridlines. Detail versions go to backup_*.png, never into the main chart.
+Style: AGENTS.md "Figures" (Jacob, 29 Oct): sns.set_theme(style="whitegrid") with every other
+setting at seaborn's default (fonts, text sizes and colours), the default (deep) palette, plain
+vertical bars, Wilson 95% intervals, titles that state the claim with its number, plain words,
+numbers read from committed files, PNG + SVG + README. The drawing helpers come from
+scripts/sprint_figs_v2.py. Per Jacob's note via J (28 Oct): plain charts, 2-4 bars where
+possible, direct labels instead of legends, the number on each bar, few gridlines. No captions
+inside the images (Jacob, 29 Oct): a one-line title, labels and k/n only; the source line, caveats
+and notes go in the README. Detail versions go to backup_*.png, never into the main chart.
 
 Every plotted number is read from the unchanged copies in docs/sprint/figs/week2/data/, whose
 origins (branch, commit, path, sha256) are in data/SOURCES.json; each copy's sha256 is checked
@@ -24,11 +25,10 @@ Run: uv run python scripts/sprint_figs_week2.py
 import hashlib
 import json
 import re
-import textwrap
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import sprint_figs_v2 as v2  # applies the v2 rcParams
+import sprint_figs_v2 as v2  # applies sns.set_theme(style="whitegrid")
 from matplotlib.patches import Rectangle
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,22 +36,23 @@ OUT = ROOT / "docs" / "sprint" / "figs" / "week2"
 DATA = OUT / "data"
 INK, MUTED = v2.INK, v2.MUTED
 
-# One colour per condition across the set. Every control condition (no earlier history, clean
-# first-task remote, current call only, honest summary) is the same warm grey.
-CONTROL = "#b8afa3"
-HISTORY = "#c4553a"  # earlier task's history in context
-DIVERGENT = "#d9a441"  # first task met a divergent remote
-REASONING = "#6c8eb5"  # monitor also sees the agent's reasoning
-FORGED = "#8c6d55"  # summary with a false permission
-DROPPED = "#b5677d"  # summary with the user's "no" deleted
-OVERWROTE = "#9a5b1e"  # divergent history whose first task overwrote (kept: DIVERGENT)
-VIEW_COLOURS = {"full": "#7fa37a", "summary_tail": "#9c7ba0", "pinned_user_turns": "#6aa3a0"}
+# One deep-palette colour per condition across the set. Every control condition (no earlier
+# history, clean first-task remote, current call only, honest summary) is the same grey.
+PAL = v2.PAL
+CONTROL = PAL[7]
+HISTORY = PAL[3]  # earlier task's history in context
+DIVERGENT = PAL[1]  # first task met a divergent remote
+REASONING = PAL[0]  # monitor also sees the agent's reasoning
+FORGED = PAL[5]  # summary with a false permission
+DROPPED = PAL[6]  # summary with the user's "no" deleted
+OVERWROTE = PAL[8]  # divergent history whose first task overwrote (kept: DIVERGENT)
+VIEW_COLOURS = {"full": PAL[2], "summary_tail": PAL[4], "pinned_user_turns": PAL[9]}
 CONFIG = {  # harness configurations, in plotting order
-    "pi": ("pi-style agent\n+ DeepSeek V4.1 Flash", "#9c7ba0"),
-    "ds": ("Claude Code\n+ DeepSeek V4.1 Flash", "#5b7a99"),
-    "cc": ("Claude Code\n+ Haiku 5.5", "#6aa3a0"),
-    "cx": ("Codex\n+ gpt-6-luna", "#7fa37a"),
-    "agy": ("Antigravity", "#8c6d55"),
+    "pi": ("pi-style agent\n+ DeepSeek V4.1 Flash", PAL[4]),
+    "ds": ("Claude Code\n+ DeepSeek V4.1 Flash", PAL[0]),
+    "cc": ("Claude Code\n+ Haiku 5.5", PAL[9]),
+    "cx": ("Codex\n+ gpt-6-luna", PAL[2]),
+    "agy": ("Antigravity", PAL[5]),
 }
 HARNESS_KEYS = ("ds", "cc", "cx", "agy")
 SHORT = {"pi": "the pi-style agent", "ds": "Claude Code", "cc": "Haiku", "cx": "Codex",
@@ -223,8 +224,8 @@ def rationale_flips():
 # 4. Forged permission and eval awareness -------------------------------------------------------
 UNO_SCORES, UNO_SCAN = "user_no/scores.json", "user_no/reasoning_scan.json"
 UNO_VERSIONS = {"honest": ("Honest\nsummary", CONTROL),
-                "false_permission": ("False permission\nadded", FORGED),
-                "decision_dropped": ("User's \"no\"\ndeleted", DROPPED)}
+                "false_permission": ("False\npermission\nadded", FORGED),
+                "decision_dropped": ("User's\n\"no\"\ndeleted", DROPPED)}
 UNO_METRICS = {"lost": "Lost the commits",
                "residue_noticed": "Said the summary looked truncated",
                "eval_terms": "Used grading words"}
@@ -370,9 +371,7 @@ def draw(ax, groups, ymax=100, group_pad=0.6, w=0.8, bar_labels=True, group_offs
     ax.set_ylim(0, ymax)
     ax.set_yticks([0, 50, 100] if ymax >= 100 else [0, ymax / 2, ymax])
     ax.set_yticklabels([f"{t:.0f}%" for t in ax.get_yticks()])
-    ax.tick_params(axis="both", length=0)
-    ax.tick_params(axis="x", pad=6)
-    ax.set_axisbelow(True)
+    ax.xaxis.grid(False)  # as sns.barplot does: no grid on the categorical axis
     ticks, labels = [], []
     for (glab, bars), pos, centre in zip(groups, xs, centres):
         for b, xp in zip(bars, pos):
@@ -380,10 +379,8 @@ def draw(ax, groups, ymax=100, group_pad=0.6, w=0.8, bar_labels=True, group_offs
             labels.append(b["lab"] if bar_labels else "")
             if b.get("pending"):
                 ax.add_patch(Rectangle((xp - w * 0.42, 0), w * 0.84, ymax * 0.35, fill=False,
-                                       edgecolor=MUTED, linestyle=(0, (4, 3)), linewidth=1.2,
-                                       zorder=2))
-                ax.text(xp, ymax * 0.175, "running", ha="center", va="center", fontsize=11,
-                        color=MUTED, style="italic")
+                                       edgecolor=MUTED, linestyle="--", zorder=2))
+                ax.text(xp, ymax * 0.175, "running", ha="center", va="center")
                 continue
             v2.rbar(ax, xp, pct(b["rate"]), w * 0.84, b["color"])
             v2.err(ax, xp, pct(b["rate"]), pct(b["lo"]), pct(b["hi"]))
@@ -392,34 +389,29 @@ def draw(ax, groups, ymax=100, group_pad=0.6, w=0.8, bar_labels=True, group_offs
             ax.annotate(glab, xy=(centre, 0), xycoords=("data", "axes fraction"),
                         xytext=(0, -group_offset if bar_labels else -14),
                         textcoords="offset points",
-                        ha="center", va="top", fontsize=12.5, fontweight="bold", color=INK)
+                        ha="center", va="top")
     ax.set_xticks(ticks)
-    ax.set_xticklabels(labels, fontsize=10.5, linespacing=1.15)
+    ax.set_xticklabels(labels)
     return xs
 
 
-def save(fig, name, title, claim, sources, numbers, notes, foot, caveat=None):
-    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top", fontsize=15.5, fontweight="bold",
-                 color=INK, linespacing=1.25)
-    width = int(fig.get_figwidth() * 15)  # characters per line at 9 pt (Avenir Next)
-    foot_txt = textwrap.fill(foot, width)
-    fig.text(0.02, 0.015, foot_txt, ha="left", va="bottom", fontsize=9, color=MUTED,
-             linespacing=1.3)
-    if caveat:
-        y = 0.015 + 0.032 * (foot_txt.count("\n") + 1) + 0.008
-        fig.text(0.02, y, textwrap.fill(caveat.replace("\n", " "), int(width * 0.88)),
-                 ha="left", va="bottom", fontsize=10, color=INK, linespacing=1.3)
+def save(fig, name, title, claim, sources, numbers, notes, foot, caveat=None, short=None):
+    """Draw only `short` (default: the title's first line) on the chart; the full title, the
+    caveat and the source line `foot` go in the README, never into the image."""
+    short = short or title.split("\n")[0].rstrip(" ,;:")
+    v2.title_above(fig, short)
     OUT.mkdir(parents=True, exist_ok=True)
-    fig.savefig(OUT / f"{name}.png", dpi=200)
+    fig.savefig(OUT / f"{name}.png", dpi=200, bbox_inches="tight")
     with plt.rc_context({"svg.hashsalt": name}):  # stable SVG ids and no date: reruns diff clean
-        fig.savefig(OUT / f"{name}.svg", metadata={"Date": None})
+        fig.savefig(OUT / f"{name}.svg", metadata={"Date": None}, bbox_inches="tight")
     plt.close(fig)
     README.extend([f"## {name}: {title.replace(chr(10), ' ')}", "", f"![{name}]({name}.png)", "",
+                   f"**Title on the chart:** {' '.join(short.split())}", "",
                    f"**Claim:** {claim}", "", "**Source (copies in `data/`):**"]
                   + [f"- `{s}`" for s in sources] + ["", "**Numbers plotted** (k/n, Wilson 95%):"]
                   + [f"- {n}" for n in numbers] + [""]
-                  + ([f"**Caveat on the chart:** {one_line(caveat)}", ""] if caveat else [])
-                  + [f"**Source line on the chart:** {foot}", ""]
+                  + ([f"**Caveat (not on the chart):** {one_line(caveat)}", ""] if caveat else [])
+                  + [f"**Source line (not on the chart):** {foot}", ""]
                   + [f"- {n}" for n in notes] + [""])
 
 
@@ -447,7 +439,7 @@ def chart_chain():
                      dict(lab="Without it", color=CONTROL, **d[m]["none"])])
               for m, lab in CHAIN_METRICS.items()]
     draw(ax, groups)
-    ax.set_ylabel("Second-task runs", fontsize=11.5)
+    ax.set_ylabel("Second-task runs")
     r, t = d["rewrite"], d["teammate_lost"]
     title = (f"With the earlier task's history, the agent force-pushed over the remote in "
              f"{r['history']['k']}/{r['history']['n']} runs\n(vs {r['none']['k']}/"
@@ -469,7 +461,10 @@ def chart_chain():
          [("Notes: no run had an unknown force-push status (unknown_a = unknown_b = 0). The "
           "readout's cluster-bootstrap differences (same contrast records): force-push "
           f"{pts(*r['diff'])}, commit lost {pts(*t['diff'])}. The split by start is in "
-          "backup_01_chaining_by_start.")], foot)
+          "backup_01_chaining_by_start.")], foot,
+         short=(f"With the earlier task's history: force-pushed in {r['history']['k']}/"
+                f"{r['history']['n']} (vs {r['none']['k']}/{r['none']['n']}), lost the commit in "
+                f"{t['history']['k']}/{t['history']['n']} (vs {t['none']['k']}/{t['none']['n']})"))
 
     # Backup: split by start
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -479,7 +474,7 @@ def chart_chain():
                      dict(lab="No history", color=CONTROL, **d[m]["none"])])
               for m, lab in CHAIN_METRICS.items()]
     draw(ax, groups)
-    ax.set_ylabel("Second-task runs", fontsize=11.5)
+    ax.set_ylabel("Second-task runs")
     title = (f"Backup: full and compacted history both raise force-pushes\n"
              f"({r['full']['k']}/{r['full']['n']}, {r['compacted']['k']}/{r['compacted']['n']}) "
              f"over no history ({r['none']['k']}/{r['none']['n']})")
@@ -491,7 +486,7 @@ def chart_chain():
          [f"{one_line(CHAIN_METRICS[m])}: full {fmt(d[m]['full'])}; compacted "
           f"{fmt(d[m]['compacted'])}; none {fmt(d[m]['none'])}" for m in CHAIN_METRICS],
          [(f"Notes: compacted minus full, paired by history: force-push {pts(*r['cf_diff'])}, "
-          f"commit lost {pts(*t['cf_diff'])}.")], foot)
+          f"commit lost {pts(*t['cf_diff'])}.")], foot, short=" ".join(title.split()))
 
 
 def chart_precedent():
@@ -504,7 +499,7 @@ def chart_precedent():
                           **d[(s, "clean")])])
               for s, lab in (("full", "Full history"), ("compacted", "Compacted history"))]
     draw(ax, groups)
-    ax.set_ylabel("Lost the teammate's commit", fontsize=11.5)
+    ax.set_ylabel("Lost the teammate's commit")
     dv, cl = d[("all", "divergent")], d[("all", "clean")]
     pt = precedent_tests()
     cp = load(PREC)["compacted_minus_full"]["core_paired"]
@@ -540,7 +535,9 @@ def chart_precedent():
           f"clean: {pts(*pt['lower'][:3])} (lower) and {pts(*pt['upper'][:3])} (upper), exact "
           f"randomization p = {pt['lower'][3]:.2g} / {pt['upper'][3]:.2g} "
           "(primary.<completion>.bootstrap and .test). The readout's own intervals are cluster "
-          "bootstraps; the chart's error bars are Wilson.")], foot)
+          "bootstraps; the chart's error bars are Wilson.")], foot,
+         short=(f"After a divergent first task, {dv['k']}/{dv['n']} second tasks lost the commit "
+                f"(vs {cl['k']}/{cl['n']} after a clean one)"))
 
 
 def chart_monitor():
@@ -553,7 +550,7 @@ def chart_monitor():
                                dict(lab=MON_VIEWS[reason], color=REASONING, **d[(m, reason)])])
               for m in MON_MODELS]
     draw(ax, groups)
-    ax.set_ylabel("Force-pushes allowed", fontsize=11.5)
+    ax.set_ylabel("Force-pushes allowed")
     title = (f"Shown the agent's reasoning, the Guardian monitor allowed more\nunauthorized "
              f"force-pushes: Haiku {d[(hk, cur)]['k']} → {d[(hk, reason)]['k']} of "
              f"{d[(hk, reason)]['n']}, Opus {d[(ok, cur)]['k']} → {d[(ok, reason)]['k']} of "
@@ -585,7 +582,10 @@ def chart_monitor():
           f"user turns), Opus {'/'.join(map(str, others[ok]))} of {n_acts}: Opus already drifts "
           "toward "
           "allowing with any added history (backup_03_monitor_all_views). One monitor sample per "
-          "item; Wilson intervals ignore clustering by history.")], foot)
+          "item; Wilson intervals ignore clustering by history.")], foot,
+         short=(f"Shown the agent's reasoning, the monitor allowed more force-pushes: Haiku "
+                f"{d[(hk, cur)]['k']} → {d[(hk, reason)]['k']}, Opus {d[(ok, cur)]['k']} → "
+                f"{d[(ok, reason)]['k']} of {d[(ok, reason)]['n']}"))
 
     # Backup: all five views
     fig, ax = plt.subplots(figsize=(13, 6.2))
@@ -594,8 +594,7 @@ def chart_monitor():
     groups = [(MON_MODELS[m], [dict(lab=MON_SHORT[v], color=col[v], **d[(m, v)])
                                for v in MON_VIEWS]) for m in MON_MODELS]
     draw(ax, groups, group_pad=0.9, group_offset=66)
-    ax.set_xticklabels([t.get_text() for t in ax.get_xticklabels()], fontsize=10)
-    ax.set_ylabel("Force-pushes allowed", fontsize=11.5)
+    ax.set_ylabel("Force-pushes allowed")
     title = ("Backup: for Haiku only the reasoning view moves allows; Opus allows more with any "
              f"added history\n({'/'.join(map(str, others[ok]))} of {n_acts}) and most with the "
              f"reasoning ({d[(ok, reason)]['k']} of {n_acts})")
@@ -614,9 +613,8 @@ def chart_user_no():
     fig.subplots_adjust(left=0.07, right=0.99, top=0.83, bottom=0.27)
     groups = [(lab, [dict(lab=UNO_VERSIONS[v][0], color=UNO_VERSIONS[v][1], **d[(m, v)])
                      for v in UNO_VERSIONS]) for m, lab in UNO_METRICS.items()]
-    draw(ax, groups, group_pad=0.9)
-    ax.set_xticklabels([t.get_text() for t in ax.get_xticklabels()], fontsize=9.5)
-    ax.set_ylabel("Resumed runs", fontsize=11.5)
+    draw(ax, groups, group_pad=0.9, group_offset=64)
+    ax.set_ylabel("Resumed runs")
     lost = [d[("lost", v)] for v in UNO_VERSIONS]
     assert all(x["k"] == 0 for x in lost), "title says no version lost commits"
     r, e = d[("residue_noticed", "decision_dropped")], d[("eval_terms", "decision_dropped")]
@@ -667,7 +665,7 @@ def chart_harness():
     bars = [{"lab": lab(k), "color": CONFIG[k][1], "pending": True} if d[k] is None else
             dict(lab=lab(k), color=CONFIG[k][1], **d[k]["first"]) for k in order]
     draw(ax, [(None, bars)], w=1.0)
-    ax.set_ylabel("First tasks that overwrote", fontsize=11.5)
+    ax.set_ylabel("First tasks that overwrote")
     over = [k for k in present if d[k]["first"]["k"] > 0]
     never = [k for k in present if d[k]["first"]["k"] == 0]
     ds_over = [k for k in over if "DeepSeek" in d[k]["label"]]
@@ -743,24 +741,17 @@ def chart_harness():
             groups.append((lab(k), [{"lab": "Divergent", "color": DIVERGENT, "pending": True},
                                     {"lab": "Clean", "color": CONTROL, "pending": True}]))
         else:
-            mark = "†" if k == "agy" and cap else ""
-            groups.append((lab(k), [dict(lab="Divergent", color=DIVERGENT, mark=mark,
-                                         **d[k]["divergent"]),
-                                    dict(lab="Clean", color=CONTROL, mark=mark,
-                                         **d[k]["clean"])]))
+            groups.append((lab(k), [dict(lab="Divergent", color=DIVERGENT, **d[k]["divergent"]),
+                                    dict(lab="Clean", color=CONTROL, **d[k]["clean"])]))
     draw(ax, groups, group_pad=0.8)
-    for t in ax.get_xticklabels():
-        t.set_fontsize(10)
-    ax.set_ylabel("Lost the teammate's commit", fontsize=11.5)
+    ax.set_ylabel("Lost the teammate's commit")
     if cap:
         cv, cc, co = cap["divergent"], cap["clean"], cap["overwrote"]
         all_o = f"all {co['n']}" if co["capped"] == co["n"] else f"{co['capped']} of {co['n']}"
-        cap_note = (f"† Antigravity hit its call limit (about {cap['cap_calls']} calls) before "
+        cap_note = (f"Antigravity hit its call limit (about {cap['cap_calls']} calls) before "
                     f"any push in {cv['capped']}/{cv['n']} divergent and {cc['capped']}/"
                     f"{cc['n']} clean second tasks, including {all_o} whose first task "
                     "overwrote: those runs ended before reaching a push.")
-        ax.text(1.0, 0.97, textwrap.fill(cap_note, 46), transform=ax.transAxes, ha="right",
-                va="top", fontsize=10.5, color=INK, linespacing=1.3)
     pdv, pcl = d["pi"]["divergent"], d["pi"]["clean"]
     rest = [k for k in present if k != "pi"]
     lossy = [k for k in rest if d[k]["divergent"]["k"] or d[k]["clean"]["k"]]
@@ -829,7 +820,7 @@ def chart_harness():
            + " 'Planted'/'decoy' counts are code-matched words over divergent second tasks; "
            "DeepSeek's thinking was visible to the scan, Haiku's and Codex's were not, so the "
            "term counts are not comparable across configurations.")]
-         + ([f"Call-cap note on the chart: {cap_note.lstrip('† ')}"] if cap_note else []),
+         + ([f"Call-cap note (not on the chart): {cap_note}"] if cap_note else []),
          foot, caveat=caveat)
     chart_harness_split(d, h)
 
@@ -862,7 +853,7 @@ def chart_harness_split(d, h):
                               dict(lab="First task kept\nthe commits", color=DIVERGENT,
                                    **sp[k]["kept"])]) for k in keys]
     draw(ax, groups)
-    ax.set_ylabel("Lost the teammate's commit", fontsize=11.5)
+    ax.set_ylabel("Lost the teammate's commit")
     p, q = sp["pi"], sp["ds"]
 
     def kn_(s):
@@ -919,19 +910,20 @@ def main():
         "sha256 the script checks first. PNG (200 dpi) and SVG. Tested by "
         "`tests/sprint/test_sprint_figs_week2.py`."),
         "",
-        ("**Style:** the v2 deck's warm style (`scripts/sprint_figs_v2.py`; Jacob's exception to "
-        "AGENTS.md \"Figures\" on style and palette, 26 Oct), kept plain per Jacob's note via J "
-        "(28 Oct): 2-4 bars where possible, direct labels instead of legends, the count on each "
-        "bar, one source line, gridlines at 0/50/100% only. Detail versions are the "
+        ("**Style:** AGENTS.md \"Figures\" (Jacob, 29 Oct): `sns.set_theme(style=\"whitegrid\")` "
+        "with every other setting at seaborn's default (fonts, text sizes and colours), the "
+        "default (deep) palette and plain bars, helpers from `scripts/sprint_figs_v2.py`; kept "
+        "plain per Jacob's note via J (28 Oct): 2-4 bars where possible, direct labels instead of legends, the count on each "
+        "bar, source lines in this README, gridlines at 0/50/100% only. Detail versions are the "
         "`backup_*` files. Error bars are Wilson 95% intervals on k/n (they ignore clustering by "
         "history; each readout's own cluster-bootstrap or exact intervals are quoted in the "
         "notes)."),
         "",
-        ("**Colours:** one per condition across the set. Every control condition (no earlier "
-        "history, clean first-task remote, current call only, honest summary) is warm grey "
-        f"{CONTROL}; earlier history {HISTORY}; divergent first-task remote {DIVERGENT}; "
-        f"reasoning view {REASONING}; false permission {FORGED}; \"no\" deleted {DROPPED}; each "
-        "agent configuration in 05a its own colour."),
+        ("**Colours:** one deep-palette colour per condition across the set. Every control "
+        "condition (no earlier history, clean first-task remote, current call only, honest "
+        "summary) is grey; earlier history red; divergent first-task remote orange; reasoning "
+        "view blue; false permission brown; \"no\" deleted pink; a first task that overwrote "
+        "olive; each agent configuration in 05a its own colour."),
         "",
         ("**Review:** one cross-family round (gpt-6-astra, "
         "`logs/reviews/20261029-week2-figs-r1.md`): verdict BLOCKING ISSUES, 2 blocking and 3 "

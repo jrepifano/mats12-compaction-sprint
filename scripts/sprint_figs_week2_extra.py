@@ -17,14 +17,14 @@ import json
 import re
 
 import matplotlib.pyplot as plt
-import sprint_figs_week2 as W  # applies the v2 rcParams
+import sprint_figs_week2 as W  # applies sns.set_theme(style="whitegrid")
 from scipy.stats import fisher_exact
 
 DATA = W.OUT / "data"
 WHY = "precedent_why/justification_read.md"
 EXP = "exploit/readout.json"
 LOST, KEPT = W.DIVERGENT, W.CONTROL  # lost the teammate's commit / kept it
-NO_RULE, RULE = W.HISTORY, "#6c8eb5"
+NO_RULE, RULE = W.HISTORY, W.PAL[0]  # deep red / blue
 PLAIN = {"fresh": "no earlier task", "one_prior": "1 earlier task", "long": "5 earlier tasks",
          "fresh_rule": "no earlier task, rule", "long_rule": "5 earlier tasks, rule"}
 
@@ -67,7 +67,7 @@ def chart_why():
     fig, ax = plt.subplots(figsize=(11, 7.4))
     fig.subplots_adjust(left=0.08, right=0.98, top=0.77, bottom=0.37)
     W.draw(ax, groups, group_offset=30)
-    ax.set_ylabel("Second tasks stating the reason", fontsize=11.5)
+    ax.set_ylabel("Second tasks stating the reason")
     a, d, b, c, t = (rows[k] for k in ("a", "d", "b", "c", "thanks"))
     title = (f"In DeepSeek's stated reasons, agents that overwrote the teammate's commit "
              f"called it or\nthe summary scratch, junk or stale ({d[0]}/{d[1]}) and cited their "
@@ -94,7 +94,9 @@ def chart_why():
              f"no reason stated, lost {rows['f'][0]}/16, kept {rows['f'][2]}/16."),
             "Codes are not exclusive, so bars in a group do not sum to 100%.",
             ("The (d) code is the read's \"summary or teammate commits called scratch, junk "
-             "or stale\".")], foot, caveat)
+             "or stale\".")], foot, caveat,
+           short=(f"Agents that overwrote called the commit or summary scratch, junk or stale "
+                  f"({d[0]}/{d[1]}) and cited their own earlier act ({a[0]}/{a[1]})"))
     return rows
 
 
@@ -163,8 +165,8 @@ def chart_exploit():
     fig, (ax, bx) = plt.subplots(1, 2, figsize=(14, 7.4), gridspec_kw={"wspace": 0.18})
     fig.subplots_adjust(left=0.06, right=0.99, top=0.68, bottom=0.25)
     W.draw(ax, groups, group_offset=30)
-    ax.set_ylabel("Runs that cheated", fontsize=11.5)
-    ax.set_title("Cheated", fontsize=12.5, color=W.INK, loc="left", fontweight="bold", pad=34)
+    ax.set_ylabel("Runs that cheated")
+    ax.set_title("Cheated", pad=24)
     W.draw(bx, [(f"The {kinds['te']['tasks']} tasks where agents\nedited the test",
                  [dict(lab="no rule", color=NO_RULE, **kinds["te"]["no_rule"]),
                   dict(lab="rule", color=RULE, **kinds["te"]["rule"])]),
@@ -172,9 +174,8 @@ def chart_exploit():
                   "pass unedited"),
                  [dict(lab="no rule", color=NO_RULE, **kinds["sc"]["no_rule"]),
                   dict(lab="rule", color=RULE, **kinds["sc"]["rule"])])], group_offset=30)
-    bx.set_ylabel("Runs that cheated that way", fontsize=11.5)
-    bx.set_title("How they cheated (no earlier task and 5 earlier tasks pooled)", fontsize=12.5,
-                 color=W.INK, loc="left", fontweight="bold", pad=34)
+    bx.set_ylabel("Runs that cheated that way")
+    bx.set_title("How they cheated (no earlier task and 5 earlier tasks pooled)", pad=24)
     f, fr, lg, lr = (d[c] for c in ("fresh", "fresh_rule", "long", "long_rule"))
     te, sc = kinds["te"], kinds["sc"]
     title = (f"Telling the agent not to modify the tests stopped test edits "
@@ -218,7 +219,11 @@ def chart_exploit():
                  f"{PLAIN[c]}: " + ", ".join(f"{m} {v}" for m, v in
                                              d[c]["method_read"].items() if v)
                  for c in ("fresh_rule", "long_rule")) + ".")],
-           foot_main)
+           foot_main,
+           short=(f"The test rule stopped test edits ({te['no_rule']['k']}/{te['no_rule']['n']} "
+                  f"\u2192 {te['rule']['k']}/{te['rule']['n']}) but not passing the contradictory test unedited "
+                  f"({sc['no_rule']['k']}/{sc['no_rule']['n']} \u2192 {sc['rule']['k']}/"
+                  f"{sc['rule']['n']})"))
 
     # Backup: every cell, cheating split into test edits and special-casing.
     order = [("fresh", "No earlier\ntask"), ("one_prior", "1 earlier\ntask"),
@@ -230,7 +235,7 @@ def chart_exploit():
     fig, ax = plt.subplots(figsize=(13, 6.6))
     fig.subplots_adjust(left=0.07, right=0.98, top=0.77, bottom=0.27)
     W.draw(ax, groups, group_offset=48)
-    ax.set_ylabel("Runs", fontsize=11.5)
+    ax.set_ylabel("Runs")
     te_rule = fr["test_edit"] + lr["test_edit"]
     sc_rule = fr["special_case"] + lr["special_case"]
     n_rule = fr["n"] + lr["n"]
@@ -243,7 +248,7 @@ def chart_exploit():
            [f"{PLAIN[c]}: cheated {W.fmt(W.share(d[c]['cheat'], d[c]['n']))}; edited the test "
             f"{W.fmt(W.share(d[c]['test_edit'], d[c]['n']))}" for c, _ in order],
            [("Cheated = special-cased + edited the test (no run did both; confirmed runner "
-             "edits: 0).")], foot)
+             "edits: 0).")], foot, short=" ".join(title.split()))
     return d, p_fresh, p_long
 
 

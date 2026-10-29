@@ -3,8 +3,8 @@
 One bar per source for the number of compactions analysed, the count on the bar, and under it the
 median context size before the compaction with its 10th–90th percentile range. Every number is
 read from results/sprint/S1/context_lengths.json (written by scripts/sprint_s1_context_summary.py;
-field `pre_tokens`). Drawn in the v2 deck's look by reusing scripts/sprint_figs_v2.py's helpers
-(rounded bars, labels, frame, save); see that file for the style exception Jacob approved.
+field `pre_tokens`). Drawn with scripts/sprint_figs_v2.py's helpers (bars, labels, frame, save),
+in plain seaborn defaults per AGENTS.md "Figures" (29 Oct).
 
 Writes docs/sprint/figs/v2/05_sources_context.png and .svg, and puts this chart's section into
 docs/sprint/figs/v2/README.md between the markers below (replacing an earlier copy). Note that
@@ -22,12 +22,13 @@ import sprint_figs_v2 as v2
 SRC = "results/sprint/S1/context_lengths.json"
 NAME = "05_sources_context"
 START, END = f"<!-- {NAME}:start -->", f"<!-- {NAME}:end -->"
-# Plain-word names and one colour per source, none of them already used in the v2 set.
+# Plain-word names and one deep-palette colour per source (red, the v2 set's lost-and-matters
+# colour, is left out).
 SOURCES = {
-    "jacob": ("My own Claude Code sessions", "#4f6d8f"),
-    "swe-chat-v1": ("SWE-chat (real users)", "#c08552"),
-    "posttrainbench": ("PostTrainBench", "#8a9a5b"),
-    "frontierml": ("FrontierML", "#a86f8a"),
+    "jacob": ("My own Claude Code sessions", v2.PAL[0]),
+    "swe-chat-v1": ("SWE-chat (real users)", v2.PAL[1]),
+    "posttrainbench": ("PostTrainBench", v2.PAL[2]),
+    "frontierml": ("FrontierML", v2.PAL[4]),
 }
 
 
@@ -72,21 +73,19 @@ def draw(data: dict) -> tuple[str, list[dict]]:
     fig.subplots_adjust(left=0.08, right=0.98, top=0.83, bottom=0.23)
     ymax = max(r["n"] for r in rows) * 1.16
     v2.frame(ax, range(len(rows)), [r["lab"] for r in rows], "Compactions analysed", ymax)
-    for lab in ax.get_xticklabels():
-        lab.set_fontweight("bold")
-        lab.set_fontsize(11)
-    # Fix the x range before drawing: rbar reads the axes' aspect, and autoscale would leave the
-    # first bar with a narrower range (and over-rounded corners).
     ax.set_xlim(-0.5, len(rows) - 0.5)
     for i, r in enumerate(rows):
         v2.rbar(ax, i, r["n"], 0.6, r["col"])
         v2.label(ax, i, r["n"], f"{r['n']}", bold=True)
         ax.annotate(r["under"], (i, 0), xycoords=("data", "axes fraction"), xytext=(0, -30),
-                    textcoords="offset points", ha="center", va="top", fontsize=11,
-                    color=v2.INK, linespacing=1.3)
-    fig.text(0.02, 0.02, f"Source: {SRC}. Context = tokens in the context just before the "
-             "compaction, as each dataset recorded it; range = 10th–90th percentile.",
-             fontsize=9, color=v2.MUTED, ha="left", va="bottom")
+                    textcoords="offset points", ha="center", va="top")
+    pub = [r for r in rows if r["key"] != "jacob"]
+    lo, hi = tok(min(r["med"] for r in pub)), tok(max(r["med"] for r in pub))
+    me = tok(next(r["med"] for r in rows if r["key"] == "jacob"))
+    v2.SHORT[NAME] = (f"Public sets compact at a median {lo if lo == hi else f'{lo}–{hi}'} "
+                      f"tokens, my own sessions at {me}")
+    line = (f"Source: {SRC}. Context = tokens in the context just before the compaction, as each "
+            "dataset recorded it; range = 10th–90th percentile.")  # kept out of the image
     fml = data["sources"]["frontierml"]
     n_oc = data["sources"]["swe-chat-v1"]["harness"].get("opencode", 0)
     note = (
@@ -112,7 +111,7 @@ def draw(data: dict) -> tuple[str, list[dict]]:
             [f"{r['lab']}: {r['n']} compactions ({r['n_sampled']} sampled); context median "
              f"{exact(r['med'])} tokens, p10 {exact(r['p10'])}, p90 {exact(r['p90'])}, "
              f"min {r['lo']:,}, max {r['hi']:,}" for r in rows],
-            [note])
+            [f"Source line (not on the chart): {line}", note])
     return title, rows
 
 
