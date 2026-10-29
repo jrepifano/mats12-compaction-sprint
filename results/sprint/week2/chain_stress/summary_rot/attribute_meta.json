@@ -1,0 +1,3283 @@
+{
+ "n_summaries": 45,
+ "n_entries": 3050,
+ "excluded_structure_lines": {
+  "no_history": 3,
+  "separator": 45,
+  "bold_heading": 129,
+  "heading": 473
+ },
+ "n_excluded_structure_lines": 650,
+ "missing_boundaries": [],
+ "opus_pending": [],
+ "opus_failed_summaries": [],
+ "n_unlabelled_entries": 0,
+ "opus_stats": {
+  "calls_requested": 0,
+  "runs": []
+ },
+ "model": "claude-opus-5-5",
+ "ledger_exp": "SPRINT-S2-CHAIN-STRESS",
+ "summaries": [
+  {
+   "chain": "rel-bandit-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-bandit-1/p1/compaction.json",
+   "summary_sha256": "4a9f0bc2d32c05917be672056910934f345e73ab6dc36f8c34e0de653eb61461",
+   "update": false,
+   "n_entries": 30,
+   "excluded": {
+    "no_history": 1,
+    "separator": 1,
+    "bold_heading": 2,
+    "heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "bandit-incremental-cache-control",
+     "repo": "bandit",
+     "tag": "BAN-531"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BAN-531",
+     "task_id:bandit-incremental-cache-control",
+     "branch:feature/incremental-cache-control",
+     "slug:incremental-cache-control",
+     "repo:bandit"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-bandit-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-bandit-1/p2/compaction.json",
+   "summary_sha256": "b8cf5709d08ba0e4d196d790d382dd70ed03f107a108a77a9e768c3b03ad4be0",
+   "update": true,
+   "n_entries": 76,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "bandit-incremental-cache-control",
+     "repo": "bandit",
+     "tag": "BAN-531"
+    },
+    {
+     "n": 2,
+     "task_id": "bandit-interprocedural-taint-checks",
+     "repo": "bandit",
+     "tag": "BAN-530"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BAN-531",
+     "task_id:bandit-incremental-cache-control",
+     "branch:feature/incremental-cache-control",
+     "slug:incremental-cache-control"
+    ],
+    "2": [
+     "tag:BAN-530",
+     "task_id:bandit-interprocedural-taint-checks",
+     "branch:feature/interprocedural-taint-checks",
+     "slug:interprocedural-taint-checks"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-bandit-1",
+   "arm": "related",
+   "kind": "end",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-bandit-1/p3/compaction.json",
+   "summary_sha256": "b5427d206892f541fadb33b83f77cd3d6ced54312361de1efcdbd9586837e071",
+   "update": true,
+   "n_entries": 72,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "bandit-incremental-cache-control",
+     "repo": "bandit",
+     "tag": "BAN-531"
+    },
+    {
+     "n": 2,
+     "task_id": "bandit-interprocedural-taint-checks",
+     "repo": "bandit",
+     "tag": "BAN-530"
+    },
+    {
+     "n": 3,
+     "task_id": "bandit-structured-nosec-directives",
+     "repo": "bandit",
+     "tag": "BAN-667"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BAN-531",
+     "task_id:bandit-incremental-cache-control",
+     "branch:feature/incremental-cache-control",
+     "slug:incremental-cache-control"
+    ],
+    "2": [
+     "tag:BAN-530",
+     "task_id:bandit-interprocedural-taint-checks",
+     "branch:feature/interprocedural-taint-checks",
+     "slug:interprocedural-taint-checks"
+    ],
+    "3": [
+     "tag:BAN-667",
+     "task_id:bandit-structured-nosec-directives",
+     "branch:feature/structured-nosec-directives",
+     "slug:structured-nosec-directives"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-httpx-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-httpx-1/p1/compaction.json",
+   "summary_sha256": "266170c08fb8fd8a1d728c83487678022bc0e9a8e2ca02952b8eaa40e63cc632",
+   "update": false,
+   "n_entries": 60,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "httpx-deterministic-cookie-store",
+     "repo": "httpx",
+     "tag": "HTX-126"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:HTX-126",
+     "task_id:httpx-deterministic-cookie-store",
+     "branch:feature/deterministic-cookie-store",
+     "slug:deterministic-cookie-store",
+     "repo:httpx"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-httpx-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-httpx-1/p2/compaction.json",
+   "summary_sha256": "bcb4f175d2834380be406f1d4407324d351c722dc6ec841cd96db24c4cd2d821",
+   "update": true,
+   "n_entries": 71,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "httpx-deterministic-cookie-store",
+     "repo": "httpx",
+     "tag": "HTX-126"
+    },
+    {
+     "n": 2,
+     "task_id": "httpx-multipart-response-parsing",
+     "repo": "httpx",
+     "tag": "HTX-128"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:HTX-126",
+     "task_id:httpx-deterministic-cookie-store",
+     "branch:feature/deterministic-cookie-store",
+     "slug:deterministic-cookie-store"
+    ],
+    "2": [
+     "tag:HTX-128",
+     "task_id:httpx-multipart-response-parsing",
+     "branch:feature/multipart-response-parsing",
+     "slug:multipart-response-parsing"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-httpx-1",
+   "arm": "related",
+   "kind": "end",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-httpx-1/p3/compaction.json",
+   "summary_sha256": "2b0f884ec3fc3f077be01bc77d70d5f0bb1e813dcdb9a2d7313a8e23cf6eaf8e",
+   "update": true,
+   "n_entries": 87,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 6
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "httpx-deterministic-cookie-store",
+     "repo": "httpx",
+     "tag": "HTX-126"
+    },
+    {
+     "n": 2,
+     "task_id": "httpx-multipart-response-parsing",
+     "repo": "httpx",
+     "tag": "HTX-128"
+    },
+    {
+     "n": 3,
+     "task_id": "httpx-streaming-json-iteration",
+     "repo": "httpx",
+     "tag": "HTX-604"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:HTX-126",
+     "task_id:httpx-deterministic-cookie-store",
+     "branch:feature/deterministic-cookie-store",
+     "slug:deterministic-cookie-store"
+    ],
+    "2": [
+     "tag:HTX-128",
+     "task_id:httpx-multipart-response-parsing",
+     "branch:feature/multipart-response-parsing",
+     "slug:multipart-response-parsing"
+    ],
+    "3": [
+     "tag:HTX-604",
+     "task_id:httpx-streaming-json-iteration",
+     "branch:feature/streaming-json-iteration",
+     "slug:streaming-json-iteration"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-koota-1/p1/compaction.json",
+   "summary_sha256": "40198506cb736c1b1774249c99f7547cec70bb3999dfd073068786cc3dbcf002",
+   "update": false,
+   "n_entries": 84,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "koota-composite-trait-aspects",
+     "repo": "koota",
+     "tag": "KOO-942"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KOO-942",
+     "task_id:koota-composite-trait-aspects",
+     "branch:feature/composite-trait-aspects",
+     "slug:composite-trait-aspects",
+     "repo:koota",
+     "package:@koota/core",
+     "package:@koota/react"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-koota-1/p2/compaction.json",
+   "summary_sha256": "09be3aeca38bd1617f8899dda8532c0e9102a673a380d3ea27e23374799b0335",
+   "update": true,
+   "n_entries": 43,
+   "excluded": {
+    "heading": 7,
+    "bold_heading": 2,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**[KOO-942 — complete, pushed as 9e398c9]**",
+     "tasks": [
+      1
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "koota-composite-trait-aspects",
+     "repo": "koota",
+     "tag": "KOO-942"
+    },
+    {
+     "n": 2,
+     "task_id": "koota-entity-snapshot-rollback",
+     "repo": "koota",
+     "tag": "KOO-141"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KOO-942",
+     "task_id:koota-composite-trait-aspects",
+     "branch:feature/composite-trait-aspects",
+     "slug:composite-trait-aspects"
+    ],
+    "2": [
+     "tag:KOO-141",
+     "task_id:koota-entity-snapshot-rollback",
+     "branch:feature/entity-snapshot-rollback",
+     "slug:entity-snapshot-rollback"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-koota-1/p3/compaction.json",
+   "summary_sha256": "7bb5e55c8db3f822404d9aaf107ce288d302ed8035a2975e14d73c593477002b",
+   "update": true,
+   "n_entries": 71,
+   "excluded": {
+    "heading": 12,
+    "bold_heading": 5,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**[KOO-141 — complete, pushed as `88d2bb3 [KOO-141] feat: add entity and world snapshot rollback` — 12 files, 1770 insertions]**",
+     "tasks": [
+      2
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**[KOO-180 — analysis/repro phase]**",
+     "tasks": [
+      3
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "koota-composite-trait-aspects",
+     "repo": "koota",
+     "tag": "KOO-942"
+    },
+    {
+     "n": 2,
+     "task_id": "koota-entity-snapshot-rollback",
+     "repo": "koota",
+     "tag": "KOO-141"
+    },
+    {
+     "n": 3,
+     "task_id": "koota-pair-relation-tracking",
+     "repo": "koota",
+     "tag": "KOO-180"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KOO-942",
+     "task_id:koota-composite-trait-aspects",
+     "branch:feature/composite-trait-aspects",
+     "slug:composite-trait-aspects"
+    ],
+    "2": [
+     "tag:KOO-141",
+     "task_id:koota-entity-snapshot-rollback",
+     "branch:feature/entity-snapshot-rollback",
+     "slug:entity-snapshot-rollback"
+    ],
+    "3": [
+     "tag:KOO-180",
+     "task_id:koota-pair-relation-tracking",
+     "branch:feature/pair-relation-tracking",
+     "slug:pair-relation-tracking"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "kind": "end",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-koota-1/p4/compaction.json",
+   "summary_sha256": "815389149ea4e00e7d15c8959c52a00a56fbc0e2cfb23ef46718516402f2439e",
+   "update": true,
+   "n_entries": 76,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "koota-composite-trait-aspects",
+     "repo": "koota",
+     "tag": "KOO-942"
+    },
+    {
+     "n": 2,
+     "task_id": "koota-entity-snapshot-rollback",
+     "repo": "koota",
+     "tag": "KOO-141"
+    },
+    {
+     "n": 3,
+     "task_id": "koota-pair-relation-tracking",
+     "repo": "koota",
+     "tag": "KOO-180"
+    },
+    {
+     "n": 4,
+     "task_id": "koota-query-predicates",
+     "repo": "koota",
+     "tag": "KOO-846"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KOO-942",
+     "task_id:koota-composite-trait-aspects",
+     "branch:feature/composite-trait-aspects",
+     "slug:composite-trait-aspects"
+    ],
+    "2": [
+     "tag:KOO-141",
+     "task_id:koota-entity-snapshot-rollback",
+     "branch:feature/entity-snapshot-rollback",
+     "slug:entity-snapshot-rollback"
+    ],
+    "3": [
+     "tag:KOO-180",
+     "task_id:koota-pair-relation-tracking",
+     "branch:feature/pair-relation-tracking",
+     "slug:pair-relation-tracking"
+    ],
+    "4": [
+     "tag:KOO-846",
+     "task_id:koota-query-predicates",
+     "branch:feature/query-predicates",
+     "slug:query-predicates"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-obsidian-linter-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-obsidian-linter-1/p1/compaction.json",
+   "summary_sha256": "e16ee39f763834c7fd4d6d20b520e8c3852801166e18920799f9577e2bd5e0b0",
+   "update": false,
+   "n_entries": 72,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 6
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "obsidian-linter-auto-table-of-contents",
+     "repo": "obsidian-linter",
+     "tag": "OBS-543"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:OBS-543",
+     "task_id:obsidian-linter-auto-table-of-contents",
+     "branch:feature/auto-table-of-contents",
+     "slug:auto-table-of-contents",
+     "repo:obsidian-linter",
+     "repo:obsidian"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-obsidian-linter-1",
+   "arm": "related",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-obsidian-linter-1/p2/compaction.json",
+   "summary_sha256": "1f3c05c00eb2ffcd7fb1b518931c37a555b25a342d82cd3dee9109b3a689a167",
+   "update": true,
+   "n_entries": 72,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "obsidian-linter-auto-table-of-contents",
+     "repo": "obsidian-linter",
+     "tag": "OBS-543"
+    },
+    {
+     "n": 2,
+     "task_id": "obsidian-linter-link-format-conversion",
+     "repo": "obsidian-linter",
+     "tag": "OBS-338"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:OBS-543",
+     "task_id:obsidian-linter-auto-table-of-contents",
+     "branch:feature/auto-table-of-contents",
+     "slug:auto-table-of-contents"
+    ],
+    "2": [
+     "tag:OBS-338",
+     "task_id:obsidian-linter-link-format-conversion",
+     "branch:feature/link-format-conversion",
+     "slug:link-format-conversion"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "rel-obsidian-linter-1",
+   "arm": "related",
+   "kind": "end",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/rel-obsidian-linter-1/p3/compaction.json",
+   "summary_sha256": "0d8be50f9cb1bd65f45d402425c4ba1cc9411baafda1a27de611b2ae79910ed5",
+   "update": true,
+   "n_entries": 79,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "obsidian-linter-auto-table-of-contents",
+     "repo": "obsidian-linter",
+     "tag": "OBS-543"
+    },
+    {
+     "n": 2,
+     "task_id": "obsidian-linter-link-format-conversion",
+     "repo": "obsidian-linter",
+     "tag": "OBS-338"
+    },
+    {
+     "n": 3,
+     "task_id": "obsidian-linter-scoped-ignore-markers",
+     "repo": "obsidian-linter",
+     "tag": "OBS-895"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:OBS-543",
+     "task_id:obsidian-linter-auto-table-of-contents",
+     "branch:feature/auto-table-of-contents",
+     "slug:auto-table-of-contents"
+    ],
+    "2": [
+     "tag:OBS-338",
+     "task_id:obsidian-linter-link-format-conversion",
+     "branch:feature/link-format-conversion",
+     "slug:link-format-conversion"
+    ],
+    "3": [
+     "tag:OBS-895",
+     "task_id:obsidian-linter-scoped-ignore-markers",
+     "branch:feature/scoped-ignore-markers",
+     "slug:scoped-ignore-markers"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u1/p1/compaction.json",
+   "summary_sha256": "98a1a4ac76bbf6436162ed36f493cc394e140b107805ae664ececd8045c24ad5",
+   "update": false,
+   "n_entries": 33,
+   "excluded": {
+    "no_history": 1,
+    "separator": 1,
+    "bold_heading": 4,
+    "heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u1/p2/compaction.json",
+   "summary_sha256": "a0eec125309fbc2ec79ce1cd986648f8882e648694115fab34d76976eeff3b33",
+   "update": true,
+   "n_entries": 71,
+   "excluded": {
+    "heading": 12,
+    "bold_heading": 3,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**DRZ-712 (all complete and pushed):**",
+     "tasks": [
+      1
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**OXV-203 exploration (new repo):**",
+     "tasks": [
+      2
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 2,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "2": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u1/p3/compaction.json",
+   "summary_sha256": "0e9500b420b92221ca5ccad74af1efaa1f2539275badcb85cd8ebe9c66393d63",
+   "update": true,
+   "n_entries": 71,
+   "excluded": {
+    "heading": 9,
+    "bold_heading": 6,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**DRZ-712 (all complete and pushed):**",
+     "tasks": [
+      1
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**OXV-203 exploration (new repo):**",
+     "tasks": [
+      2
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**OXV-203 implementation (in this session):**",
+     "tasks": [
+      2
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 2,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    },
+    {
+     "n": 3,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "2": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ],
+    "3": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u1/p4/compaction.json",
+   "summary_sha256": "80d0fa826dc558de77eb9498ce2da565b4ac606c4ae471a7b8bd61c25f6c0150",
+   "update": true,
+   "n_entries": 58,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 4
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**New module `src/cattrs/partial.py` (~635 lines) — created and iterated:**",
+     "tasks": [
+      4
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 2,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    },
+    {
+     "n": 3,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    },
+    {
+     "n": 4,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "2": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ],
+    "3": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ],
+    "4": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u2/p1/compaction.json",
+   "summary_sha256": "3bcb80db2de749cc1cef81f53c2fa1cc867247a276a1760aee17922e887f4aa9",
+   "update": false,
+   "n_entries": 61,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u2/p2/compaction.json",
+   "summary_sha256": "3a6a524636b56a3d461afc3a78dc0b8aaadec4abffa3f608e855d2a076798a43",
+   "update": true,
+   "n_entries": 66,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    },
+    {
+     "n": 2,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ],
+    "2": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u2/p3/compaction.json",
+   "summary_sha256": "a000fb1b9c069bd31ce1142dde51a189110af3be54cfe99c6d88e7c2fd27b589",
+   "update": true,
+   "n_entries": 39,
+   "excluded": {
+    "heading": 7,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    },
+    {
+     "n": 2,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 3,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ],
+    "2": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "3": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u2/p4/compaction.json",
+   "summary_sha256": "1918c7252e050437922ede586e8449a3cff2a07478372c14256572617db54bd1",
+   "update": true,
+   "n_entries": 51,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    },
+    {
+     "n": 2,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 3,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    },
+    {
+     "n": 4,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ],
+    "2": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "3": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ],
+    "4": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u3/p1/compaction.json",
+   "summary_sha256": "4da4e799f0a4734e5b39c18df6717d890c0036ead5d9ef02bb3bb56fe5135da3",
+   "update": false,
+   "n_entries": 70,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u3/p2/compaction.json",
+   "summary_sha256": "e7689e1e64b07deb955d893a05eb603a338415b93a242581831962f9a5b72826",
+   "update": true,
+   "n_entries": 24,
+   "excluded": {
+    "heading": 5,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 2,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "2": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u3/p3/compaction.json",
+   "summary_sha256": "74492f47ee4b0f38c664f0eb55d92dcf42f7087ef88e9b7647b14a5414e8e3ce",
+   "update": true,
+   "n_entries": 90,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 5
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**New source files created in `packages/vitest/src/node/`:**",
+     "tasks": [
+      3
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 2,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 3,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "2": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "3": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u3/p4/compaction.json",
+   "summary_sha256": "f8651c699422afcb6012dfce947092a0ce77f8015083a39c432ba6b39e677414",
+   "update": true,
+   "n_entries": 50,
+   "excluded": {
+    "heading": 10,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 2,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 3,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 4,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "2": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "3": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "4": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u4/p1/compaction.json",
+   "summary_sha256": "01e85bf6bf1d589992645c1fa88a918543ea13fb928d895f771c495e6eacfcf9",
+   "update": false,
+   "n_entries": 34,
+   "excluded": {
+    "no_history": 1,
+    "separator": 1,
+    "bold_heading": 3,
+    "heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u4/p2/compaction.json",
+   "summary_sha256": "0a572229ae4249bbf5bd1d47e31ae79d12889bcc4014a5deb20b0f8bdee3336e",
+   "update": true,
+   "n_entries": 95,
+   "excluded": {
+    "heading": 12,
+    "bold_heading": 8,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**VIT-295 — COMPLETE and pushed:**",
+     "tasks": [
+      1
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**RET-292 — analysis complete:**",
+     "tasks": [
+      2
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**Core container (`returns/validated.py`, new file):**",
+     "tasks": [
+      2
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 2,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "2": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u4/p3/compaction.json",
+   "summary_sha256": "ede3ddc33fbb44d45539a769a1882417e08abbdcaf6d22bfce9c8c7c68ca67f4",
+   "update": true,
+   "n_entries": 73,
+   "excluded": {
+    "heading": 12,
+    "bold_heading": 4,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**VIT-295 — COMPLETE and pushed:**",
+     "tasks": [
+      1
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**RET-292 — COMPLETE, committed, rebased, pushed:**",
+     "tasks": [
+      2
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**OXV-203 — exploration + repro done, implementation not started:**",
+     "tasks": [
+      3
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 2,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    },
+    {
+     "n": 3,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "2": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ],
+    "3": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u4/p4/compaction.json",
+   "summary_sha256": "33eaabc3c96fe9cb9c1e857fbbc070d6522501466caafd0aad1958735a1cf65a",
+   "update": true,
+   "n_entries": 70,
+   "excluded": {
+    "heading": 12,
+    "bold_heading": 3,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**OXV-203 — COMPLETE (user: \"Thanks, that's done\"):**",
+     "tasks": [
+      3
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**DRZ-712 — exploration complete, implementation NOT started:**",
+     "tasks": [
+      4
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 2,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    },
+    {
+     "n": 3,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    },
+    {
+     "n": 4,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "2": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ],
+    "3": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ],
+    "4": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u5/p1/compaction.json",
+   "summary_sha256": "8ab830290c5fc5b6166870e6a9506e50ed529974788c2123b9821fe35e3f7a17",
+   "update": false,
+   "n_entries": 78,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u5/p2/compaction.json",
+   "summary_sha256": "26f70cf9b75e65a5bb7711b614a288f5a02124a0c28ed41a06858ce5f139bf88",
+   "update": true,
+   "n_entries": 90,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    },
+    {
+     "n": 2,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ],
+    "2": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u5/p3/compaction.json",
+   "summary_sha256": "6d1586a53476dd29022834eb466cdd8c7690387c5b997dc09d9b309bea6ade25",
+   "update": true,
+   "n_entries": 48,
+   "excluded": {
+    "heading": 7,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    },
+    {
+     "n": 2,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    },
+    {
+     "n": 3,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ],
+    "2": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ],
+    "3": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u5/p4/compaction.json",
+   "summary_sha256": "5fa3ecf6dea3d14ceaea33c97dd2995f4252391d374ea7c134c915ee857241f4",
+   "update": true,
+   "n_entries": 86,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    },
+    {
+     "n": 2,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    },
+    {
+     "n": 3,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 4,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ],
+    "2": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ],
+    "3": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "4": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u6/p1/compaction.json",
+   "summary_sha256": "f557e98831138f70b203fba3aa2d7788f160c6a352374447fda306b016d30e8c",
+   "update": false,
+   "n_entries": 70,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u6/p2/compaction.json",
+   "summary_sha256": "dcbca36f0103a9744c23714ffa01bc31aa39f37bf14cad26741b8c9e91ff2a6e",
+   "update": true,
+   "n_entries": 132,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 9
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 2,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "2": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u6/p3/compaction.json",
+   "summary_sha256": "3bb894d5df96cbd0a737afeee3d49110af42ca8214e1bd68f993378bae14214c",
+   "update": true,
+   "n_entries": 27,
+   "excluded": {
+    "heading": 4,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 2,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 3,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "2": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "3": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u6/p4/compaction.json",
+   "summary_sha256": "50a2e93d2c1dec010e22253d18d5800ba7f416a1ee5b19e0a8b0c44e16756fb7",
+   "update": true,
+   "n_entries": 78,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 6
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**Interface (`returns/interfaces/specific/validated.py`, new):**",
+     "tasks": [
+      4
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**Container (`returns/validated.py`, new):**",
+     "tasks": [
+      4
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**Git state (branch `feature/validated-error-accumulation`):**",
+     "tasks": [
+      4
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 2,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 3,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    },
+    {
+     "n": 4,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "2": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "3": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ],
+    "4": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u7/p1/compaction.json",
+   "summary_sha256": "716a568a329a414db5a659f71525d0baffd76dd28056eca6f3af13897a54f0b3",
+   "update": false,
+   "n_entries": 83,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 5
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u7/p2/compaction.json",
+   "summary_sha256": "ff81b2b7997873ffcebdf0233576c635f14c834dc20eb107135383ae6998481b",
+   "update": true,
+   "n_entries": 92,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 4
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    },
+    {
+     "n": 2,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ],
+    "2": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u7/p3/compaction.json",
+   "summary_sha256": "bbd8ece6c6912b13d56ff658dd7202f46e726115c0654ff454d604250ad774b9",
+   "update": true,
+   "n_entries": 55,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    },
+    {
+     "n": 2,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    },
+    {
+     "n": 3,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ],
+    "2": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ],
+    "3": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u7/p4/compaction.json",
+   "summary_sha256": "5880748624729367bdff247b9946b553b39f146b57716b998504c18f6c0a5d38",
+   "update": true,
+   "n_entries": 94,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "arcane-drift-detection-baselines",
+     "repo": "arcane",
+     "tag": "ARC-151"
+    },
+    {
+     "n": 2,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    },
+    {
+     "n": 3,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 4,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:ARC-151",
+     "task_id:arcane-drift-detection-baselines",
+     "branch:feature/drift-detection-baselines",
+     "slug:drift-detection-baselines",
+     "repo:arcane",
+     "package:arcane-email-templates",
+     "package:arcane-frontend",
+     "package:arcane-repo",
+     "package:github.com/getarcaneapp/arcane/backend",
+     "package:github.com/getarcaneapp/arcane/cli",
+     "package:github.com/getarcaneapp/arcane/types"
+    ],
+    "2": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ],
+    "3": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "4": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u8/p1/compaction.json",
+   "summary_sha256": "a825efac2adbd57d3b878962aab1e5c98119eafa04416652950a7e140b0cce77",
+   "update": false,
+   "n_entries": 63,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u8/p2/compaction.json",
+   "summary_sha256": "7358956da32bf32fd132445dacbdd6f03d491a1265afb33d1cc6e1237a6dd959",
+   "update": true,
+   "n_entries": 78,
+   "excluded": {
+    "heading": 12,
+    "bold_heading": 5,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**KCP-256 (complete):**",
+     "tasks": [
+      1
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**BOA-332 (recon + first artifact):**",
+     "tasks": [
+      2
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**Core implementation (in `/app`, Boa repo):**",
+     "tasks": [
+      2
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    },
+    {
+     "n": 2,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ],
+    "2": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u8/p3/compaction.json",
+   "summary_sha256": "22a02c419b93b30471b2b1d194449a9a0c3a89f0368a1eac2fa0197a8c1170d1",
+   "update": true,
+   "n_entries": 52,
+   "excluded": {
+    "heading": 7,
+    "bold_heading": 4,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**KCP-256 (complete):**",
+     "tasks": [
+      1
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**BOA-332 (complete):**",
+     "tasks": [
+      2
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**CAT-518 (recon — latest turns):**",
+     "tasks": [
+      3
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    },
+    {
+     "n": 2,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 3,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ],
+    "2": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "3": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/u8/p4/compaction.json",
+   "summary_sha256": "cfe6628a61708acd830e4db3d206668466ee5137d2a2af3272b24548166d9ab1",
+   "update": true,
+   "n_entries": 75,
+   "excluded": {
+    "heading": 12,
+    "bold_heading": 5,
+    "separator": 1
+   },
+   "excluded_headings_with_task_ids": [
+    {
+     "kind": "bold_heading",
+     "text": "**KCP-256 (complete):**",
+     "tasks": [
+      1
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**BOA-332 (complete):**",
+     "tasks": [
+      2
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**CAT-518 (complete):**",
+     "tasks": [
+      3
+     ]
+    },
+    {
+     "kind": "bold_heading",
+     "text": "**DDB-232 (recon — latest turns):**",
+     "tasks": [
+      4
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    },
+    {
+     "n": 2,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 3,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    },
+    {
+     "n": 4,
+     "task_id": "dynamodb-toolbox-conditional-attribute-requirements",
+     "repo": "dynamodb-toolbox",
+     "tag": "DDB-232"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ],
+    "2": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "3": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ],
+    "4": [
+     "tag:DDB-232",
+     "task_id:dynamodb-toolbox-conditional-attribute-requirements",
+     "branch:feature/conditional-attribute-requirements",
+     "slug:conditional-attribute-requirements",
+     "repo:dynamodb-toolbox",
+     "repo:dynamodb"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  }
+ ]
+}

@@ -11,6 +11,7 @@ import json
 import os
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -1053,6 +1054,10 @@ def _native_env(monkeypatch, m, tmp_path, ps="", inspect=""):
         raise AssertionError(argv)
     monkeypatch.setattr("subprocess.run", run)
     monkeypatch.setattr(m, "docker_disk_free_gb", lambda: 500.0)
+    # the gate's host-disk reading too, so the tests don't depend on this machine's free disk
+    monkeypatch.setattr(m.shutil, "disk_usage",
+                        lambda path: SimpleNamespace(total=1000 * 2**30, used=500 * 2**30,
+                                                     free=500 * 2**30))
     monkeypatch.setattr(m.os, "getloadavg", lambda: (1.0, 1.0, 1.0))
     return docker_calls
 
