@@ -141,7 +141,7 @@ def test_harness_values_equal_readout_fields_and_text():
     assert d["pi"]["terms"] == {"with_terms": [6, 12], "without_terms": [10, 20]}
     assert kn(d["agy"]["first"]) == (4, 12)  # Advisor's expected Antigravity numbers
     assert kn(d["agy"]["divergent"]) == (1, 12) and kn(d["agy"]["clean"]) == (0, 12)
-    assert d["agy"]["label"] == "Antigravity\n+ gemini-3.8-flash-low"  # no "agy" code
+    assert d["agy"]["label"] == "Antigravity\n+ Gemini 3.8 Flash\n(low effort)"  # no raw ids
     md = text("harness/readout.md")
     split = next(x for x in h["exact_splits"] if x["label"].startswith("agy + "))
     assert split["overwrote"] == [0, 4] and split["kept"] == [1, 8]
