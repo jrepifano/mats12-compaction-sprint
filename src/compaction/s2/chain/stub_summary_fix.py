@@ -175,9 +175,12 @@ def _run(root: Path, prior: str) -> dict:
     st2 = D.load_state(root / "state.json")
     out2 = F.run_all(runs2, st2, None, None, tasks_, root, concurrency=4,
                      model_for=_empty_model_for, grade=False)
-    _check(checks, "an empty summary ends every slot of its unit as 'compaction failed'",
+    _check(checks, "an empty summary in both rounds ends every slot of its unit as "
+           "'compaction failed'",
            set(out2.values()) == {"compaction failed"}
-           and all(st2["b"][b.id].get("compaction_failures") for b in runs2), out2)
+           and all(st2["b"][b.id].get("compaction_failures") for b in runs2)
+           and all(len(F.failed_rounds(F.comp_path(root, b))) == F.COMPACTION_ROUNDS
+                   for b in runs2), out2)
     rows2 = [json.loads(x) for x in F.write_rows(st2, runs2, root).read_text().splitlines()]
     _check(checks, "a failed slot's row is unknown, with its failure kept",
            all(r["teammate_lost"] is None and r["compaction_failures"] for r in rows2), None)

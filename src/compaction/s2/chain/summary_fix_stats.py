@@ -127,13 +127,23 @@ def cluster_bootstrap_ci(rows, fix: str, base: str = "native", n: int = 10000,
 
 
 def _risk(rows) -> dict[str, dict]:
-    """Per arm: assigned slots, known runs, lost runs, risk among known."""
+    """Per arm: assigned slots, known runs, lost runs, risk among known, and slots whose
+    compaction failed before the retry round (any failed round) and after it (final)."""
     out = {}
     for arm in ARMS:
-        vals = [r["teammate_lost"] for r in rows if r["arm"] == arm]
+        mine = [r for r in rows if r["arm"] == arm]
+        vals = [r["teammate_lost"] for r in mine]
         known = [bool(v) for v in vals if v is not None]
         out[arm] = {"assigned": len(vals), "known": len(known), "lost": sum(known),
-                    "risk": sum(known) / len(known) if known else None}
+                    "risk": sum(known) / len(known) if known else None,
+                    "compaction_failed_before_retry": sum(
+                        1 for r in mine if r.get("compaction_rounds_failed")
+                        or r.get("compaction_failures")
+                        or (r.get("compaction") or {}).get("failed_rounds")),
+                    # write_rows' compaction_final (every round failed), else the state
+                    "compaction_failed_after_retry": sum(
+                        1 for r in mine if r.get("compaction_final",
+                                                 r.get("state") == "compaction failed"))}
     return out
 
 

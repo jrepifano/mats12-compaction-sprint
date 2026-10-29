@@ -136,17 +136,163 @@ def test_a_failed_compaction_is_final_and_shared_with_line(tmp_path):
         calls.append(kind)
         return StubModel(actions=[], summary=lambda m: "", route=ROUTES["stub"])
     nat = F.fix_run("httpx-np-2", "native", 1)
-    with pytest.raises(F.CompactionFailed, match="empty summary"):
+    with pytest.raises(F.CompactionRetry, match="round 1"):
         F.boundary(nat, h, empty, tmp_path)
+    assert not F.compaction_cached(tmp_path, nat)  # one more round is due
+    n1 = len(calls)
+    with pytest.raises(F.CompactionRetry):  # no retry round without retry_ok
+        F.boundary(nat, h, empty, tmp_path)
+    assert len(calls) == n1
+    with pytest.raises(F.CompactionFailed, match="empty summary"):
+        F.boundary(nat, h, empty, tmp_path, retry_ok=True)
     assert F.failed_path(F.comp_path(tmp_path, nat)).exists() and F.compaction_cached(tmp_path,
                                                                                          nat)
     rec = json.loads(F.failed_path(F.comp_path(tmp_path, nat)).read_text())
-    assert rec["usage"] and all(u["finish_reason"] for u in rec["usage"]) and rec["requests"]
+    assert [r["round"] for r in rec["rounds"]] == list(range(1, F.COMPACTION_ROUNDS + 1))
+    assert all(r["usage"] and all(u["finish_reason"] for u in r["usage"]) and r["requests"]
+               for r in rec["rounds"])
     n = len(calls)
     for arm in ("native", "line"):  # neither retries: final, and line needs native's
         with pytest.raises(F.CompactionFailed):
             F.boundary(F.fix_run("httpx-np-2", arm, 1), h, _mf(calls), tmp_path)
     assert len(calls) == n
+
+
+def _one_round_failed(tmp_path: Path, b) -> None:
+    """A failure file as written before the retry rule: one round, flat."""
+    p = F.failed_path(F.comp_path(tmp_path, b))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"arm": b.arm, "unit": b.unit, "utc": "t0",
+                             "error": "ModelError: empty summary from pi",
+                             "usage": [{"label": "turn_prefix", "attempt": 1,
+                                        "finish_reason": "length"}]}))
+
+
+def test_a_one_round_failure_gets_exactly_one_more_round(tmp_path):
+    h = _hist(tmp_path)
+    pl = F.fix_run("httpx-np-4", "placebo", 1)
+    _one_round_failed(tmp_path, pl)
+    assert not F.compaction_cached(tmp_path, pl) and not F.compaction_final(tmp_path, pl)
+    calls = []
+    with pytest.raises(F.CompactionRetry):
+        F.boundary(pl, h, _mf(calls), tmp_path)
+    assert calls == []
+    rec = F.boundary(pl, h, _mf(calls), tmp_path, retry_ok=True)  # the retry round succeeds
+    assert calls == ["compaction"] and F.comp_path(tmp_path, pl).exists()
+    assert len(rec["failed_rounds"]) == 1 and F.compaction_cached(tmp_path, pl)
+    s = F.compaction_summary(rec)
+    assert s["failed_rounds"][0]["usage"][0]["finish_reason"] == "length"
+    F.boundary(pl, h, _mf(calls), tmp_path)  # written: reused, no new round
+    assert calls == ["compaction"]
+
+
+def test_a_failed_retry_round_is_final(tmp_path):
+    h = _hist(tmp_path)
+    pl = F.fix_run("httpx-np-4", "placebo", 1)
+    _one_round_failed(tmp_path, pl)
+    calls = []
+
+    def empty(kind, out):
+        calls.append(kind)
+        return StubModel(actions=[], summary=lambda m: "", route=ROUTES["stub"])
+    with pytest.raises(F.CompactionFailed):
+        F.boundary(pl, h, empty, tmp_path, retry_ok=True)
+    rounds = F.failed_rounds(F.comp_path(tmp_path, pl))
+    assert len(rounds) == F.COMPACTION_ROUNDS == 2 and rounds[0]["utc"] == "t0"
+    assert F.compaction_final(tmp_path, pl) and calls == ["compaction"]
+    with pytest.raises(F.CompactionFailed):
+        F.boundary(pl, h, empty, tmp_path)
+    assert calls == ["compaction"]
+
+
+def test_a_slot_failed_before_the_retry_rule_is_taken_up_again(tmp_path, monkeypatch):
+    b = F.fix_run("httpx-np-4", "placebo", 1)
+    _one_round_failed(tmp_path, b)
+    monkeypatch.setattr(F.M, "load_snapshot", lambda root, hid: _hist(tmp_path))
+    monkeypatch.setattr(F.D, "save_state", lambda st: None)
+    monkeypatch.setattr(F.D, "stop_requested", lambda: False)
+    st = {"b": {b.id: {"attempts": 0, "state": "compaction failed",
+                       "compaction_failures": [{"error": "empty"}]}}}
+    calls = []
+    rec = F.run_one(b, st, None, None, {b.cell.b_task: object()}, tmp_path,
+                    model_for=_mf(calls), admit=lambda: False)
+    assert rec["state"] == "held: cap" and calls == []  # taken up; the gate comes first
+    assert rec["compaction_failures"]  # the before-retry record stays
+    F.failed_path(F.comp_path(tmp_path, b)).write_text(json.dumps(
+        {"rounds": [{"error": "e1"}, {"error": "e2"}], "error": "e2"}))
+    st["b"][b.id]["state"] = "compaction failed"
+    rec = F.run_one(b, st, None, None, {b.cell.b_task: object()}, tmp_path,
+                    model_for=_mf(calls), admit=lambda: True)
+    assert rec["state"] == "compaction failed" and calls == []  # final: returned at once
+
+
+def test_the_retry_round_waits_for_the_budget_gate(tmp_path, monkeypatch):
+    b = F.fix_run("httpx-np-2", "ledger", 1)
+    monkeypatch.setattr(F.M, "load_snapshot", lambda root, hid: _hist(tmp_path))
+    monkeypatch.setattr(F.D, "save_state", lambda st: None)
+    monkeypatch.setattr(F.D, "stop_requested", lambda: False)
+    calls, gate = [], iter([True, False])
+
+    def empty(kind, out):
+        calls.append(kind)
+        return StubModel(actions=[], summary=lambda m: "", route=ROUTES["stub"])
+    st = {"b": {}}
+    rec = F.run_one(b, st, None, None, {b.cell.b_task: object()}, tmp_path,
+                    model_for=empty, admit=lambda: next(gate))
+    assert rec["state"] == "held: cap" and calls == ["compaction"]  # round 2 not bought
+    assert len(F.failed_rounds(F.comp_path(tmp_path, b))) == 1
+    assert not F.compaction_final(tmp_path, b)
+
+
+def test_a_slot_that_waited_on_a_failed_shared_round_checks_before_round_2(tmp_path,
+                                                                            monkeypatch):
+    """line waited on native's lock while native's round 1 failed (the file is there when line
+    gets the lock): line checks the stop and the gate before buying round 2 (astra r2)."""
+    line = F.fix_run("httpx-np-2", "line", 1)
+    _one_round_failed(tmp_path, F.fix_run("httpx-np-2", "native", 1))
+    monkeypatch.setattr(F.M, "load_snapshot", lambda root, hid: _hist(tmp_path))
+    monkeypatch.setattr(F.D, "save_state", lambda st: None)
+    calls = []
+    monkeypatch.setattr(F.D, "stop_requested", lambda: False)
+    gate = iter([True, False])
+    st = {"b": {}}
+    rec = F.run_one(line, st, None, None, {line.cell.b_task: object()}, tmp_path,
+                    model_for=_mf(calls), admit=lambda: next(gate))
+    assert rec["state"] == "held: cap" and calls == []
+    stops = iter([False, True])
+    monkeypatch.setattr(F.D, "stop_requested", lambda: next(stops))
+    with pytest.raises(F.L.Stopped):
+        F.run_one(line, {"b": {}}, None, None, {line.cell.b_task: object()}, tmp_path,
+                  model_for=_mf(calls), admit=lambda: True)
+    assert calls == []
+
+
+def test_rows_carry_compaction_finality_from_the_files(tmp_path):
+    runs = [x for x in F.order(1, ("httpx-np-4",), 1) if x.arm == "placebo"]
+    _one_round_failed(tmp_path, runs[0])
+    st = {"b": {runs[0].id: {"state": "compaction failed",
+                             "compaction_failures": [{"error": "empty"}]}}}
+    rows = [json.loads(x) for x in F.write_rows(st, runs, tmp_path).read_text().splitlines()]
+    assert rows[0]["compaction_rounds_failed"] == 1 and rows[0]["compaction_final"] is False
+    from compaction.s2.chain import summary_fix_stats as FS
+    r = FS._risk(rows)["placebo"]
+    assert (r["compaction_failed_before_retry"], r["compaction_failed_after_retry"]) == (1, 0)
+
+
+def test_risk_counts_compaction_failures_before_and_after_the_retry():
+    from compaction.s2.chain import summary_fix_stats as FS
+    rows = [{"arm": "placebo", "teammate_lost": True, "state": "done",
+             "compaction_failures": [{"e": 1}], "compaction": {"failed_rounds": [{}]}},
+            {"arm": "placebo", "teammate_lost": None, "state": "compaction failed",
+             "compaction_failures": [{"e": 1}], "compaction": None},
+            {"arm": "native", "teammate_lost": False, "state": "done",
+             "compaction": {"failed_rounds": [{}]}},
+            {"arm": "native", "teammate_lost": True, "state": "done", "compaction": {}}]
+    r = FS._risk(rows)
+    assert (r["placebo"]["compaction_failed_before_retry"],
+            r["placebo"]["compaction_failed_after_retry"]) == (2, 1)
+    assert (r["native"]["compaction_failed_before_retry"],
+            r["native"]["compaction_failed_after_retry"]) == (1, 0)
 
 
 def test_the_budget_gate_comes_before_a_paid_summary(tmp_path, monkeypatch):

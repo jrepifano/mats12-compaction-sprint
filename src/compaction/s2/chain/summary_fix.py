@@ -16,7 +16,9 @@ task-2 wording and scorer) under five boundary arms, `replicates` times:
   native's, byte for byte.
 pi's summarizer settings (output cap, reasoning effort) are the same in every arm; every
 summary's attempts, finish reasons and tokens are recorded. A compaction that stays empty after
-pi's tries ends that slot as `compaction failed` (unknown in the primary; reported by arm).
+pi's tries gets exactly one more round of them (COMPACTION_ROUNDS, every arm alike); one that
+fails both rounds ends that slot as `compaction failed` (unknown in the primary; reported by
+arm, before and after the retry).
 
 A unit is one history x one replicate. Within each unit a seeded draw (design.seed) gives each
 arm its launch position; units go replicate-major (every history's replicate 1 first). Every
@@ -118,10 +120,21 @@ def order_sha256(runs: list[FixRun]) -> str:
 _COMP_LOCKS: defaultdict[str, threading.Lock] = defaultdict(threading.Lock)  # per compaction
 
 
+# pi's tries (3), then exactly one more round of them with the same settings and prompt, in
+# every arm, before a compaction counts as failed (Research Advisor under Jacob's delegation,
+# 28 Oct: the same rule as experiment 4's retry; np-4 placebo had failed one round)
+COMPACTION_ROUNDS = 2
+
+
 class CompactionFailed(RuntimeError):
-    """pi's summary stayed empty after its tries: recorded once (`<compaction>.failed.json`)
-    and final for every slot that needs that compaction (line and neutral_opening share
-    native's)."""
+    """pi's summary stayed empty in every round (COMPACTION_ROUNDS): recorded in
+    `<compaction>.failed.json` and final for every slot that needs that compaction (line and
+    neutral_opening share native's)."""
+
+
+class CompactionRetry(RuntimeError):
+    """A round failed and another is due: run_one checks the stop and the budget gate before
+    buying it (astra r1 B1)."""
 
 
 def comp_path(root: Path, b: FixRun) -> Path:
@@ -140,10 +153,25 @@ def failed_path(p: Path) -> Path:
     return p.with_suffix(".failed.json")
 
 
+def failed_rounds(p: Path) -> list[dict]:
+    """The failed rounds recorded for compaction `p` (a file from before the retry rule holds
+    one round, flat)."""
+    f = failed_path(p)
+    if not f.exists():
+        return []
+    d = json.loads(f.read_text())
+    return d.get("rounds", [d])
+
+
+def compaction_final(root: Path, b: FixRun) -> bool:
+    """Whether the slot's compaction failed for good (every round, and never written)."""
+    p = comp_path(root, b)
+    return not p.exists() and len(failed_rounds(p)) >= COMPACTION_ROUNDS
+
+
 def compaction_cached(root: Path, b: FixRun) -> bool:
     """Whether the slot's compaction is already settled (written, or failed for good)."""
-    p = comp_path(root, b)
-    return p.exists() or failed_path(p).exists()
+    return comp_path(root, b).exists() or compaction_final(root, b)
 
 
 def compaction_summary(rec: dict) -> dict:
@@ -160,23 +188,41 @@ def compaction_summary(rec: dict) -> dict:
             "custom_sha256": hashlib.sha256(ci.encode()).hexdigest() if ci else None,
             "custom_calls": info.get("custom_calls"),
             "pre_tokens_est": rec.get("pre_tokens_est"),
-            "post_tokens_est": rec.get("post_tokens_est")}
+            "post_tokens_est": rec.get("post_tokens_est"),
+            "failed_rounds": [{"round": r.get("round", i), "utc": r.get("utc"),
+                               "error": (r.get("error") or "")[:300],
+                               "usage": [{k: u.get(k) for k in ("label", "attempt",
+                                                                "finish_reason",
+                                                                "completion_tokens",
+                                                                "reasoning_tokens")}
+                                         for u in r.get("usage") or []]}
+                              for i, r in enumerate(rec.get("failed_rounds") or [], 1)]}
 
 
-def boundary(b: FixRun, hist: SE.AHistory, model_for: Callable, root: Path) -> dict:
+def boundary(b: FixRun, hist: SE.AHistory, model_for: Callable, root: Path, *,
+             retry_ok: bool = False) -> dict:
     """The arm's compaction record (written once, reused on resume). native, ledger and
     placebo: a fresh pi compaction of the saved messages (ledger and placebo with their focus);
     line: native's, with the line appended after the summary in pi's wrapper message;
     neutral_opening: native's, unchanged (its difference is the lead line, `lead_for`).
-    Raises CompactionFailed when pi's summary stayed empty (now or recorded before: a failed
-    compaction is final, never retried); StageCapReached passes through."""
+    One round per call: a failed round is recorded in `<compaction>.failed.json` (and, once a
+    round succeeds, in the record's `failed_rounds`), then raises CompactionRetry while rounds
+    remain, else CompactionFailed (also when every round failed before). A retry round is
+    bought only with `retry_ok` (run_one: after its stop check and the budget gate); without
+    it, a compaction with a failed round raises CompactionRetry under the lock, so a slot that
+    waited on another's failing round checks too (astra r2). Any ModelError counts
+    as a failed round (pi's empty summary after its tries, or a call that failed after its
+    retries; the error text tells them apart). StageCapReached passes through."""
     p = comp_path(root, b)
     with _COMP_LOCKS[str(p)]:  # native, line, neutral_opening share one: computed once
-        if failed_path(p).exists():
-            raise CompactionFailed(json.loads(failed_path(p).read_text())["error"])
         if p.exists():
             rec = json.loads(p.read_text())
         else:
+            rounds = failed_rounds(p)
+            if len(rounds) >= COMPACTION_ROUNDS:
+                raise CompactionFailed(rounds[-1]["error"])
+            if rounds and not retry_ok:
+                raise CompactionRetry(f"round {len(rounds)}: {rounds[-1]['error'][:300]}")
             arm = "native" if b.arm in SHARES_NATIVE else b.arm
             focus = text(FOCUS[arm]) if arm in FOCUS else None
             msgs = hist.messages
@@ -189,22 +235,27 @@ def boundary(b: FixRun, hist: SE.AHistory, model_for: Callable, root: Path) -> d
             except StageCapReached:
                 raise
             except ModelError as e:  # pi's empty summary, or a call that failed after its
-                # retries: final for this unit and arm (a stop or the stage cap passes)
+                # retries: one more round (after run_one's gate), then final for this unit
+                # and arm (a stop or the stage cap passes)
+                rounds.append({
+                    "round": len(rounds) + 1, "arm": arm, "unit": b.unit, "utc": D.utc(),
+                    "error": f"{type(e).__name__}: {str(e)[:1500]}",
+                    "cost_usd": getattr(e, "cost_usd", None),
+                    "usage": getattr(e, "usage", None),
+                    "requests": [{k: r.get(k) for k in ("label", "max_output_tokens")}
+                                 for r in getattr(e, "requests", None) or []]})
                 p.parent.mkdir(parents=True, exist_ok=True)
-                SE.dump(failed_path(p), {"arm": arm, "unit": b.unit, "utc": D.utc(),
-                                         "error": f"{type(e).__name__}: {str(e)[:1500]}",
-                                         "cost_usd": getattr(e, "cost_usd", None),
-                                         "usage": getattr(e, "usage", None),
-                                         "requests": [{k: r.get(k) for k in
-                                                       ("label", "max_output_tokens")}
-                                                      for r in getattr(e, "requests", None)
-                                                      or []]})
-                raise CompactionFailed(f"{type(e).__name__}: {str(e)[:500]}") from e
+                SE.dump(failed_path(p), {"arm": arm, "unit": b.unit,
+                                         "error": rounds[-1]["error"], "rounds": rounds})
+                if len(rounds) >= COMPACTION_ROUNDS:
+                    raise CompactionFailed(f"{type(e).__name__}: {str(e)[:500]}") from e
+                raise CompactionRetry(f"round {len(rounds)}: {str(e)[:300]}") from e
             bpt = model.route.bytes_per_token
             rec = comp.to_dict() | {"cost_usd": comp.cost_usd,
                                     "pre_tokens_est": SE.est_tokens(msgs, bpt),
                                     "post_tokens_est": SE.est_tokens(comp.post_messages, bpt),
-                                    "n_pre_messages": len(msgs), "arm": arm}
+                                    "n_pre_messages": len(msgs), "arm": arm,
+                                    "failed_rounds": rounds}
             p.parent.mkdir(parents=True, exist_ok=True)
             SE.dump(p, rec)
     if b.arm == "neutral_opening":
@@ -243,15 +294,17 @@ def run_one(b: FixRun, st: dict, route, spend, tasks_: dict, root: Path,
             admit: Callable[[], bool] | None = None, grade: bool = True) -> dict:
     """One slot: the arm's boundary, then the second task (driver.run_one_b's attempt rules:
     a stop or stage-cap interruption is redone as a new attempt, a failure before the first
-    call once), grading on the rig, scoring. A compaction that stays empty ends the slot as
-    "compaction failed": recorded once (`<compaction>.failed.json`, with each attempt's usage)
-    and final, never retried, for every slot that needs it."""
+    call once), grading on the rig, scoring. A compaction that stays empty in every round
+    (COMPACTION_ROUNDS) ends the slot as "compaction failed": recorded in
+    `<compaction>.failed.json` (each round's attempts and usage) and final for every slot that
+    needs it. A slot that failed under fewer rounds (before the retry rule) is taken up again:
+    its `compaction_failures` stay as the before-retry record."""
     caps = caps or {}
     rec = D.entry(st, "b", b.id, {"attempts": 0, "state": "pending", **b.to_dict()})
     if rec["state"] == "done":
         return rec
-    if rec["state"] == "compaction failed":
-        return rec  # final (CompactionFailed)
+    if rec["state"] == "compaction failed" and compaction_final(root, b):
+        return rec  # final (CompactionFailed in every round)
     mf = model_for or (lambda phase, out: D.paid_model(route, out, CC.RUN_CAP_USD, spend))
     task = tasks_[b.cell.b_task]
     hist = M.load_snapshot(root, b.history)
@@ -267,18 +320,31 @@ def run_one(b: FixRun, st: dict, route, spend, tasks_: dict, root: Path,
             D.save_state(st)
             return rec
         admitted = True
-    try:
-        comp = boundary(b, hist, mf, root)
-    except StageCapReached:
-        D.halt(st, "summary fix", f"stage cap refused a summary for {b.id}")
-    except CompactionFailed as e:
-        with D._LOCK:
-            rec["state"] = "compaction failed"
-            rec.setdefault("compaction_failures", []).append(
-                {"utc": D.utc(), "error": str(e)[:1000]})
-        D.save_state(st)
-        D.status(f"summary fix {b.id}: compaction failed: {str(e)[:200]}")
-        return rec
+    retry_ok = False
+    while True:
+        try:
+            comp = boundary(b, hist, mf, root, retry_ok=retry_ok)
+            break
+        except CompactionRetry as e:  # one more round, after the stop check and the gate
+            D.status(f"summary fix {b.id}: compaction {e}; one more round")
+            if D.stop_requested():
+                raise L.Stopped("stop requested") from e
+            if admit is not None and not admit():
+                with D._LOCK:
+                    rec["state"] = "held: cap"
+                D.save_state(st)
+                return rec
+            admitted = retry_ok = True
+        except StageCapReached:
+            D.halt(st, "summary fix", f"stage cap refused a summary for {b.id}")
+        except CompactionFailed as e:
+            with D._LOCK:
+                rec["state"] = "compaction failed"
+                rec.setdefault("compaction_failures", []).append(
+                    {"utc": D.utc(), "error": str(e)[:1000]})
+            D.save_state(st)
+            D.status(f"summary fix {b.id}: compaction failed: {str(e)[:200]}")
+            return rec
     rec["compaction"] = compaction_summary(comp)
     hist = dataclasses.replace(hist, compaction=comp)
     while True:
@@ -406,7 +472,10 @@ def write_rows(st: dict, runs: list[FixRun], root: Path) -> Path:
         base = {"pos": pos, "id": b.id, "history": b.history, "arm": b.arm,
                 "replicate": b.replicate, "unit": b.unit, "b_task": b.cell.b_task,
                 "state": rec.get("state"), "compaction": rec.get("compaction"),
-                "compaction_failures": rec.get("compaction_failures") or []}
+                "compaction_failures": rec.get("compaction_failures") or [],
+                # from the compaction files, so rows written before a resume are right too
+                "compaction_rounds_failed": len(failed_rounds(comp_path(root, b))),
+                "compaction_final": compaction_final(root, b)}
         if rec.get("state") == "done":
             rows.append(score(Path(rec["dir"]), b) | base)
         else:

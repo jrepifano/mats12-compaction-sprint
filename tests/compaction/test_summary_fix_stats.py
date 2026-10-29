@@ -109,7 +109,9 @@ def test_primary_ledger_clearly_helps():
     assert out["risk"]["native"]["risk"] == 1.0
     assert out["risk"]["ledger"]["lost"] == 1
     assert out["risk"]["placebo"] == {"assigned": 30, "known": 29, "lost": 29,
-                                      "risk": pytest.approx(1.0)}
+                                      "risk": pytest.approx(1.0),
+                                      "compaction_failed_before_retry": 0,
+                                      "compaction_failed_after_retry": 0}
     assert led["complete"]["diff_pts"] == pytest.approx(100 * (1 / 30 - 1))
     assert led["worst"]["p"] == pytest.approx(2 / 1024)
     assert led["holm"]["reject"] and led["ci_excludes_zero"] == -1
