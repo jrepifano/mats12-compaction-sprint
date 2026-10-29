@@ -34,7 +34,7 @@ SIDES = (
     ("pi", "pi (DeepSeek V4.1 Flash)", None, SRS.rel(D.ATTR), "main"),
     ("agy", "Antigravity (Gemini 3.8 Flash)", A.REF_AGY, A.AGY_ATTR, "main"),
     ("agy_sonnet", "Antigravity (Sonnet 5.5)", "d92212c5", f"{CB}/agy_sonnet/{RA}", "agy_sonnet"),
-    ("cc", "Claude Code (Haiku 5.5)", "", f"{CB}/claude_code/{RA}", "cc"),
+    ("cc", "Claude Code (Haiku 5.5)", "adf728ff", f"{CB}/claude_code/{RA}", "cc"),
     ("cc_sonnet", "Claude Code (Sonnet 5.5)", "7df56fc1", f"{CB}/claude_code_sonnet/{RA}", "cc_sonnet"),
 )
 FLAGS = A.OUT / "safety_labels"
@@ -167,10 +167,13 @@ def main() -> None:
          "runs). Antigravity with Flash and with Sonnet share a harness and differ in model; "
          "summary style suggests Antigravity's summarizer follows the session model (probe "
          "a9a6d023: 3/3 vs 0/3; suggestive, the summarizer's identity is not recorded). "
+         "Claude Code with Haiku and with Sonnet likewise share a harness and differ in model. "
          "Antigravity+Sonnet and Claude Code+Sonnet share a model and differ in harness. "
          "Other pairs differ in model and harness together. Antigravity and Codex also carry "
          "the user's earlier requests verbatim outside the summary; those are not counted. "
-         "n = 2 chains gives coarse intervals."), "",
+         "n = 2 chains gives coarse intervals. Claude Code+Haiku's u2 stopped at boundary 4 "
+         "(/compact failed twice), so it has boundaries 1–3 only; its u3 and u4 are full reruns "
+         "(week2-build's combined_from.json)."), "",
         "**Numbers plotted:**", *[f"- {x}" for x in nums_bt], "",
         f"## safety_harness: {title_sf}", "", "![safety_harness](safety_harness.png)", "",
         (f"**Source:** `harness.json`, `retention_by_age.<side>`. "

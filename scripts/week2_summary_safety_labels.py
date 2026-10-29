@@ -5,7 +5,7 @@ Research Advisor, 29 Oct: the safety-vs-other decay split is a slide J asked abo
 Entries from several harnesses are pooled, shuffled under opaque ids (harness, chain and boundary
 withheld) and split into parts; each part is one `codex exec` call (scripts/codex_review.sh,
 read-only) with the prompt below. A label set is extracted and labelled as a whole: "main" is pi
-and agy; "cc" is Claude Code (added when its attribution lands).
+and agy; the others are one harness each, labelled as they landed.
 
     uv run python scripts/week2_summary_safety_labels.py extract --set main
     (run each part: scripts/codex_review.sh <part prompt> <part out> medium 1500)
@@ -40,6 +40,8 @@ SETS = {
                      "results/sprint/week2/agy_chain5/agy/bulk/summary_rot/attributions.jsonl")},
     "agy_sonnet": {"agy_sonnet": (
         "d92212c5", "results/sprint/week2/agy_chain5/agy_sonnet/bulk/summary_rot/attributions.jsonl")},
+    "cc": {"cc": (
+        "adf728ff", "results/sprint/week2/agy_chain5/claude_code/bulk/summary_rot/attributions.jsonl")},
     "cc_sonnet": {"cc_sonnet": (
         "7df56fc1",
         "results/sprint/week2/agy_chain5/claude_code_sonnet/bulk/summary_rot/attributions.jsonl")},
