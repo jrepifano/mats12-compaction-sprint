@@ -22,15 +22,21 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 2. **Results up front.** One line per result, each pointing to its slide.
 3. **Every harness now compacts into the same structured summary.** All-harness comparison of what goes into the context after compaction; the prompt-structure diagram; what CLAUDE.md and AGENTS.md are and that harnesses re-attach them. Stay on this slide a while: Neel won't have looked at harnesses.
 
-### Week 1: offline data and how we checked it (compressed)
+### Week 1: offline data and how I checked it (compressed; order fixed 29 Oct from the v2 deck shown to J)
 
-4. **The offline data.** SWE-chat (real users' Claude Code sessions), PostTrainBench, FrontierML, Jacob's own sessions: 650 compactions, and the context lengths.
-5. **How we found items and checked the judge.** What an "item" is; the judge; the first validation gate failing and the pipeline bugs it exposed; the tuning rounds; 398 hand-labelled cards in all.
-6. **Live runs: the agent works in a sealed container while a simulated maintainer talks to it** (setup block diagram, Jacob 29 Oct, replacing the image-leak diagram). Diagram: agent harness ↔ simulated maintainer, both acting on the task's Docker container (no network), forked into arms at a compaction. One bullet only: SWE-Interact's images leaked the reference fix in git history, so I used images with that history removed. The rebuild counts (DeepSWE 40/40, SWE-bench Pro 24/24, Refactoring 15/15) and the 75/88 git-object mining are in the notes.
-7. **Summaries rarely drop anything that changes what the agent does next.** Headline the losses that matter (Opus-labelled consequential: 1–6% of items by source; about 11.5% of items flagged lost after the judge-precision correction, as context). The trajectory question: only 2/24 live compactions had a usable loss; the natural repair cohort was 0/17; the one signal (commit prefix, restored vs not, 2 compactions) is a lead. Caveat: "consequential" is Opus's label, not hand-checked.
-8. **Real users' sessions lose the most, and losses pile up with each compaction** (SWE-chat). About 20% of items lost (6% that matter); rules lost most (31%); about half or more lost by the 2nd compaction against about 1 in 4 at the 1st (60 hand-checked cards). Plus false "done" claims (29 Oct, Opus 5.5's read, not hand-checked): 10.0% of compactions [8.3, 12.1] (93/928) have a completion line the pre-compaction history contradicts; a floor, every first-pass false rechecked with search over the full history (`results/sprint/swechat_odd/scan_summary.md` on sprint/swechat-odd). We can't rerun SWE-chat sessions, which is why we moved to live runs.
-8b. **About 1 in 10 real users' summaries claims work is done when the history says it isn't** (added 29 Oct as deck slide 10): `false_done_by_model.png` on sprint/swechat-odd at f37bb33d; the model split is observational, not a ranking. Origin (29 Oct, 6aaea495, Opus 5.5's read, not hand-checked): about 3 in 4 false lines come from the summary itself (54% introduced, 20% inflated from a hedged agent claim; 70–74% under a sensitivity screen), 24% repeat the agent's own claim, mostly one later evidence had overturned.
-9. **Planted rules were almost never lost or broken.** All the negative live results on one slide (DeepSeek pilot, SWE-Interact, planted pilot, native harness arms), each linked to its setup slide in the backup.
+Deck slides 5–13:
+
+5. **I audited 650 real compactions from four sources** (context-length chart).
+6. **A summary loses an item if it drops or misstates it and nothing brings it back.** Defines an item (rules, permissions, decisions, commitments, task state; not trivial lines, interim results or carried-out requests) and the four-step pipeline: list items → grade against the summary → still available? → lost. Native diagram, from the v2 deck's method slide.
+7. **The first judge check failed, and my labels traced it to my own pipeline** (5 of 12 right; three causes).
+8. **After the fixes, about 7 in 10 of the judge's "lost" calls are right** (`03_judge_precision.png`; 41/59 Haiku, 40/57 Sonnet; precision only).
+9. **Summaries rarely drop anything that changes what the agent does next.**
+10. **Real users' sessions lose the most, and losses pile up with each compaction.**
+11. **About 1 in 10 real users' summaries claims work is done when the history says it isn't.**
+12. **SWE-Interact setup** (block diagram: agent loop and simulated maintainer on the laptop, commands into a sealed container, fork at a compaction into repair vs control; one bullet on the git-history leak).
+13. **Planted rules were almost never lost or broken** (Experiment 2: four reruns per compaction, no maintainer).
+
+Deck layout rules added 29 Oct: extra space between bullets (8 pt below each paragraph), not extra line spacing.
 
 ### Week 2: main results
 
