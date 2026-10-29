@@ -80,12 +80,10 @@ def main() -> None:
     ax.set_xlabel("")
     ax.set_ylabel('Compactions with a false "done" line (%)')
     tot = rs[0]
-    title = (f"About 1 in 10 real SWE-chat compactions ({100 * tot['v']:.0f}%) has a \"done\" claim\n"
-             "that Opus 5.5 finds the session's own history contradicts")  # fmt: skip
-    assert round(100 * tot["v"]) == 10, "the title says about 1 in 10"
-    fig.suptitle(title)
-    ax.set_title(f"SWE-chat: real users' coding-agent sessions, summarised by the session's own "
-                 f"model. {LABEL}.")  # fmt: skip
+    # one line, no captions in the image (Jacob, 29 Oct); the label stays in the README and slide
+    title = f'Opus 5.5 finds a contradicted "done" claim in {100 * tot["v"]:.0f}% of SWE-chat compactions'
+    assert round(100 * tot["v"]) == 10, "the README and slide say about 1 in 10"
+    ax.set_title(title)
     fig.tight_layout()
     OUT.mkdir(parents=True, exist_ok=True)
     name = "false_done_by_model"
@@ -101,7 +99,7 @@ def main() -> None:
             'plain seaborn defaults (AGENTS.md "Figures").'
         ),
         "",
-        f"## {name}: {title.replace(chr(10), ' ')}",
+        f"## {name}: {title}",
         "",
         f"![{name}]({name}.png)",
         "",
