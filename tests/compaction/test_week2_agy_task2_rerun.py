@@ -148,6 +148,18 @@ def test_the_rerun_config_raises_only_the_caps(rr, tmp_path):
     assert rr.MAX_SECONDS + 3600 <= I.CONTAINER_LIFETIME_S  # containers outlive the task
 
 
+def test_a_raised_cap_gets_its_own_roots_stage_and_config(rr, tmp_path, monkeypatch):
+    for k in ("MAX_CALLS", "BULK_DIR", "SMOKE_DIR", "STAGE"):
+        monkeypatch.setattr(rr, k, getattr(rr, k))  # restored after the test
+    old_bulk = rr.BULK_DIR
+    rr.use_cap(1600)
+    assert rr.BULK_DIR.name == "agy_rerun1600" and rr.BULK_DIR != old_bulk
+    assert rr.SMOKE_DIR.name == "agy_rerun1600_smoke"
+    assert rr.STAGE == "SPRINT-S2-AGY-RERUN1600"
+    cfg = rr.config(ORDER[0], tmp_path, fake_tasks(), host=None, quota=threading.Event())
+    assert (cfg.max_calls, cfg.max_seconds) == (1600, 4 * 3600)
+
+
 # ---------------------------------------------------------------------------- one attempt
 
 
@@ -317,6 +329,29 @@ def test_the_bulk_launches_nothing_after_the_quota_flag(rr, monkeypatch, tmp_pat
     assert prov["git_head"] and prov["code_sha256"]["src/compaction/s2/native/agy_fix.py"]
     asg = json.loads((root / "assignment.json").read_text())
     assert asg["order"] == order and asg["caps"]["max_calls"] == 800
+
+
+def test_the_bulk_can_launch_one_repos_histories_first(rr, monkeypatch, tmp_path):
+    order = [{"pos": i + 1, "round": 1, "first_task": repo, "arm": "divergent", "rep": i + 1,
+              "history": f"{repo}-np-{i + 1}"}
+             for i, repo in enumerate(("httpx", "tengo", "httpx", "tengo"))]
+    src = tmp_path / "agy"
+    src.mkdir()
+    (src / "assignment.json").write_text(json.dumps({"order": order}))
+    monkeypatch.setattr(rr, "SRC_DIR", src)
+    monkeypatch.setattr(rr, "preflight", lambda root, tasks: (
+        root.mkdir(parents=True, exist_ok=True), {"ok": True, "n": 4})[1])
+    launched = []
+
+    def run_one(o, root, tasks, **kw):
+        launched.append(o["history"])
+        att = root / o["history"] / "attempt1" / "b"
+        att.mkdir(parents=True)
+        X.skipped_run(att, end=X.END_QUOTA, why="q", second=True, primary_unknown="q")
+    rr.bulk("h", {"max_live": 1}, 1280, root=tmp_path / "rerun", tasks=fake_tasks(),
+            admit=lambda n, host, lim: (n == 0, {}), run_one=run_one, poll_s=0.01,
+            first_repo="tengo")
+    assert launched == ["tengo-np-2", "tengo-np-4", "httpx-np-1", "httpx-np-3"]
 
 
 def test_check_verifies_every_export_without_docker(rr, tmp_path):

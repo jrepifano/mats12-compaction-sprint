@@ -95,6 +95,17 @@ OWNED = ("scripts/week2_agy_task2_rerun.py", "src/compaction/s2/native/agy_chain
 assert MAX_SECONDS + 3600 <= I.CONTAINER_LIFETIME_S, "raise the container lifetime first"
 
 
+def use_cap(max_calls: int) -> None:
+    """Task 2's call cap for this process (Jacob, 29 Oct: raise it past 800 for the Flash
+    reruns). A cap other than 800 gets its own roots and stage (`agy_rerun<N>`), so runs under
+    different caps never share a root; call it before anything reads them."""
+    global MAX_CALLS, BULK_DIR, SMOKE_DIR, STAGE
+    MAX_CALLS = max_calls
+    BULK_DIR = HA.RAW / f"agy_rerun{max_calls}"
+    SMOKE_DIR = HA.RAW / f"agy_rerun{max_calls}_smoke"
+    STAGE = f"SPRINT-S2-AGY-RERUN{max_calls}"
+
+
 def utc() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -118,14 +129,16 @@ def source_attempt(hdir: Path) -> Path | None:
 
 def config(o: dict, out: Path, tasks: dict, *, host: str | None, quota: threading.Event,
            memory_mb: int = CC.AGENT_MEMORY_MB, cpus: float = CC.AGENT_CPUS,
-           max_calls: int = MAX_CALLS, max_seconds: int = MAX_SECONDS) -> X.HistoryConfig:
-    """The history's config, as the harness bulk builds it, with the raised task caps."""
+           max_calls: int | None = None, max_seconds: int | None = None) -> X.HistoryConfig:
+    """The history's config, as the harness bulk builds it, with the raised task caps (the
+    process's `MAX_CALLS` and `MAX_SECONDS` unless given)."""
     hist = CC.History(o["first_task"], "np", o["rep"], o["arm"])
     a_repo = CC.REPOS[hist.repo]
     b_repo = CC.other_repo(hist.repo)
     return X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task], b_task=tasks[b_repo.b_task],
                            out=out, host=host, memory_mb=memory_mb, cpus=cpus,
-                           quota_stop=quota, max_calls=max_calls, max_seconds=max_seconds)
+                           quota_stop=quota, max_calls=max_calls or MAX_CALLS,
+                           max_seconds=max_seconds or MAX_SECONDS)
 
 
 def check(src_dir: Path | None = None, tasks: dict | None = None) -> dict:
@@ -177,8 +190,8 @@ def book(b_dir: Path, hid: str, ledger: Path | None = None) -> bool:
     from emx import spend
     res = json.loads((Path(b_dir) / "result.json").read_text())
     _, new = spend.record_once(
-        f"rerun800:{Path(b_dir).resolve()}", "judge", "plan-quota", res.get("n_calls") or 0,
-        0.0, note=f"agy task-2 rerun (800 calls, 4 h) {hid} ({res.get('end')}): plan quota, "
+        f"rerun{MAX_CALLS}:{Path(b_dir).resolve()}", "judge", "plan-quota", res.get("n_calls") or 0,
+        0.0, note=f"agy task-2 rerun ({MAX_CALLS} calls, 4 h) {hid} ({res.get('end')}): plan quota, "
         "no charge", exp=STAGE, ledger=ledger if ledger is not None else LEDGER)
     return new
 
@@ -371,7 +384,7 @@ def run_history(o: dict, root: Path, tasks: dict, *, host: str | None, lim: dict
                             reason="quota stop (shared flag)")
             break
         try:
-            with held(host, f"agy-rerun800:{o['history']}:{att.name}", lim, memory_mb, say):
+            with held(host, f"agy-rerun{MAX_CALLS}:{o['history']}:{att.name}", lim, memory_mb, say):
                 cfg = config(o, att, tasks, host=host, quota=quota, memory_mb=memory_mb,
                              cpus=HA.history_cpus(host, cpus))
                 src = AF.load_source(cfg, src_att / "a")
@@ -394,8 +407,9 @@ def run_history(o: dict, root: Path, tasks: dict, *, host: str | None, lim: dict
 
 
 def bulk(host: str | None, lim: dict, memory_mb: int, cpus: float = HA.CPUS,
-         root: Path = BULK_DIR, tasks: dict | None = None, admit=None, run_one=None,
-         poll_s: float = 30.0, resume_after_quota: bool = False) -> int:
+         root: Path | None = None, tasks: dict | None = None, admit=None, run_one=None,
+         poll_s: float = 30.0, resume_after_quota: bool = False,
+         first_repo: str | None = None) -> int:
     """The bulk (module docstring). A quota cut persisted by an earlier run sets the shared
     stop at launch, so nothing new launches; `resume_after_quota` (Jacob's call, after the
     plan's quota has reset) launches the rest, the cut histories still kept as they are."""
@@ -404,7 +418,7 @@ def bulk(host: str | None, lim: dict, memory_mb: int, cpus: float = HA.CPUS,
         from compaction.s2.chain import driver as D
         tasks = D.tasks()
     admit = admit or HA.admit
-    root = Path(root)
+    root = Path(root or BULK_DIR)
     chk = preflight(root, tasks)
     lockf = open(root / "bulk.lock", "w")  # noqa: SIM115 - held for the process's life
     try:
@@ -412,6 +426,8 @@ def bulk(host: str | None, lim: dict, memory_mb: int, cpus: float = HA.CPUS,
     except BlockingIOError:
         sys.exit(f"another bulk holds {root / 'bulk.lock'}")
     od = order()
+    if first_repo:  # that repo's histories launch first, the seeded order kept within each
+        od = sorted(od, key=lambda o: o["first_task"] != first_repo)
     capacity = {"host": host, "memory_mb": memory_mb, "cpus": cpus, **lim}
     (root / "assignment.json").write_text(json.dumps(
         {"seed": HA.SEED, "order": od, "capacity": capacity, "source": str(SRC_DIR),
@@ -607,7 +623,7 @@ def smoke(hid: str, host: str | None, memory_mb: int, into_bulk: bool,
     src = AF.load_source(cfg, source_attempt(SRC_DIR / hid) / "a")
     lim = {"max_live": 1, "max_containers": HA.MAX_CONTAINERS, "min_free_gb": HA.MIN_FREE_GB,
            "max_load": HA.MAX_LOAD}
-    with (held or HA.held_slots)(host, f"agy-rerun800:{hid}:{att.name}:smoke", lim,
+    with (held or HA.held_slots)(host, f"agy-rerun{MAX_CALLS}:{hid}:{att.name}:smoke", lim,
                                  memory_mb, print):
         rec = (run or run_attempt)(src, att)
     if _result(att / "b" / "result.json"):
@@ -624,7 +640,8 @@ def smoke(hid: str, host: str | None, memory_mb: int, into_bulk: bool,
     return 0 if rep.get("all_ok") else 3
 
 
-def progress(root: Path = BULK_DIR) -> int:
+def progress(root: Path | None = None) -> int:
+    root = Path(root or BULK_DIR)
     od = order()
     out: dict = {"histories": len(od), "states": {}, "ends": {}, "calls": 0, "attempts": 0}
     for o in od:
@@ -663,11 +680,18 @@ def main() -> int:
     b.add_argument("--max-containers", type=int, default=HA.MAX_CONTAINERS)
     b.add_argument("--min-free-gb", type=float, default=HA.MIN_FREE_GB)
     b.add_argument("--max-load", type=float, default=HA.MAX_LOAD)
+    b.add_argument("--first-repo", choices=tuple(CC.REPOS),
+                   help="launch the histories that start in this repo first")
     b.add_argument("--resume-after-quota", action="store_true",
                    help="Jacob's call: launch the rest after a persisted quota cut")
     p = sub.add_parser("progress")
     p.add_argument("--smoke", action="store_true")
+    for x in (s, b, p):
+        x.add_argument("--max-calls", type=int, default=MAX_CALLS,
+                       help="task 2's call cap; other than 800 it has its own roots and stage")
     a = ap.parse_args()
+    if getattr(a, "max_calls", MAX_CALLS) != MAX_CALLS:
+        use_cap(a.max_calls)
     host = None if getattr(a, "host", None) in ("", "local") else getattr(a, "host", None)
     if a.cmd == "check":
         res = check()
@@ -681,7 +705,7 @@ def main() -> int:
         return smoke(a.history, host, a.memory_mb, a.into_bulk, a.cpus)
     return bulk(host, {"max_live": a.max_live, "max_containers": a.max_containers,
                        "min_free_gb": a.min_free_gb, "max_load": a.max_load}, a.memory_mb,
-                a.cpus, resume_after_quota=a.resume_after_quota)
+                a.cpus, resume_after_quota=a.resume_after_quota, first_repo=a.first_repo)
 
 
 if __name__ == "__main__":

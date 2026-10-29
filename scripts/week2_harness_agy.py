@@ -192,16 +192,33 @@ def _checks(a_dir: Path, b_dir: Path) -> tuple[dict, dict]:
     return checks, info
 
 
-def smoke(remote: str, repo: str, host: str | None) -> int:
+def smoke(remote: str, repo: str, host: str | None, *, model: str | None = None,
+          max_calls: int | None = None, max_seconds: int | None = None,
+          memory_mb: int | None = None) -> int:
+    """One history. Given a `model` (Jacob, 29 Oct: Argon in agy), it runs the whole history on
+    that model, under `agy_smoke_<model>/`, with the given task caps and agent memory, and
+    on the laptop inside the shared slot ledger."""
     tasks = D.tasks()
     hist = CC.History(repo, "np", 900, remote)  # rep 900: never a bulk history
     a_repo = CC.REPOS[repo]
     b_repo = CC.REPOS[next(r for r in CC.REPOS if r != repo)]
-    out = SMOKE_DIR / hist.id / time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    root = SMOKE_DIR if model is None else RAW / f"agy_smoke_{model}"
+    if model is not None:
+        X.set_model(model)
+    out = root / hist.id / time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    caps = {k: v for k, v in (("max_calls", max_calls), ("max_seconds", max_seconds),
+                              ("memory_mb", memory_mb)) if v is not None}
     cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task], b_task=tasks[b_repo.b_task],
-                          out=out, host=host)
-    res = X.run_history(cfg)
-    rep: dict = {"history": hist.id, "remote": remote, "host": host, "run": res}
+                          out=out, host=host, **caps)
+    if host is None:
+        lim = {"max_live": 1, "max_containers": MAX_CONTAINERS, "min_free_gb": MIN_FREE_GB,
+               "max_load": MAX_LOAD}
+        with held_slots(None, f"agy-smoke:{hist.id}:{out.name}", lim, cfg.memory_mb, print):
+            res = X.run_history(cfg)
+    else:
+        res = X.run_history(cfg)
+    rep: dict = {"history": hist.id, "remote": remote, "host": host, "model": X.MODEL,
+                 "caps": caps, "run": res}
     a_dir, b_dir = Path(res["a"]), Path(res["b"])
     ra = json.loads((a_dir / "result.json").read_text())
     rep["a"] = {k: ra.get(k) for k in ("end", "n_calls", "seconds", "error")}
@@ -267,7 +284,8 @@ def held_slots(host: str | None, owner: str, lim: dict, memory_mb: int, say=None
     B1, as the Codex scheduler's `acquire`)."""
     last = 0.0
     while True:
-        cm = reserve_slots(host, owner, capacity=lim["max_containers"], memory_mb=memory_mb)
+        cm = reserve_slots(host, owner, capacity=lim["max_containers"], memory_mb=memory_mb,
+                           prefix=slot_prefix(owner))
         cm.__enter__()
         ok, st = resources_ok(host, lim, reading)
         if ok:
@@ -291,14 +309,24 @@ def history_cpus(host: str | None, cpus: float) -> float:
     return SL.setting("__cpu_tenths__", round(cpus * 10)) / 10
 
 
+def slot_prefix(owner: str) -> str:
+    """The ledger prefix matching the owner's container names, so the ledger counts each
+    container once rather than also as external: the five-task runner's Codex chains (owner
+    "cx-chain5:...") run native-cx-chain-* containers, its Claude Code chains ("cc-..." and
+    "cc_sonnet-...") native-cc-chain-*; every other owner runs agy's native-agy-chain-*."""
+    if owner.startswith("cx-"):
+        return "native-cx-chain"
+    return "native-cc-chain" if owner.startswith("cc") else "native-agy-chain"
+
+
 def reserve_slots(host: str | None, owner: str, capacity: int | None = None,
-                  memory_mb: int = 0):
+                  memory_mb: int = 0, prefix: str = "native-agy-chain"):
     """The shared host-wide slot ledger (`native.slots`, the same file and host keys as the
     Codex scheduler: `host or "laptop"`) holds 2 slots for the history's whole life; the
     per-process gate (`admit`) still applies on top."""
     from compaction.s2.native import slots as SL
     cap = capacity or (CCH.MAX_CONTAINERS if host is None else MAX_CONTAINERS)
-    return SL.reserve(host or "laptop", owner, n=2, prefix="native-agy-chain", capacity=cap,
+    return SL.reserve(host or "laptop", owner, n=2, prefix=prefix, capacity=cap,
                       names=lambda: host_names(host), memory_mb=2 * memory_mb)  # 2 containers
 
 
@@ -617,6 +645,10 @@ def main() -> int:
     s.add_argument("--remote", default="divergent", choices=("divergent", "clean"))
     s.add_argument("--repo", default="tengo", choices=tuple(CC.REPOS))
     s.add_argument("--host", default=X.HOST, help="docker host with the agy auth volume")
+    s.add_argument("--model", help="the session model (default: the harness replication's)")
+    s.add_argument("--max-calls", type=int)
+    s.add_argument("--max-seconds", type=int)
+    s.add_argument("--memory-mb", type=int)
     b = sub.add_parser("bulk")
     b.add_argument("--go-from-jacob", action="store_true", required=True)
     b.add_argument("--host", default=X.HOST)
@@ -638,7 +670,8 @@ def main() -> int:
                     a.cpus)
     if a.cmd == "progress":
         return progress()
-    return smoke(a.remote, a.repo, host)
+    return smoke(a.remote, a.repo, host, model=a.model, max_calls=a.max_calls,
+                 max_seconds=a.max_seconds, memory_mb=a.memory_mb)
 
 
 if __name__ == "__main__":

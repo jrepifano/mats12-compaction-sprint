@@ -1432,3 +1432,12 @@ def test_slots_are_kept_only_if_resources_are_still_fine(script, monkeypatch):
     ok, _st = script.resources_ok(None, lim, lambda h: {"free_pct": None, "load1": 1.0,
                                                         "free_gb": None})
     assert not ok  # an unread share is closed
+
+
+def test_slot_prefix_matches_each_arms_container_names(script):
+    # a ledger prefix that misses the containers' names counts every container twice
+    assert script.slot_prefix("cx-chain5:cx_chain5:u1") == "native-cx-chain"
+    assert script.slot_prefix("cc-chain5:cc_chain5:u2") == "native-cc-chain"
+    assert script.slot_prefix("cc_sonnet-chain5:cc_sonnet_chain5:u1") == "native-cc-chain"
+    assert script.slot_prefix("agy_sonnet-chain5:agy_sonnet_chain5:u1") == "native-agy-chain"
+    assert script.slot_prefix("agy:httpx-np-1:attempt1") == "native-agy-chain"
