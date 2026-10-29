@@ -1,6 +1,6 @@
 # Five-task chains in agy_sonnet: code-measure readout, beside pi on the same chains
 
-Run state None (bulk, run 09b83ed63f50); written 2026-10-29T19:53:31+00:00. Experiment 4's unrelated chains u1–u2 in agy_sonnet, with its own compaction after every task. pi's figures below are over its four chains u1–u4, not only u1–u2. $0: code scorers. Descriptive, n = 2 chains. Every cell is known-positive, known-negative or unknown; tables give planned and observed (known) denominators. Wilson 95% intervals on pooled counts are descriptive (cells are not independent). Wrong-project counts are unadjudicated code flags.
+Run state None (bulk, run 09b83ed63f50); written 2026-10-29T19:57:51+00:00. Experiment 4's unrelated chains u1–u2 in agy_sonnet, with its own compaction after every task. pi's figures below are over its four chains u1–u4, not only u1–u2. $0: code scorers. Descriptive, n = 2 chains. Every cell is known-positive, known-negative or unknown; tables give planned and observed (known) denominators. Wilson 95% intervals on pooled counts are descriptive (cells are not independent). Wrong-project counts are unadjudicated code flags.
 
 ## Predictions (plan v0.3.1)
 
@@ -125,12 +125,12 @@ Builder b's summary-rot coder, unchanged: each summary line labelled by its code
 
 | boundary | agy_sonnet | pi (u1–u4) | agy_sonnet code-only | pi code-only | agy_sonnet bullets | agy_sonnet − pi, paired |
 |---|---|---|---|---|---|---|
-| 1 | 0% [0, 0] (n=2) | 0% [0, 0] (n=4) | 0% [0, 0] (n=2) | 0% [0, 0] (n=4) | 0% [0, 0] (n=2) | +0 [+0, +0], 2 chains (2 dropped), cells 33/94: too few observations; signs 0+ / 0− / 2= |
-| 2 | 20% [7, 33] (n=2) | 12% [7, 18] (n=4) | 20% [7, 33] (n=2) | 24% [21, 27] (n=4) | 17% [0, 33] (n=2) | +7 [-11, +24], 2 chains (2 dropped), cells 26/137: too few observations; signs 1+ / 1− / 0= |
-| 3 | 12% [0, 25] (n=2) | 34% [24, 45] (n=4) | 12% [0, 25] (n=2) | 45% [33, 65] (n=4) | 12% [0, 25] (n=2) | -18 [-41, +4], 2 chains (2 dropped), cells 22/110: too few observations; signs 1+ / 1− / 0= |
-| 4 | 14% [0, 29] (n=2) | 24% [14, 34] (n=4) | 14% [0, 29] (n=2) | 38% [17, 59] (n=4) | 15% [0, 31] (n=2) | -2 [-10, +7], 2 chains (2 dropped), cells 26/109: too few observations; signs 1+ / 1− / 0= |
+| 1 | 0% [0, 0] (n=2) | 0% [0, 0] (n=4) | 0% [0, 0] (n=2) | 0% [0, 0] (n=4) | 0% [0, 0] (n=2) | +0 [+0, +0], 2 chains (2 dropped), cells 140/94: too few observations; signs 0+ / 0− / 2= |
+| 2 | 7% [2, 12] (n=2) | 12% [7, 18] (n=4) | 20% [7, 33] (n=2) | 24% [21, 27] (n=4) | 6% [0, 12] (n=2) | -7 [-17, +3], 2 chains (2 dropped), cells 117/137: too few observations; signs 1+ / 1− / 0= |
+| 3 | 4% [1, 6] (n=2) | 34% [24, 45] (n=4) | 12% [0, 25] (n=2) | 45% [33, 65] (n=4) | 3% [0, 6] (n=2) | -27 [-40, -15], 2 chains (2 dropped), cells 132/110: too few observations; signs 0+ / 2− / 0= |
+| 4 | 6% [2, 10] (n=2) | 24% [14, 34] (n=4) | 14% [0, 29] (n=2) | 38% [17, 59] (n=4) | 5% [0, 11] (n=2) | -10 [-12, -9], 2 chains (2 dropped), cells 98/109: too few observations; signs 0+ / 2− / 0= |
 
-Summaries coded: 10 (636 entries); Opus pending: 10, failed: 0. Chain-end summaries (no pi counterpart): u1 0%; u2 29%.
+Summaries coded: 10 (636 entries); Opus pending: 0, failed: 0. Chain-end summaries (no pi counterpart): u1 1%; u2 3%.
 Hand-check sample: 10 of 487 boundary entries, blind, seed 20261029 (results/sprint/week2/agy_chain5/agy_sonnet/bulk/summary_rot/hand_check_sample.jsonl).
 Check: recomputed pi u1–u4 against experiment 4's shares.json: 16 values, largest difference 0.0.
 
