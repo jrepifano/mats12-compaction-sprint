@@ -283,6 +283,26 @@ def cmd_setup_check(a) -> int:
     return 0 if all(r["ok"] for r in out_rows) and not left else 1
 
 
+def cmd_reverdict(a) -> int:
+    """A finished smoke's verdict recomputed with the current checks, when the checks changed
+    after the smoke started (e.g. Codex's encrypted end compaction, 29 Oct). The run is not
+    touched; the old verdict is kept beside the new one, and the reason is recorded."""
+    cfg, _ = load()
+    nc = cfg["native_chain"]
+    root = _attempt_root(roots(a.harness)[1], a.attempt)
+    p = root / "smoke_verdict.json"
+    if p.exists():
+        p.replace(root / "smoke_verdict.before_reverdict.json")
+    checks = smoke_checks(root, nc["smoke_chain"], nc["smoke_phases"], a.harness)
+    v = smoke_verdict(checks, nc["smoke_phases"], a.harness)
+    v |= {"utc": utc(), "root": str(root), "provenance": provenance(), "checks": checks,
+          "recomputed": {"reason": a.reason, "old": "smoke_verdict.before_reverdict.json"}}
+    p.write_text(json.dumps(v, indent=1))
+    print(json.dumps({k: v[k] for k in ("ok", "failures", "bulk_memory", "recomputed")},
+                     indent=1))
+    return 0 if v["ok"] else 1
+
+
 def cmd_check(_a) -> int:
     g = gate()
     print(json.dumps(g, indent=1))
@@ -755,9 +775,10 @@ def smoke_checks(root: Path, chain_id: str, n: int, harness: str = "agy") -> dic
                         "compaction_json": (cdir / f"p{k}" / "compaction.json").exists(),
                         "tip_patch": (cdir / f"p{k}" / "tip.patch").exists()}
     out["same_conversation"] = len(set(cids)) == 1 and None not in cids
-    out["boundaries_ok"] = sum(r.get("kind") == "boundary" and r.get("ok") for r in rows)
-    out["end_ok"] = any(r.get("kind") == "end" and r.get("ok") and not r.get("empty")
-                        for r in rows)
+    from compaction.s2.native.agy_nchain import compaction_succeeded  # Codex: encrypted
+    out["boundaries_ok"] = sum(r.get("kind") == "boundary" and compaction_succeeded(r)
+                               for r in rows)
+    out["end_ok"] = any(r.get("kind") == "end" and compaction_succeeded(r) for r in rows)
     # the chains' containers by name; the graders' (shared s2-chaining prefix, other runs use
     # it too) through their cleanup records, this process's and those persisted by earlier ones
     st = json.loads((root / "state.json").read_text()) if (root / "state.json").exists() else {}
@@ -820,7 +841,8 @@ def cmd_progress(a) -> int:
     for cid, rec in (st.get("chains") or {}).items():
         runs = rec.get("phase_runs") or {}
         ph = " ".join(f"p{k}:{v.get('end')}/{v.get('n_calls')}" for k, v in sorted(runs.items()))
-        bad = [c for c in rec.get("compactions") or [] if not c.get("ok") or c.get("empty")]
+        from compaction.s2.native.agy_nchain import compaction_succeeded  # encrypted counts
+        bad = [c for c in rec.get("compactions") or [] if not compaction_succeeded(c)]
         print(f"{cid}: {rec.get('state')} | {ph} | compactions {len(rec.get('compactions') or [])}"
               f" ({len(bad)} failed or empty)")
     return 0
@@ -830,6 +852,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("check")
+    rv = sub.add_parser("reverdict")
+    rv.add_argument("--harness", default="agy", choices=list(PREFIX))
+    rv.add_argument("--attempt", type=int)
+    rv.add_argument("--reason", required=True)
     sc = sub.add_parser("setup-check")
     sc.add_argument("--harness", default="agy", choices=list(PREFIX))
     sub.add_parser("pull")
@@ -851,7 +877,7 @@ def main() -> int:
     a = ap.parse_args()
     with contextlib.suppress(Exception):
         os.nice(5)
-    return {"check": cmd_check, "setup-check": cmd_setup_check, "pull": cmd_pull, "smoke": cmd_smoke, "bulk": cmd_bulk,
+    return {"check": cmd_check, "reverdict": cmd_reverdict, "setup-check": cmd_setup_check, "pull": cmd_pull, "smoke": cmd_smoke, "bulk": cmd_bulk,
             "grade": cmd_grade, "progress": cmd_progress}[a.cmd](a)
 
 

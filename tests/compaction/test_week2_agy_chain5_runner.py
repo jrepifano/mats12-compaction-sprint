@@ -167,3 +167,14 @@ def test_a_smoke_carries_over_only_across_runner_changes_with_a_reason(tmp_path,
         **old["code"], "src/x.py": "0"}}}))
     with pytest.raises(SystemExit, match="code outside the runner changed"):
         R.passing_smoke("agy", accept_from=str(p), reason="x")
+
+
+def test_smoke_checks_count_an_encrypted_end_compaction(tmp_path, monkeypatch):
+    monkeypatch.setattr(R, "our_containers", lambda h: [])
+    c = tmp_path / "chains" / "u1"
+    c.mkdir(parents=True)
+    rows = [{"kind": "boundary", "ok": True, "empty": True, "encrypted": True},
+            {"kind": "end", "ok": True, "empty": True, "encrypted": True}]
+    (c / "compactions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    out = R.smoke_checks(tmp_path, "u1", 2, "codex")
+    assert out["boundaries_ok"] == 1 and out["end_ok"] is True
