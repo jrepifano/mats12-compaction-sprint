@@ -1,0 +1,7 @@
+{"id": "x02401", "text": "- [x] All config wiring: `runtime/config.ts` (ShardStrategy, DurationSmoothingStrategy, DurationFallbackStrategy, ShardAffinityRule types + 12 serialized fields), `node/types/config.ts`, `resolveConfig.ts` (validation with exact TypeError messages; balanceShardsByTime resolution), `serializeConfig.ts`, `cli/cli-config.ts`, `public/node.ts` + `public/index.ts`, `node/core.ts` (recordFileDurations in `.finally()` of runFiles with moduleId set, try/catch + `state.catchError`), `BaseSequencer.ts` (shard plan, fallback, warn format, sort), `docs/config/sequence.md`."}
+{"id": "x02402", "text": "- Envelopes: single `{\"success\":true,\"data\":{...}}`, lists `{\"success\":true,\"data\":[...],\"total\":N}`. All JSON field names in data objects use `lowerCamelCase`. `X-User-ID` header provides `CreatedBy`."}
+{"id": "x02403", "text": "- `options.go` edit failed due to target whitespace mismatch around `fsCloser`:"}
+{"id": "x02404", "text": "- Added `result_to_validated` and `validated_to_result` in `returns/converters.py`."}
+{"id": "x02405", "text": "- **DRZ-712 repo state**: `/app` = drizzle-orm workspace (pnpm monorepo: drizzle-orm, drizzle-kit, drizzle-seed, drizzle-zod/typebox/valibot/arktype, integration-tests, docs); main `e8e6edfe`; local branch `feature/window-function-builders` from `b1552f61` (WIP notes-only commit); remote `/srv/git/drizzle-orm.git`."}
+{"id": "x02406", "text": "In `Commit`:"}
+{"id": "x02407", "text": "- `from_validated` classmethod returns the identical instance received."}

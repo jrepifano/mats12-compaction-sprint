@@ -47,6 +47,7 @@ TICKET = re.compile(r"\b[A-Z]{2,5}-\d+\b")
 CHECK_IN = OUT / "rule_check_input.jsonl"
 CHECK_IDS = OUT / "rule_check_ids.json"  # the sample's entry ids in input order (not shown to the labeller)
 CHECK_LABELS = OUT / "rule_check_labels.out"
+FLAGS = OUT / "safety_labels" / "main" / "flags.json"  # week2_summary_safety_labels.py
 
 
 def git_text(ref: str, path: str) -> tuple[str, str]:
@@ -120,6 +121,67 @@ def codex_carried(text: str) -> tuple[list[dict], dict]:
     return out, {f"{c}:{j}": sorted(v) for (c, j), v in sorted(tickets.items())}
 
 
+def flagged(rows: list[dict], flag) -> list[dict]:
+    """Copies of rows with `safe` set by flag(row), for retention_by_age."""
+    return [{**r, "safe": bool(flag(r))} for r in rows]
+
+
+def agreement(rows: list[dict], astra: dict[str, bool]) -> dict:
+    """Keyword rule against gpt-6-astra's label on every entry; the rule's precision and recall
+    taking astra as the reference, and Cohen's kappa."""
+    n = len(rows)
+    both = sum(r["safe"] and astra[r["id"]] for r in rows)
+    rule = sum(r["safe"] for r in rows)
+    ax = sum(astra[r["id"]] for r in rows)
+    agree = sum(r["safe"] == astra[r["id"]] for r in rows)
+    pe = (rule * ax + (n - rule) * (n - ax)) / n ** 2
+    return {"n": n, "both": both, "rule_only": rule - both, "astra_only": ax - both,
+            "neither": n - rule - ax + both, "agreement": agree / n,
+            "kappa": (agree / n - pe) / (1 - pe) if pe < 1 else None,
+            "rule_precision": both / rule if rule else None,
+            "rule_recall": both / ax if ax else None}
+
+
+def safety_figure(plt, deep, ret: dict, title: str, legend: tuple[str, str],
+                  stem: str) -> list[str]:
+    """Retention by age, flagged against the rest, pi and agy side by side."""
+    from matplotlib.patches import Patch
+
+    top = max(100 * c["ci95"][1] for r in ret.values() for c in r.values())
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6.2), sharey=True)
+    fig.subplots_adjust(left=0.06, right=0.985, top=0.84, bottom=0.2, wspace=0.06)
+    nums = []
+    for ax, (s, label) in zip(axes, SIDES, strict=True):
+        for d in range(1, K):
+            for off, safe, col in ((-0.18, True, deep[3]), (0.18, False, deep[0])):
+                c = ret[s][f"{d}:{'safety' if safe else 'other'}"]
+                v, (lo, hi) = 100 * c["retention"], c["ci95"]
+                ax.bar(d + off, v, 0.34, color=col)
+                if hi > lo:
+                    ax.errorbar(d + off, v, yerr=[[v - 100 * lo], [100 * hi - v]], fmt="none",
+                                ecolor="black")
+                ax.text(d + off, 100 * hi + 1.5, f"{v:.0f}%", ha="center", va="bottom")
+                nums.append(f"{label}, {D.retention_line(d, safe, c)}")
+        ax.set_xticks(range(1, K))
+        ax.set_xticklabels([f"{d} task{'s' if d > 1 else ''} later" for d in range(1, K)])
+        ax.set_title(label, loc="left")
+    axes[0].set_ylabel("Entry-count retention (% of the count right after the task)")
+    axes[0].set_ylim(0, 10 * (int(top / 10) + 2))
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
+    fig.legend(handles=[Patch(color=deep[3], label=legend[0]),
+                        Patch(color=deep[0], label=legend[1])], loc="lower center", ncol=2,
+               bbox_to_anchor=(0.5, 0.0))
+    for ext in ("png", "svg"):
+        fig.savefig(OUT / f"{stem}.{ext}", dpi=200 if ext == "png" else None)
+    plt.close(fig)
+    return nums
+
+
+def r2(ret: dict) -> dict[str, tuple[float, float]]:
+    return {s: (100 * ret[s]["2:safety"]["retention"], 100 * ret[s]["2:other"]["retention"])
+            for s in ret}
+
+
 def main() -> None:
     agy_raw, agy_sha = git_text(REF_AGY, AGY_ATTR)
     cx_raw, cx_sha = git_text(REF_CX, CX)
@@ -143,6 +205,16 @@ def main() -> None:
                  / sum(r["boundary"] == k for r in rs) for k in range(1, K + 1)}
              for s, rs in lab.items()}
     chk = rule_check(lab["agy"])
+    if not FLAGS.exists():
+        sys.exit(f"{SRS.rel(FLAGS)} missing: run week2_summary_safety_labels.py first")
+    fl = json.loads(FLAGS.read_text())
+    ret_ax, agree, n_ax = None, None, None
+    if fl:
+        f = fl["flags"]
+        ret_ax = {s: D.retention_by_age(flagged(rs, lambda r, s=s: f[s][r["id"]]))
+                  for s, rs in lab.items()}
+        agree = {s: agreement(rs, f[s]) for s, rs in lab.items()}
+        n_ax = {s: sum(f[s][r["id"]] for r in rs) for s, rs in lab.items()}
     carried, tickets = codex_carried(cx_raw)
     SRS._dump(OUT / "agy_vs_pi.json", {
         "source": {"pi": SRS.rel(D.ATTR), "agy": f"{REF_AGY}:{AGY_ATTR}",
@@ -152,6 +224,8 @@ def main() -> None:
         "n_entries": {s: len(rs) for s, rs in lab.items()},
         "n_rule_safety": {s: sum(r["safe"] for r in rs) for s, rs in lab.items()},
         "rule_check_agy_vs_codex": chk, "rule": D.SAFE.pattern,
+        "astra_labels": SRS.rel(FLAGS) if fl else None, "retention_by_age_astra": ret_ax,
+        "n_astra_safety": n_ax, "keyword_vs_astra": agree,
         "bootstrap": {"seed": D.SEED, "n": D.BOOT, "unit": "chain"},
         "definition": D.RETENTION_DEF,
         "codex_carried": carried, "codex_tickets": tickets})
@@ -181,39 +255,21 @@ def main() -> None:
     for ext in ("png", "svg"):
         fig.savefig(OUT / f"by_task_agy_vs_pi.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)
-    # safety-relevant against other
-    top = max(100 * c["ci95"][1] for r in ret.values() for c in r.values())
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6.2), sharey=True)
-    fig.subplots_adjust(left=0.06, right=0.985, top=0.84, bottom=0.2, wspace=0.06)
-    nums_sf = []
-    for ax, (s, label) in zip(axes, SIDES, strict=True):
-        for d in range(1, K):
-            for off, safe, col in ((-0.18, True, deep[3]), (0.18, False, deep[0])):
-                c = ret[s][f"{d}:{'safety' if safe else 'other'}"]
-                v, (lo, hi) = 100 * c["retention"], c["ci95"]
-                ax.bar(d + off, v, 0.34, color=col)
-                if hi > lo:
-                    ax.errorbar(d + off, v, yerr=[[v - 100 * lo], [100 * hi - v]], fmt="none",
-                                ecolor="black")
-                ax.text(d + off, 100 * hi + 1.5, f"{v:.0f}%", ha="center", va="bottom")
-                nums_sf.append(f"{label}, {D.retention_line(d, safe, c)}")
-        ax.set_xticks(range(1, K))
-        ax.set_xticklabels([f"{d} task{'s' if d > 1 else ''} later" for d in range(1, K)])
-        ax.set_title(label, loc="left")
-    axes[0].set_ylabel("Entry-count retention (% of the count right after the task)")
-    axes[0].set_ylim(0, 10 * (int(top / 10) + 2))
-    r2 = {s: (100 * ret[s]["2:safety"]["retention"], 100 * ret[s]["2:other"]["retention"])
-          for s in ret}
-    title_sf = (f"Two tasks later, pi's summary has {r2['pi'][0]:.0f}% as many safety-keyword "
-                f"entries about a task as right after it ({r2['pi'][1]:.0f}% for unflagged "
-                f"ones); Antigravity's has {r2['agy'][0]:.0f}%")
-    fig.suptitle(title_sf, x=0.02, y=0.975, ha="left", va="top")
-    fig.legend(handles=[Patch(color=deep[3], label="Flagged by the safety keyword rule"),
-                        Patch(color=deep[0], label="Not flagged")], loc="lower center", ncol=2,
-               bbox_to_anchor=(0.5, 0.0))
-    for ext in ("png", "svg"):
-        fig.savefig(OUT / f"safety_agy_vs_pi.{ext}", dpi=200 if ext == "png" else None)
-    plt.close(fig)
+    # safety-relevant against other: gpt-6-astra's labels (main), the keyword rule (backup)
+    rk = r2(ret)
+    title_kw = (f"Two tasks later, pi's summary has {rk['pi'][0]:.0f}% as many safety-keyword "
+                f"entries about a task as right after it ({rk['pi'][1]:.0f}% for unflagged "
+                f"ones); Antigravity's has {rk['agy'][0]:.0f}%")
+    nums_kw = safety_figure(plt, deep, ret, title_kw, ("Flagged by the safety keyword rule",
+                                                       "Not flagged"), "safety_agy_vs_pi_keyword")
+    nums_ax, title_ax = [], None
+    if ret_ax:
+        ra = r2(ret_ax)
+        title_ax = (f"Two tasks later, pi's summary has {ra['pi'][0]:.0f}% as many "
+                    f"safety-relevant entries about a task as right after it ({ra['pi'][1]:.0f}% "
+                    f"for the rest); Antigravity's has {ra['agy'][0]:.0f}%")
+        nums_ax = safety_figure(plt, deep, ret_ax, title_ax,
+                                ("Safety-relevant (gpt-6-astra)", "Other"), "safety_agy_vs_pi")
     # README
     n_e = {s: len(rs) for s, rs in lab.items()}
     n_s = {s: sum(r["safe"] for r in rs) for s, rs in lab.items()}
@@ -224,7 +280,9 @@ def main() -> None:
            f"(precision {100 * chk['precision']:.0f}%); rule-negative "
            f"{chk['rule_neg']['codex_safe']} safety / {chk['rule_neg']['codex_other']} other "
            f"(negative agreement {100 * chk['npv']:.0f}%); estimated recall "
-           f"{100 * chk['recall_est']:.0f}% (strata reweighted to the population). Disagreements "
+           f"{100 * chk['recall_est']:.0f}% (strata reweighted to the population; an estimate from "
+           "100 entries under an earlier, narrower prompt, superseded by the every-entry "
+           "comparison in the main section). Disagreements "
            "are in `agy_vs_pi.json`. pi's check against Opus (all 8 chains) is in "
            f"`{SRS.rel(D.OUT / 'safety.json')}`.")]
           if chk else ["**Rule check on agy:** Codex labels pending."])
@@ -258,15 +316,37 @@ def main() -> None:
          "outside the summary and not counted here. pi's summary carries a fading share of "
          "earlier tasks. n = 4 chains per side."), "",
         "**Numbers plotted:**", *[f"- {n}" for n in nums_bt], "",
-        f"## safety_agy_vs_pi: {title_sf}", "", "![safety_agy_vs_pi](safety_agy_vs_pi.png)", "",
-        (f"**Source:** `agy_vs_pi.json`, `retention_by_age.<side>`. {D.RETENTION_DEF.capitalize()}"
-         f". Brackets: 95% percentile bootstrap over chains ({D.BOOT:,} resamples, seed "
-         f"{D.SEED}); none drawn where the interval is [0, 0]."), "",
-        ("**Coding:** week2_summary_decay's keyword rule (pushes, the shared remote or a "
-         "teammate's work on it, permission or the user's instructions, destructive git "
-         f"actions). Safety-relevant by the rule: pi {n_s['pi']} of {n_e['pi']} entries, agy "
-         f"{n_s['agy']} of {n_e['agy']}."), "", *ck, "",
-        "**Numbers plotted:**", *[f"- {n}" for n in nums_sf], "",
+        *([f"## safety_agy_vs_pi: {title_ax}", "", "![safety_agy_vs_pi](safety_agy_vs_pi.png)",
+           "", (f"**Source:** `agy_vs_pi.json`, `retention_by_age_astra.<side>`. "
+                f"{D.RETENTION_DEF.capitalize()}. Brackets: 95% percentile bootstrap over chains "
+                f"({D.BOOT:,} resamples, seed {D.SEED}); none drawn where the interval is "
+                "[0, 0]."), "",
+           (f"**Coding:** every entry labelled by gpt-6-astra (`{SRS.rel(FLAGS)}`; "
+            "scripts/week2_summary_safety_labels.py): pi's and agy's entries pooled, shuffled "
+            "under opaque ids, harness, chain and boundary withheld; the definition is in "
+            "flags.json (actions, permissions or rules bearing on harm to others' work, data or "
+            "security: pushes and force-pushes, rewriting shared history, deleting branches or "
+            "data, authorization, credentials, the user's rules on what the agent may do, such "
+            "as not modifying tests). Unvalidated labeller, no hand check; in the reviewer's 15 "
+            "random spot checks, 2 were borderline calls labelled safety-relevant (removing a "
+            "temporary file; a rule on response format), so the class leans broad. "
+            "Safety-relevant: pi "
+            f"{n_ax['pi']} of {n_e['pi']} entries, agy {n_ax['agy']} of {n_e['agy']}."), "",
+           ("**Keyword rule against gpt-6-astra, every entry** (rule precision and recall with "
+            "astra as the reference): " + "; ".join(
+                f"{s} agreement {100 * a['agreement']:.0f}%, kappa {a['kappa']:.2f}, rule "
+                f"precision {100 * a['rule_precision']:.0f}%, recall "
+                f"{100 * a['rule_recall']:.0f}% (both {a['both']}, rule only {a['rule_only']}, "
+                f"astra only {a['astra_only']}, neither {a['neither']})"
+                for s, a in agree.items()) + "."), "",
+           "**Numbers plotted:**", *[f"- {n}" for n in nums_ax], ""] if ret_ax else []),
+        f"## safety_agy_vs_pi_keyword (backup): {title_kw}", "",
+        "![safety_agy_vs_pi_keyword](safety_agy_vs_pi_keyword.png)", "",
+        (f"**Source:** `agy_vs_pi.json`, `retention_by_age.<side>`, the same definition with "
+         "week2_summary_decay's keyword rule (pushes, the shared remote or a teammate's work on "
+         "it, permission or the user's instructions, destructive git actions). Flagged by the "
+         f"rule: pi {n_s['pi']} of {n_e['pi']} entries, agy {n_s['agy']} of {n_e['agy']}."), "",
+        *ck, "", "**Numbers plotted:**", *[f"- {n}" for n in nums_kw], "",
         ("**Exploratory.** Entry counts, not content weight; retention above 0 is not "
          "one-to-one survival (entries merge and split). agy's 0% at every age follows from its "
          "summaries holding no earlier-task entries at all, so the safety/other split adds "
@@ -286,8 +366,10 @@ def main() -> None:
         ""]
     (OUT / "README.md").write_text("\n".join(readme) + "\n")
     print(title_bt)
-    print(title_sf)
-    print("\n".join(nums_bt + nums_sf))
+    print(title_ax)
+    print(title_kw)
+    print("\n".join(nums_bt + nums_ax + nums_kw))
+    print(agree)
     if chk:
         print({k: v for k, v in chk.items() if k != "disagreements"})
     print(f"codex: every task so far held: {all_held}")
