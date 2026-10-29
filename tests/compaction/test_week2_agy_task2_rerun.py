@@ -352,6 +352,11 @@ def test_the_bulk_can_launch_one_repos_histories_first(rr, monkeypatch, tmp_path
             admit=lambda n, host, lim: (n == 0, {}), run_one=run_one, poll_s=0.01,
             first_repo="tengo")
     assert launched == ["tengo-np-2", "tengo-np-4", "httpx-np-1", "httpx-np-3"]
+    launched.clear()
+    rr.bulk("h", {"max_live": 1}, 1280, root=tmp_path / "rerun2", tasks=fake_tasks(),
+            admit=lambda n, host, lim: (n == 0, {}), run_one=run_one, poll_s=0.01,
+            only_repo="tengo")
+    assert launched == ["tengo-np-2", "tengo-np-4"]
 
 
 def test_check_verifies_every_export_without_docker(rr, tmp_path):

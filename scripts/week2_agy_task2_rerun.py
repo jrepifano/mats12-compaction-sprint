@@ -409,7 +409,7 @@ def run_history(o: dict, root: Path, tasks: dict, *, host: str | None, lim: dict
 def bulk(host: str | None, lim: dict, memory_mb: int, cpus: float = HA.CPUS,
          root: Path | None = None, tasks: dict | None = None, admit=None, run_one=None,
          poll_s: float = 30.0, resume_after_quota: bool = False,
-         first_repo: str | None = None) -> int:
+         first_repo: str | None = None, only_repo: str | None = None) -> int:
     """The bulk (module docstring). A quota cut persisted by an earlier run sets the shared
     stop at launch, so nothing new launches; `resume_after_quota` (Jacob's call, after the
     plan's quota has reset) launches the rest, the cut histories still kept as they are."""
@@ -471,8 +471,8 @@ def bulk(host: str | None, lim: dict, memory_mb: int, cpus: float = HA.CPUS,
                                 reason="quota stop (shared flag)")
 
     for i, o in enumerate(od):
-        if _done(root / o["history"]):
-            continue
+        if _done(root / o["history"]) or (only_repo and o["first_task"] != only_repo):
+            continue  # done, or left for a later bulk (the Advisor's order: Argon in between)
         if quota.is_set():
             stop_here(i)
             break
@@ -682,6 +682,8 @@ def main() -> int:
     b.add_argument("--max-load", type=float, default=HA.MAX_LOAD)
     b.add_argument("--first-repo", choices=tuple(CC.REPOS),
                    help="launch the histories that start in this repo first")
+    b.add_argument("--only-repo", choices=tuple(CC.REPOS),
+                   help="launch only the histories that start in this repo")
     b.add_argument("--resume-after-quota", action="store_true",
                    help="Jacob's call: launch the rest after a persisted quota cut")
     p = sub.add_parser("progress")
@@ -705,7 +707,8 @@ def main() -> int:
         return smoke(a.history, host, a.memory_mb, a.into_bulk, a.cpus)
     return bulk(host, {"max_live": a.max_live, "max_containers": a.max_containers,
                        "min_free_gb": a.min_free_gb, "max_load": a.max_load}, a.memory_mb,
-                a.cpus, resume_after_quota=a.resume_after_quota, first_repo=a.first_repo)
+                a.cpus, resume_after_quota=a.resume_after_quota, first_repo=a.first_repo,
+                only_repo=a.only_repo)
 
 
 if __name__ == "__main__":
