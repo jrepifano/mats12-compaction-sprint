@@ -23,7 +23,7 @@ import week2_summary_rot as R
 REF = "55d08ed4"  # sprint/week2-build: agy five-task chains, summary rot with this coder
 SRC = "results/sprint/week2/agy_chain5/agy/bulk/readout.json"
 OUT = R.OUT / "agy_vs_pi"
-SIDES = (("pi", "pi (DeepSeek V4.1 Flash)"), ("agy", "agy (Gemini 3.8 Flash, low)"))
+SIDES = (("pi", "pi (DeepSeek V4.1 Flash)"), ("agy", "Antigravity (Gemini 3.8 Flash, low)"))
 
 
 def main() -> None:
@@ -45,7 +45,7 @@ def main() -> None:
 
     pl, al = later("pi"), later("agy")
     a_txt = (f"{max(al):.0f}%" if min(al) == max(al) else f"{min(al):.0f}–{max(al):.0f}%")
-    title = (f"On the same four chains, agy's summaries are {a_txt} about earlier tasks after "
+    title = (f"On the same four chains, Antigravity's summaries are {a_txt} about earlier tasks after "
              f"tasks 2–4; pi's are {min(pl):.0f}–{max(pl):.0f}% on average")
     OUT.mkdir(parents=True, exist_ok=True)
     fig, axes = plt.subplots(1, 2, figsize=(14, 6.2), sharey=True)

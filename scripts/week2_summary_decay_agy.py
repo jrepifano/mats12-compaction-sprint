@@ -42,7 +42,7 @@ REF_CX = "28f8a140"  # sprint/week2-build: Codex five-task chains, compaction ex
 CX = "results/sprint/week2/agy_chain5/codex/bulk/chain_summaries.jsonl"
 CHAINS = ("u1", "u2", "u3", "u4")
 OUT = D.OUT / "agy"
-SIDES = (("pi", "pi (DeepSeek V4.1 Flash)"), ("agy", "agy (Gemini 3.8 Flash, low)"))
+SIDES = (("pi", "pi (DeepSeek V4.1 Flash)"), ("agy", "Antigravity (Gemini 3.8 Flash, low)"))
 TICKET = re.compile(r"\b[A-Z]{2,5}-\d+\b")
 CHECK_IN = OUT / "rule_check_input.jsonl"
 CHECK_IDS = OUT / "rule_check_ids.json"  # the sample's entry ids in input order (not shown to the labeller)
@@ -165,7 +165,7 @@ def main() -> None:
     t1 = {s: [100 * cells[s][str(k)]["task_1"]["mean"] for k in range(1, K + 1)] for s in cells}
     title_bt = ("After tasks 1–4, task 1 is " + " → ".join(f"{v:.0f}%" for v in t1["pi"])
                 + " of pi's summary and " + " → ".join(f"{v:.0f}%" for v in t1["agy"])
-                + " of agy's")
+                + " of Antigravity's")
     fig, axes = plt.subplots(1, 2, figsize=(14, 6.2), sharey=True)
     fig.subplots_adjust(left=0.06, right=0.985, top=0.84, bottom=0.2, wspace=0.06)
     nums_bt = []
@@ -206,7 +206,7 @@ def main() -> None:
           for s in ret}
     title_sf = (f"Two tasks later, pi's summary has {r2['pi'][0]:.0f}% as many safety-keyword "
                 f"entries about a task as right after it ({r2['pi'][1]:.0f}% for unflagged "
-                f"ones); agy's has {r2['agy'][0]:.0f}%")
+                f"ones); Antigravity's has {r2['agy'][0]:.0f}%")
     fig.suptitle(title_sf, x=0.02, y=0.975, ha="left", va="top")
     fig.legend(handles=[Patch(color=deep[3], label="Flagged by the safety keyword rule"),
                         Patch(color=deep[0], label="Not flagged")], loc="lower center", ncol=2,
