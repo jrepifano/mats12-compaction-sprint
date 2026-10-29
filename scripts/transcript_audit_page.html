@@ -1,0 +1,171 @@
+<title>Transcript Reader</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root {
+  --bg: #f6f4ef; --panel: #fffdf8; --fg: #1f2328; --muted: #5d6470; --line: #e3ded2;
+  --chip: #ece7db; --accent: #8a4b14; --mark: #ffe3a3; --mark-fg: #3a2600;
+  --reason: #f1eee6; --cmd: #eef1f4; --out: #f4f4f2; --sum: #eef4ec; --mon: #f6ecec;
+  --key-edge: #c77a1f;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16181c; --panel: #1d2026; --fg: #e6e3dc; --muted: #9aa1ab; --line: #2e323a;
+  --chip: #2a2e35; --accent: #f0a65a; --mark: #6b4a12; --mark-fg: #fff3d9;
+  --reason: #22252b; --cmd: #1f252d; --out: #202226; --sum: #1f2a22; --mon: #2c2023;
+  --key-edge: #e39443; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #16181c; --panel: #1d2026; --fg: #e6e3dc; --muted: #9aa1ab; --line: #2e323a;
+  --chip: #2a2e35; --accent: #f0a65a; --mark: #6b4a12; --mark-fg: #fff3d9;
+  --reason: #22252b; --cmd: #1f252d; --out: #202226; --sum: #1f2a22; --mon: #2c2023;
+  --key-edge: #e39443; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 "IBM Plex Sans", system-ui, sans-serif; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font: 600 28px/1.2 "IBM Plex Serif", Georgia, serif; margin: 0 0 8px; text-wrap: balance; }
+h2 { font: 600 20px/1.3 "IBM Plex Serif", Georgia, serif; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 68ch; margin: 0 0 18px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 18px 0 22px; border-bottom: 1px solid var(--line); }
+.tabs button { font: 500 14px "IBM Plex Sans", sans-serif; background: none; color: var(--muted); border: 0;
+  border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.note { font-size: 13.5px; color: var(--muted); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; max-width: 80ch; }
+.cards { display: grid; gap: 22px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; min-width: 0; }
+.kicker { font: 500 11.5px "IBM Plex Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.why { margin: 8px 0 12px; font-size: 15.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chip { font: 12.5px "IBM Plex Mono", monospace; background: var(--chip); border-radius: 999px; padding: 2px 10px; }
+.chip b { font-weight: 500; color: var(--muted); margin-right: 4px; }
+.setup { color: var(--muted); font-size: 14px; max-width: 75ch; margin: 0 0 14px; }
+.quotes { border-left: 3px solid var(--key-edge); padding: 2px 0 2px 14px; margin: 0 0 16px; display: grid; gap: 8px; }
+.quotes q { font: 500 15px/1.5 "IBM Plex Serif", Georgia, serif; quotes: "\201C" "\201D"; }
+.sect { font: 500 12px "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 8px; }
+.turns { display: grid; gap: 6px; min-width: 0; }
+.turn { border-radius: 6px; padding: 8px 12px; min-width: 0; border: 1px solid transparent; }
+.turn .lab { font: 500 11.5px "IBM Plex Mono", monospace; color: var(--muted); margin-bottom: 3px; }
+.turn pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 "IBM Plex Mono", ui-monospace, monospace; }
+.turn.reasoning { background: var(--reason); }
+.turn.text, .turn.user, .turn.earlier { background: var(--panel); border-color: var(--line); }
+.turn.command { background: var(--cmd); }
+.turn.result { background: var(--out); }
+.turn.summary { background: var(--sum); }
+.turn.monitor { background: var(--mon); }
+.turn.key { border-color: var(--key-edge); box-shadow: inset 3px 0 0 var(--key-edge); }
+.gap { font: 12px "IBM Plex Mono", monospace; color: var(--muted); text-align: center; padding: 2px; }
+mark { background: var(--mark); color: var(--mark-fg); border-radius: 2px; padding: 0 1px; }
+details { margin-top: 14px; }
+summary { cursor: pointer; font: 500 13.5px "IBM Plex Sans", sans-serif; color: var(--accent); }
+details .turns { margin-top: 10px; max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+.same { font-size: 13px; color: var(--muted); font-style: italic; }
+</style>
+
+<div class="wrap">
+  <h1>Week-2 transcripts worth reading</h1>
+  <p class="lede">Coding agents carrying an earlier overwrite into new work, the monitors that let it through, and compaction summaries that say "done" too early. Each card shows the key lines in context, with the whole task's transcript one click away.</p>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-picks" aria-selected="true">Picked examples</button>
+    <button role="tab" id="t-draws" aria-selected="false">Seeded random draws</button>
+  </div>
+  <div id="picks">
+    <div class="note"><strong>Illustrative, not evidence for any rate.</strong> For each pool, a code screen found the candidates, and Gemini 4 Argon ranked them for surprise and clarity. Every highlighted quote was checked word for word against the transcript, and each one-line reason was checked by hand against it. For rates, see the experiment readouts. The other tab shows one seeded random member of each pool.</div>
+    <div class="cards" id="pick-cards"></div>
+  </div>
+  <div id="draws" hidden>
+    <div class="note"><strong>One uniform random draw per pool,</strong> from a fixed seed and taken before any ranking. Use these to see what a typical member of each pool looks like. Highlights are the code screen's hits, where it has any.</div>
+    <div class="cards" id="draw-cards"></div>
+  </div>
+</div>
+
+<script>
+const DATA = /*DATA*/null;
+const KIND = { reasoning: "Reasoning", text: "Agent", command: "Command", result: "Tool output",
+  user: "User / harness", earlier: "Earlier task", summary: "Compaction summary", monitor: "Monitor verdict" };
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function highlight(text, quotes) {
+  // whitespace-tolerant match of each quote; marks on the escaped text
+  let spans = [];
+  for (const q of quotes || []) {
+    const words = q.trim().split(/\s+/).map(reEsc);
+    if (!words.length) continue;
+    const re = new RegExp(words.join("\\s+"), "g");
+    let m; while ((m = re.exec(text))) { spans.push([m.index, m.index + m[0].length]); if (!m[0].length) break; }
+  }
+  spans.sort((a, b) => a[0] - b[0]);
+  let out = "", at = 0;
+  for (const [s, e] of spans) { if (s < at) continue; out += esc(text.slice(at, s)) + "<mark>" + esc(text.slice(s, e)) + "</mark>"; at = e; }
+  return out + esc(text.slice(at));
+}
+
+function turnEl(t, quotes) {
+  const d = document.createElement("div");
+  d.className = "turn " + t.kind + (t.key ? " key" : "");
+  const lab = KIND[t.kind] + (t.n != null && t.kind !== "earlier" && t.kind !== "summary" && t.kind !== "monitor" ? ` · call ${t.n}` : "");
+  d.innerHTML = `<div class="lab">${esc(lab)}</div><pre>${t.key ? highlight(t.text, quotes) : esc(t.text)}</pre>`;
+  return d;
+}
+
+function excerpt(item) {
+  const box = document.createElement("div"); box.className = "turns";
+  let last = -2;
+  item.turns.forEach((t, i) => {
+    if (!t.near) return;
+    if (last >= 0 && i > last + 1) { const g = document.createElement("div"); g.className = "gap"; g.textContent = "· · ·"; box.append(g); }
+    box.append(turnEl(t, item.quotes)); last = i;
+  });
+  return box;
+}
+
+function card(item, isDraw, pickIds) {
+  const c = document.createElement("article"); c.className = "card";
+  const m = item.meta;
+  const rank = isDraw ? `1 of ${item.n_pop} in the pool, drawn at random`
+    : item.named ? `named in the request · Argon's rank ${item.rank ?? "–"} of ${item.n_cands}`
+    : `Argon's pick ${item.rank === 1 ? "#1" : "#" + item.rank} of ${item.n_cands} candidates · pool of ${item.n_pop}`;
+  c.innerHTML = `
+    <div class="kicker">${esc(item.label ? item.title + " — " + item.label : item.title)}</div>
+    ${item.why ? `<p class="why">${esc(item.why)}</p>` : ""}
+    ${isDraw && pickIds.has(item.uid) ? `<p class="same">This draw is the same transcript as the picked example in this pool.</p>` : ""}
+    <div class="chips">
+      <span class="chip"><b>source</b>${esc(m.source)}</span>
+      <span class="chip"><b>model</b>${esc(m.model)}</span>
+      <span class="chip"><b>harness</b>${esc(m.harness)}</span>
+      <span class="chip"><b>selection</b>${esc(rank)}</span>
+    </div>
+    <p class="setup">${esc(item.setup)}</p>`;
+  if (item.quotes.length) {
+    const qs = document.createElement("div"); qs.className = "quotes";
+    item.quotes.forEach(q => { const e = document.createElement("q"); e.textContent = q; qs.append(e); });
+    c.append(qs);
+  }
+  if (item.turns.some(t => t.near)) {
+    const h = document.createElement("div"); h.className = "sect"; h.textContent = "Key lines in context"; c.append(h, excerpt(item));
+  }
+  const det = document.createElement("details");
+  const n = item.turns.length;
+  det.innerHTML = `<summary>Full transcript of this task (${n} blocks; long blocks cut except the key ones)</summary>`;
+  det.addEventListener("toggle", () => {
+    if (!det.open || det.dataset.done) return;
+    const box = document.createElement("div"); box.className = "turns";
+    item.turns.forEach(t => box.append(turnEl(t, item.quotes)));
+    det.append(box); det.dataset.done = "1";
+  });
+  c.append(det);
+  return c;
+}
+
+const pickIds = new Set(DATA.picks.map(p => p.uid));
+DATA.picks.forEach(p => document.getElementById("pick-cards").append(card(p, false, pickIds)));
+DATA.draws.forEach(d => document.getElementById("draw-cards").append(card(d, true, pickIds)));
+
+const tabs = { picks: document.getElementById("t-picks"), draws: document.getElementById("t-draws") };
+function show(which) {
+  for (const k in tabs) { tabs[k].setAttribute("aria-selected", String(k === which)); document.getElementById(k).hidden = k !== which; }
+  try { localStorage.setItem("tab", which); } catch (e) {}
+}
+tabs.picks.onclick = () => show("picks"); tabs.draws.onclick = () => show("draws");
+try { const t = localStorage.getItem("tab"); if (t === "draws") show("draws"); } catch (e) {}
+</script>
