@@ -29,6 +29,8 @@ loopback and alone holds the real key, so neither the agent nor its container ev
 read from the route: the one allowed model, host and messages path, the free paths, the auth
 header, extra body fields, the bound's prices, how a complete reply is priced, and 429 retries.
 - `ANTHROPIC`: the behaviour above, unchanged. Original body bytes are forwarded as they came.
+- `ANTHROPIC_SONNET`: Sonnet 5.5, priced from MODEL_PRICES; its bound uses $4/M input
+  (one-hour cache writes) and $10/M output. Unknown models are refused before forwarding.
 - `OPENROUTER_DS` (Jacob, 28 Oct: "DeepSeek inside Claude Code"): DeepSeek V4.1 Flash through
   OpenRouter's Anthropic-format endpoint (`/api/v1/messages`, `Authorization: Bearer`), pinned
   to Together (`provider: {order: [Together], allow_fallbacks: false}` merged into the body,
@@ -64,9 +66,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from compaction.s2.model import StageCapReached
+
 MODEL = "claude-haiku-5-5"
 # $/MTok: (input, 5-minute cache write, 1-hour cache write, cache read, output)
 PRICES = {"base": (0.10, 0.125, 0.20, 0.01, 0.50), "long": (0.50, 0.625, 1.00, 0.05, 2.50)}
+# Keep PRICES as the legacy Haiku view; all new Anthropic routes use this model-keyed table.
+SONNET_MODEL = "claude-sonnet-5-5"
+MODEL_PRICES = {MODEL: PRICES, SONNET_MODEL: {
+    "base": (2.0, 2.50, 4.0, 0.20, 10.0), "long": (2.0, 2.50, 4.0, 0.20, 10.0)}}
 LONG_ABOVE = 100_000
 DROP = ("host", "content-length", "authorization", "x-api-key", "accept-encoding",
         "connection")
@@ -97,6 +105,17 @@ def bound_usd(nbytes: int, max_tokens: int, in_per_mtok: float | None = None,
     pout = pout if out_per_mtok is None else out_per_mtok
     usd = (nbytes * pin + max(0, max_tokens) * pout) / 1e6
     return math.ceil(usd * 1e4) / 1e4
+
+
+def sonnet_cost(usage: dict) -> float:
+    """Sonnet 5.5 rates from the chain5 v0.4 brief, including both cache-write TTLs."""
+    inp = int(usage.get("input_tokens") or 0)
+    cr = int(usage.get("cache_read_input_tokens") or 0)
+    cw = int(usage.get("cache_creation_input_tokens") or 0)
+    cw_1h = int((usage.get("cache_creation") or {}).get("ephemeral_1h_input_tokens") or 0)
+    out = int(usage.get("output_tokens") or 0)
+    pin, p5, p1h, pread, pout = MODEL_PRICES[SONNET_MODEL]["base"]
+    return (inp * pin + max(0, cw - cw_1h) * p5 + cw_1h * p1h + cr * pread + out * pout) / 1e6
 
 
 def openrouter_cost(usage: dict) -> float | None:
@@ -142,6 +161,22 @@ class Route:
 ANTHROPIC = Route(name="anthropic", model=MODEL, host="api.anthropic.com", port=443, tls=True,
                   path=PRICED, in_per_mtok=PRICES["long"][2], out_per_mtok=PRICES["long"][4],
                   cost=haiku_cost, cost_source="usage", resource="anthropic-api", free=FREE)
+ANTHROPIC_SONNET = Route(
+    name="anthropic-sonnet", model=SONNET_MODEL, host="api.anthropic.com", port=443, tls=True,
+    path=PRICED, in_per_mtok=MODEL_PRICES[SONNET_MODEL]["long"][2],
+    out_per_mtok=MODEL_PRICES[SONNET_MODEL]["long"][4], cost=sonnet_cost,
+    cost_source="usage", resource="anthropic-api", free=FREE)
+
+
+def anthropic_route(model: str) -> Route:
+    """A priced route, refusing unknown models; [1m] is a CLI-only Haiku suffix."""
+    if model in (MODEL, MODEL + "[1m]"):
+        return ANTHROPIC
+    if model == SONNET_MODEL:
+        return ANTHROPIC_SONNET
+    raise ValueError(f"unpriced Anthropic model: {model}")
+
+
 OPENROUTER_DS = Route(name="openrouter-ds", model="deepseek/deepseek-v4.1-flash",
                       host="openrouter.ai", port=443, tls=True, path="/api/v1/messages",
                       in_per_mtok=0.30, out_per_mtok=1.20, cost=openrouter_cost,
@@ -248,6 +283,7 @@ class KeyProxy:
     max_calls: int | None = None
     deadline: float | None = None  # time.monotonic() value
     calls: int = 0
+    stage_cap_reached: bool = False
     system: dict | None = None
     _server: Any = None
     _thread: Any = None
@@ -256,6 +292,8 @@ class KeyProxy:
     _idle: threading.Condition = field(default_factory=threading.Condition)
 
     def __post_init__(self) -> None:
+        if self.route is ANTHROPIC and self.model == SONNET_MODEL:
+            self.route = ANTHROPIC_SONNET
         if self.upstream is None:
             self.upstream = (self.route.host, self.route.port, self.route.tls)
         if self.model is None:
@@ -347,6 +385,12 @@ class KeyProxy:
                 why = None
                 if not isinstance(req, dict) or (path != PRICED and path not in route.free):
                     why = "endpoint"
+                elif proxy.model != route.model:
+                    why = f"unpriced model {proxy.model} for route {route.name}"
+                elif path in route.free and route is ANTHROPIC_SONNET and not req.get("model"):
+                    why = "missing count_tokens model"
+                elif path in route.free and req.get("model") not in (None, route.model):
+                    why = f"unpriced count_tokens model {req.get('model')}"
                 elif path == PRICED and req.get("model") != proxy.model:
                     why = f"model {req.get('model')}"
                 elif path == PRICED:
@@ -374,6 +418,9 @@ class KeyProxy:
                             rid = proxy.spend.reserve(rec["bound_usd"], proxy.note)
                         except Exception as e:  # noqa: BLE001 - any refusal: nothing is sent
                             cap = "emx spend cap reached"
+                            if isinstance(e, StageCapReached):
+                                proxy.stage_cap_reached = True
+                                rec["stage_cap_reached"] = True
                             rec["refused_detail"] = f"{type(e).__name__}: {e}"[:300]
                     if cap is not None:
                         rec |= {"status": 400, "refused": cap}

@@ -110,6 +110,12 @@ HALTING = (END_FAILED,)
 STATE_QUOTA = "quota_refused"
 STATE_DONE = "done"
 COMPACTION_FAILED = "halted b{k}: compaction failed"
+
+
+def compaction_succeeded(c: dict | None) -> bool:
+    """A boundary that worked: `ok`, with a plaintext summary, or an encrypted one (Codex's
+    remote compaction, plan v0.4: `empty` refers to the plaintext summary only)."""
+    return bool(c and c.get("ok") and (not c.get("empty") or c.get("encrypted")))
 EXPORT_FAILED = "halted b{k}: session export failed"
 SUMMARY_RE = re.compile(r"<summary>(.*?)</summary>", re.DOTALL)
 REQUESTS_HEAD = "# User Requests"
@@ -456,7 +462,7 @@ def run_phase(pr: PhaseRun) -> PhaseRun:
                     pr.compaction = screen_record(ns, pr, pr.compaction)
                     if not pr.handoff:
                         pr.end, pr.quiet_ok = END_FAILED, False
-                    elif pr.compaction.get("ok") and not pr.compaction.get("empty"):
+                    elif compaction_succeeded(pr.compaction):
                         try:
                             pr.session = H.export(ns, pr)
                         except Exception as e:  # noqa: BLE001
@@ -805,7 +811,8 @@ def compaction_rows(pr: PhaseRun) -> list[dict]:
     """This phase's compactions.jsonl rows, in the order agy wrote them: its automatic ones
     (kind "auto", with the phase), then the boundary's (kind "boundary" or "end")."""
     rows = [{"kind": "auto", "boundary": None, "phase": pr.k, "after_phase": None, "ok": True,
-             "empty": a["empty"], "attempt": None, "deviation": None,
+             "empty": a["empty"], "encrypted": bool(a.get("encrypted")), "attempt": None,
+             "deviation": None,
              "step_index": a["step_index"], "pre_ctx_tokens": a["pre_ctx_tokens"],
              "summary_chars": a["summary_chars"], "file": None}
             for a in sorted(pr.autos, key=lambda a: a["step_index"])]
@@ -813,6 +820,7 @@ def compaction_rows(pr: PhaseRun) -> list[dict]:
     if c is not None:
         rows.append({"kind": c["kind"], "boundary": pr.k, "phase": None, "after_phase": pr.k,
                      "ok": bool(c["ok"]), "empty": bool(c["empty"]),
+                     "encrypted": bool(c.get("encrypted")),
                      "attempt": c.get("attempts") or None, "deviation": c.get("deviation"),
                      "step_index": c.get("step_index"), "pre_ctx_tokens": c.get("pre_ctx_tokens"),
                      "summary_chars": c.get("summary_chars") or 0,
@@ -942,7 +950,7 @@ def run_chain(cfg: ChainConfig, state: StateFile,
         c = pr.compaction
         if pr.kind is None:  # the last phase, no end compaction
             break
-        if c is None or not c.get("ok"):
+        if not compaction_succeeded(c):
             fail = {"boundary": k, "kind": pr.kind, "utc": _utc(),
                     "error": (c or {}).get("deviation") or "no compaction record"}
             return stop(COMPACTION_FAILED.format(k=k),

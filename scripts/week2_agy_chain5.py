@@ -59,8 +59,9 @@ RAW = ROOT / "data" / "raw" / "sprint" / "s2"
 BULK_DIR, SMOKE_DIR = RAW / "agy_chain5", RAW / "agy_chain5_smoke"
 STAGE = "SPRINT-S2-AGY-CHAIN"
 # run roots per harness (agy's are BULK_DIR and SMOKE_DIR); only agy's driver exists so far
-PREFIX = {"agy": "agy", "codex": "cx", "claude_code": "cc"}
-BUILT = ("agy",)
+PREFIX = {"agy": "agy", "codex": "cx", "claude_code": "cc", "agy_sonnet": "agy_sonnet",
+          "claude_code_sonnet": "cc_sonnet"}
+BUILT = ("agy", "agy_sonnet", "codex", "claude_code", "claude_code_sonnet")
 
 
 def roots(harness: str) -> tuple[Path, Path]:
@@ -75,6 +76,63 @@ def harness_settings(cfg: dict, harness: str) -> dict:
     if harness not in BUILT:
         sys.exit(f"refused: the {harness} chain driver is not built yet (phase 2)")
     return cfg["native_chain"][harness]
+
+
+def adapter(harness: str, hs: dict):
+    """The chain loop's Harness for a config harness. agy-Sonnet is agy with the session model
+    set for this process (`agy_chain.set_model`), so `Harness.check` sees the real model."""
+    from compaction.s2.native import agy_chain as AC
+    from compaction.s2.native import agy_nchain as AN
+    if harness in ("agy", "agy_sonnet"):
+        AC.set_model(hs["model"])
+        return AN.AGY
+    if harness == "codex":
+        from compaction.s2.native import nchain_cx
+        return nchain_cx.CX
+    if harness in ("claude_code", "claude_code_sonnet"):
+        from compaction.s2.native import nchain_cc
+        from compaction.s2.native.key_proxy import read_key
+        spend = stage_spend(harness, hs)  # one per arm: every chain and phase shares it (Argon r1)
+        return nchain_cc.cc_harness(hs["model"], hs["effort"],
+                                    key=read_key(ROOT / ".env", "ANTHROPIC_API_KEY"),
+                                    spend_factory=lambda: spend, stage=hs["stage"])
+    raise ValueError(f"no adapter for {harness}")
+
+
+def caps_file(harness: str, hs: dict) -> Path:
+    """The paid arm's caps file (its stage cap from the config), written once, never changed."""
+    p = roots(harness)[0].parent / f"{PREFIX[harness]}_chain5_budget_caps.toml"
+    content = ("# Five-task chains, paid Claude Code arm (docs/sprint/plans/week2-agy-chain5.md)\n"
+               f"[sprint]\ncheckout = {json.dumps(str(ROOT))}\n"
+               f"core_cap_usd = {hs['cap_usd']}\nfull_cap_usd = {hs['cap_usd']}\n"
+               "topup_recorded = false\ntransfer_approval_over_usd = 0.0\n\n"
+               f"[stages.{hs['stage']}]\ncap_usd = {hs['cap_usd']}\n")
+    if p.exists():
+        if p.read_text() != content:
+            sys.exit(f"{p} exists with other content; not overwriting")
+        return p
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(content)
+    tmp.replace(p)  # atomic: a reader never sees it half written
+    return p
+
+
+def stage_spend(harness: str, hs: dict):
+    """The arm's stage Spend: its stage cap, booked to this checkout's ledger (the adapter adds
+    the per-task cap, `settings.run_usd`)."""
+    from compaction.s2.interact_run import PilotSpend
+    tag = f"{PREFIX[harness]}-chain5"
+    return PilotSpend(tags=(tag,), caps={tag: hs["cap_usd"]}, stage=hs["stage"],
+                      ledger=ROOT / "logs" / "costs.jsonl", caps_file=caps_file(harness, hs))
+
+
+def arm_settings(settings, hs: dict):
+    """Experiment 4's settings, with a paid arm's per-task cost cap (plan v0.4: $6 per Claude
+    Code task, as in the harness replication; experiment 4's own run cap was pi's $2.50)."""
+    from dataclasses import replace
+    cap = hs.get("task_cap_usd")
+    return replace(settings, run_usd=cap) if cap else settings
 
 
 def utc() -> str:
@@ -96,16 +154,18 @@ def load(config: str = CONFIG) -> tuple[dict, dict]:
     return cfg, src
 
 
-def chains_and_settings(cfg: dict, src: dict):
-    """(the chains to run, in the config's order; experiment 4's settings, with its texts
-    registered)."""
+def chains_and_settings(cfg: dict, src: dict, harness: str | None = None):
+    """(the chains to run, in the config's order: the harness's own list when given (plan v0.4),
+    else every chain; experiment 4's settings, with its texts registered)."""
     from compaction.s2.chain import nchain as NC
     settings = NC.settings_from_config(src)
     by_id = {c.id: c for c in NC.chains_from_config(src)}
-    missing = [c for c in cfg["native_chain"]["chains"] if c not in by_id]
+    ids = ((cfg["native_chain"][harness].get("chains") if harness else None)
+           or cfg["native_chain"]["chains"])
+    missing = [c for c in ids if c not in by_id]
     if missing:
         raise ValueError(f"chains not in experiment 4's orders: {missing}")
-    chains = [by_id[c] for c in cfg["native_chain"]["chains"]]
+    chains = [by_id[c] for c in ids]
     bad = [c.id for c in chains if c.arm != "unrelated" or len(c.phases) != cfg["design"][
         "n_phases"] or any(p.project != "switch" for p in c.phases[1:])]
     if bad:
@@ -435,7 +495,7 @@ def free_disk_gb() -> float:
 def run(chains, settings, tasks: dict, root: Path, *, max_phases: int | None, max_live: int,
         memory_mb: int, end_compaction: bool, stage: str = STAGE, grade: bool = True,
         expect: dict | None = None, fallback_live: int | None = None,
-        min_disk_gb: float = 10.0) -> int:
+        min_disk_gb: float = 10.0, harness_impl=None, prefix: str = "agy-chain5") -> int:
     from compaction.s2.native import agy_nchain as AN
     HA = _hist_module()
     root.mkdir(parents=True, exist_ok=True)
@@ -471,12 +531,13 @@ def run(chains, settings, tasks: dict, root: Path, *, max_phases: int | None, ma
 
     def one(chain) -> None:
         try:
-            with HA.held_slots(None, f"agy-chain5:{root.name}:{chain.id}", lim, memory_mb, say):
+            with HA.held_slots(None, f"{prefix}:{root.name}:{chain.id}", lim, memory_mb, say):
                 cfg = AN.ChainConfig(chain=chain, tasks=tasks, settings=settings, root=root,
                                      host=None, memory_mb=memory_mb,
                                      cpus=HA.history_cpus(None, HA.CPUS),
                                      max_phases=max_phases, quota_stop=quota,
-                                     end_compaction=end_compaction, expect=expect)
+                                     end_compaction=end_compaction, expect=expect,
+                                     **({"harness": harness_impl} if harness_impl else {}))
                 rec = AN.run_chain(cfg, state, after_phase=after, on_result=on_result)
             say(f"chain {chain.id}: {rec.get('state')}")
         except Exception as e:  # noqa: BLE001 - a worker never kills the scheduler
@@ -560,14 +621,17 @@ def cmd_smoke(a) -> int:
     require_gate()
     cfg, src = load()
     hs = harness_settings(cfg, a.harness)
-    chains, settings = chains_and_settings(cfg, src)
+    impl = adapter(a.harness, hs)
+    chains, settings = chains_and_settings(cfg, src, a.harness)
+    settings = arm_settings(settings, hs)
     nc = cfg["native_chain"]
     chain = next(c for c in chains if c.id == nc["smoke_chain"])
     tasks = task_infos(task_ids([chain])[:nc["smoke_phases"]])
     root = _attempt_root(roots(a.harness)[1], a.attempt)
     rc = run([chain], settings, tasks, root, max_phases=nc["smoke_phases"], max_live=1,
              memory_mb=a.memory_mb or cfg["parallelism"]["agent_memory_mb"],
-             end_compaction=nc["end_compaction"], stage=hs["stage"], expect=expect(cfg, a.harness))
+             end_compaction=nc["end_compaction"], stage=hs["stage"], expect=expect(cfg, a.harness),
+             harness_impl=impl, prefix=f"{PREFIX[a.harness]}-chain5")
     checks = smoke_checks(root, chain.id, nc["smoke_phases"], a.harness)
     v = smoke_verdict(checks, nc["smoke_phases"], a.harness)
     v |= {"utc": utc(), "root": str(root), "provenance": provenance(), "checks": checks}
@@ -710,7 +774,9 @@ def cmd_bulk(a) -> int:
     cfg, src = load()
     hs = harness_settings(cfg, a.harness)
     v = passing_smoke(a.harness, a.smoke_attempt, a.accept_smoke_from, a.accept_reason)
-    chains, settings = chains_and_settings(cfg, src)
+    impl = adapter(a.harness, hs)
+    chains, settings = chains_and_settings(cfg, src, a.harness)
+    settings = arm_settings(settings, hs)
     tasks = task_infos(task_ids(chains))
     par = cfg["parallelism"]
     max_live = a.max_live or par["agents"]
@@ -723,7 +789,8 @@ def cmd_bulk(a) -> int:
     return run(chains, settings, tasks, _attempt_root(roots(a.harness)[0], a.attempt),
                max_phases=None, max_live=max_live, memory_mb=a.memory_mb or memory_mb,
                end_compaction=cfg["native_chain"]["end_compaction"], stage=hs["stage"],
-               expect=expect(cfg, a.harness), fallback_live=par["fallback_agents"])
+               expect=expect(cfg, a.harness), fallback_live=par["fallback_agents"],
+               harness_impl=impl, prefix=f"{PREFIX[a.harness]}-chain5")
 
 
 def cmd_grade(a) -> int:

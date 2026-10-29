@@ -294,7 +294,8 @@ def test_five_phases_switch_containers_and_carry_one_conversation(monkeypatch, t
         ("boundary", 1, None), ("boundary", 2, None), ("auto", None, 3), ("boundary", 3, None),
         ("boundary", 4, None), ("end", 5, None)]
     keys = {"chain", "arm", "utc", "kind", "boundary", "phase", "after_phase", "ok", "empty",
-            "attempt", "deviation", "step_index", "pre_ctx_tokens", "summary_chars", "file"}
+            "encrypted", "attempt", "deviation", "step_index", "pre_ctx_tokens",
+            "summary_chars", "file"}
     assert all(set(r) == keys for r in rs)
     assert all(r["ok"] and not r["empty"] for r in rs)
     assert rs[-1]["file"] == str((tmp_path / "chains/u1/p5/compaction.json").resolve())
@@ -749,3 +750,11 @@ def test_expectations_bind_the_config_to_the_adapter(monkeypatch, tmp_path, sett
     monkeypatch.setattr(M.AC, "AGY", M.A.AgyConfig(model="other-model", compact_at=None))
     with pytest.raises(ValueError, match="other-model"):
         M.agy_check(config(tmp_path, settings, expect=_expect()))
+
+
+def test_compaction_succeeded_accepts_an_encrypted_summary():
+    assert M.compaction_succeeded({"ok": True, "empty": False})
+    assert M.compaction_succeeded({"ok": True, "empty": True, "encrypted": True})
+    assert not M.compaction_succeeded({"ok": True, "empty": True})
+    assert not M.compaction_succeeded({"ok": False, "empty": True, "encrypted": True})
+    assert not M.compaction_succeeded(None)

@@ -103,6 +103,15 @@ HOST = "ssh://rig"  # the desktop: the auth volume emx-native-agy-auth lives the
 MODEL = A.MODEL
 CLI_VERSION = A.CLI_VERSION
 AGY = A.AgyConfig(model=MODEL, compact_at=None)
+
+
+def set_model(model: str) -> None:
+    """The session model for this process's agy runs (the five-task chains' agy-Sonnet arm,
+    plan v0.4): `MODEL` (recorded in result.json) and `AGY` (what `agy_command` is given)
+    together, so they never disagree. One model per process; call it before any run."""
+    global MODEL, AGY
+    MODEL = model
+    AGY = A.AgyConfig(model=model, compact_at=None)
 EGRESS_URL = "https://daily-cloudcode-pa.googleapis.com/"
 CONVERSATIONS = f"{A.STATE_DIR}/conversations"
 DB_SUFFIXES = ("", "-wal", "-shm", "-journal")
