@@ -12,33 +12,50 @@
   "weighting": "share per summary, then the mean over chains",
   "ci": "percentile bootstrap over chains, 10,000 resamples, seeded"
  },
- "n_summaries": 45,
- "n_entries": 3050,
+ "n_summaries": 58,
+ "n_entries": 3667,
  "n_unlabelled": 0,
  "decided_by": {
-  "code": 921,
-  "opus": 2129
+  "code": 1148,
+  "opus": 2519
  },
- "share_decided_by_opus": 0.698032786885246,
+ "share_decided_by_opus": 0.6869375511317153,
  "code_opus_agreement": {
-  "n": 921,
-  "agree": 917,
-  "rate": 0.995656894679696,
+  "n": 1148,
+  "agree": 1142,
+  "rate": 0.9947735191637631,
   "disagreements_by_category": {
    "code back_1 / opus current": 1,
    "code back_1 / opus generic": 2,
-   "code current / opus generic": 1
+   "code back_2 / opus back_1": 1,
+   "code current / opus generic": 2
   }
  },
- "opus_multi_task_entries": 52,
+ "opus_multi_task_entries": 59,
  "foreign_tag_entries": [],
  "excluded_structure_lines": {
-  "no_history": 3,
-  "separator": 45,
-  "bold_heading": 129,
-  "heading": 473
+  "no_history": 7,
+  "separator": 53,
+  "bold_heading": 137,
+  "heading": 576
  },
- "missing_boundaries": [],
+ "missing_boundaries": [
+  {
+   "chain": "w1",
+   "boundary": 2,
+   "logged": false
+  },
+  {
+   "chain": "w1",
+   "boundary": 3,
+   "logged": false
+  },
+  {
+   "chain": "w1",
+   "boundary": 4,
+   "logged": false
+  }
+ ],
  "cells": {
   "unrelated": {
    "boundary": {
@@ -562,6 +579,224 @@
      }
     }
    }
+  },
+  "within_task": {
+   "boundary": {
+    "1": {
+     "n_chains": 4,
+     "current": 1.0,
+     "back_1": 0.0,
+     "back_2": 0.0,
+     "back_3": 0.0,
+     "generic": 0.0,
+     "earlier": 0.0,
+     "earlier_ci95": [
+      0.0,
+      0.0
+     ],
+     "bootstrap_seed": 20261229,
+     "bootstrap_n": 10000,
+     "chains": [
+      "w1",
+      "w2",
+      "w3",
+      "w4"
+     ],
+     "n_entries": 89,
+     "earlier_by_chain": {
+      "w1": 0.0,
+      "w2": 0.0,
+      "w3": 0.0,
+      "w4": 0.0
+     },
+     "shares_split_multi_task": {
+      "n_chains": 4,
+      "current": 1.0,
+      "back_1": 0.0,
+      "back_2": 0.0,
+      "back_3": 0.0,
+      "generic": 0.0,
+      "earlier": 0.0
+     },
+     "shares_opus_only": {
+      "n_chains": 4,
+      "current": 1.0,
+      "back_1": 0.0,
+      "back_2": 0.0,
+      "back_3": 0.0,
+      "generic": 0.0,
+      "earlier": 0.0
+     },
+     "shares_bullets_only": {
+      "n_chains": 4,
+      "current": 1.0,
+      "back_1": 0.0,
+      "back_2": 0.0,
+      "back_3": 0.0,
+      "generic": 0.0,
+      "earlier": 0.0
+     }
+    },
+    "2": {
+     "n_chains": 3,
+     "current": 0.9016835016835016,
+     "back_1": 0.044949494949494954,
+     "back_2": 0.0,
+     "back_3": 0.0,
+     "generic": 0.05336700336700337,
+     "earlier": 0.044949494949494954,
+     "earlier_ci95": [
+      0.01818181818181818,
+      0.06666666666666667
+     ],
+     "bootstrap_seed": 20261230,
+     "bootstrap_n": 10000,
+     "chains": [
+      "w2",
+      "w3",
+      "w4"
+     ],
+     "n_entries": 160,
+     "earlier_by_chain": {
+      "w2": 0.01818181818181818,
+      "w3": 0.06666666666666667,
+      "w4": 0.05
+     },
+     "shares_split_multi_task": {
+      "n_chains": 3,
+      "current": 0.8986531986531987,
+      "back_1": 0.04797979797979798,
+      "back_2": 0.0,
+      "back_3": 0.0,
+      "generic": 0.05336700336700337,
+      "earlier": 0.04797979797979798
+     },
+     "shares_opus_only": {
+      "n_chains": 3,
+      "current": 0.9016835016835016,
+      "back_1": 0.044949494949494954,
+      "back_2": 0.0,
+      "back_3": 0.0,
+      "generic": 0.05336700336700337,
+      "earlier": 0.044949494949494954
+     },
+     "shares_bullets_only": {
+      "n_chains": 3,
+      "current": 0.9016835016835016,
+      "back_1": 0.044949494949494954,
+      "back_2": 0.0,
+      "back_3": 0.0,
+      "generic": 0.05336700336700337,
+      "earlier": 0.044949494949494954
+     }
+    },
+    "3": {
+     "n_chains": 3,
+     "current": 0.8141938708285058,
+     "back_1": 0.1367428999815015,
+     "back_2": 0.014107544469433653,
+     "back_3": 0.0,
+     "generic": 0.03495568472055898,
+     "earlier": 0.15085044445093512,
+     "earlier_ci95": [
+      0.029850746268656716,
+      0.2857142857142857
+     ],
+     "bootstrap_seed": 20261231,
+     "bootstrap_n": 10000,
+     "chains": [
+      "w2",
+      "w3",
+      "w4"
+     ],
+     "n_entries": 182,
+     "earlier_by_chain": {
+      "w2": 0.2857142857142857,
+      "w3": 0.029850746268656716,
+      "w4": 0.136986301369863
+     },
+     "shares_split_multi_task": {
+      "n_chains": 3,
+      "current": 0.8139894136622822,
+      "back_1": 0.13694735714772516,
+      "back_2": 0.014107544469433653,
+      "back_3": 0.0,
+      "generic": 0.03495568472055898,
+      "earlier": 0.15105490161715882
+     },
+     "shares_opus_only": {
+      "n_chains": 3,
+      "current": 0.8141938708285058,
+      "back_1": 0.1367428999815015,
+      "back_2": 0.014107544469433653,
+      "back_3": 0.0,
+      "generic": 0.03495568472055898,
+      "earlier": 0.15085044445093512
+     },
+     "shares_bullets_only": {
+      "n_chains": 3,
+      "current": 0.8141938708285058,
+      "back_1": 0.1367428999815015,
+      "back_2": 0.014107544469433653,
+      "back_3": 0.0,
+      "generic": 0.03495568472055898,
+      "earlier": 0.15085044445093512
+     }
+    },
+    "4": {
+     "n_chains": 3,
+     "current": 0.8223267622461171,
+     "back_1": 0.1346326164874552,
+     "back_2": 0.01816009557945042,
+     "back_3": 0.007407407407407408,
+     "generic": 0.01747311827956989,
+     "earlier": 0.16020011947431304,
+     "earlier_ci95": [
+      0.044444444444444446,
+      0.2903225806451613
+     ],
+     "bootstrap_seed": 20261232,
+     "bootstrap_n": 10000,
+     "chains": [
+      "w2",
+      "w3",
+      "w4"
+     ],
+     "n_entries": 186,
+     "earlier_by_chain": {
+      "w2": 0.2903225806451613,
+      "w3": 0.14583333333333334,
+      "w4": 0.044444444444444446
+     },
+     "shares_split_multi_task": {
+      "n_chains": 3,
+      "current": 0.8186230585424134,
+      "back_1": 0.1365442054958184,
+      "back_2": 0.01995221027479092,
+      "back_3": 0.007407407407407408,
+      "generic": 0.01747311827956989,
+      "earlier": 0.16390382317801674
+     },
+     "shares_opus_only": {
+      "n_chains": 3,
+      "current": 0.8187425328554361,
+      "back_1": 0.1382168458781362,
+      "back_2": 0.014575866188769415,
+      "back_3": 0.007407407407407408,
+      "generic": 0.021057347670250897,
+      "earlier": 0.16020011947431304
+     },
+     "shares_bullets_only": {
+      "n_chains": 3,
+      "current": 0.8209969750120746,
+      "back_1": 0.13566689544726607,
+      "back_2": 0.01816009557945042,
+      "back_3": 0.007407407407407408,
+      "generic": 0.01776862655380157,
+      "earlier": 0.1612343984341239
+     }
+    }
+   }
   }
  },
  "trend_unrelated_earlier": {
@@ -589,9 +824,66 @@
    "excludes_zero": false
   }
  },
+ "within_vs_unrelated_earlier": {
+  "what": "earlier-task share, within-task chain minus the unrelated chain with the same task order (w<i> vs u<i>), per boundary; paired percentile bootstrap over pairs, seeded",
+  "2": {
+   "diff": -0.05889154704944179,
+   "ci95": [
+    -0.12894736842105264,
+    0.025000000000000005
+   ],
+   "n_chains": 3,
+   "seed": 20261101,
+   "n_boot": 10000,
+   "excludes_zero": false,
+   "pairs": {
+    "w2": "u2",
+    "w3": "u3",
+    "w4": "u4"
+   },
+   "within_mean": 0.044949494949494954,
+   "unrelated_mean": 0.10384104199893673
+  },
+  "3": {
+   "diff": -0.1718127878013382,
+   "ci95": [
+    -0.4590381426202322,
+    0.08058608058608058
+   ],
+   "n_chains": 3,
+   "seed": 20261102,
+   "n_boot": 10000,
+   "excludes_zero": false,
+   "pairs": {
+    "w2": "u2",
+    "w3": "u3",
+    "w4": "u4"
+   },
+   "within_mean": 0.15085044445093512,
+   "unrelated_mean": 0.32266323225227334
+  },
+  "4": {
+   "diff": -0.1193143529813359,
+   "ci95": [
+    -0.23416666666666666,
+    0.07463630613535738
+   ],
+   "n_chains": 3,
+   "seed": 20261103,
+   "n_boot": 10000,
+   "excludes_zero": false,
+   "pairs": {
+    "w2": "u2",
+    "w3": "u3",
+    "w4": "u4"
+   },
+   "within_mean": 0.16020011947431304,
+   "unrelated_mean": 0.2795144724556489
+  }
+ },
  "excluded_headings": {
   "what": "boundary summaries' excluded headings and bold-only sub-headings that name a task identifier (code matcher); not shown to Opus, not counted",
-  "n_headings": 545,
+  "n_headings": 656,
   "n_with_any_task_id": 31,
   "n_with_earlier_task_id": 16,
   "by_arm_with_earlier": {
@@ -3027,6 +3319,656 @@
    },
    "n_bullet_entries": 75,
    "decided_by_code": 26
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w1",
+   "boundary": 1,
+   "n_entries": 22,
+   "counts": {
+    "current": 22,
+    "back_1": 0,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 0
+   },
+   "n_labelled": 22,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_split_multi_task": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_opus_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_bullets_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "n_bullet_entries": 21,
+   "decided_by_code": 6
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w2",
+   "boundary": 1,
+   "n_entries": 19,
+   "counts": {
+    "current": 19,
+    "back_1": 0,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 0
+   },
+   "n_labelled": 19,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_split_multi_task": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_opus_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_bullets_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "n_bullet_entries": 18,
+   "decided_by_code": 7
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w2",
+   "boundary": 2,
+   "n_entries": 55,
+   "counts": {
+    "current": 51,
+    "back_1": 1,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 3
+   },
+   "n_labelled": 55,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.9272727272727272,
+    "back_1": 0.01818181818181818,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.05454545454545454,
+    "earlier": 0.01818181818181818
+   },
+   "shares_split_multi_task": {
+    "current": 0.9181818181818182,
+    "back_1": 0.02727272727272727,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.05454545454545454,
+    "earlier": 0.02727272727272727
+   },
+   "shares_opus_only": {
+    "current": 0.9272727272727272,
+    "back_1": 0.01818181818181818,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.05454545454545454,
+    "earlier": 0.01818181818181818
+   },
+   "shares_bullets_only": {
+    "current": 0.9272727272727272,
+    "back_1": 0.01818181818181818,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.05454545454545454,
+    "earlier": 0.01818181818181818
+   },
+   "n_bullet_entries": 55,
+   "decided_by_code": 9
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w2",
+   "boundary": 3,
+   "n_entries": 42,
+   "counts": {
+    "current": 28,
+    "back_1": 12,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 2
+   },
+   "n_labelled": 42,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.6666666666666666,
+    "back_1": 0.2857142857142857,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.047619047619047616,
+    "earlier": 0.2857142857142857
+   },
+   "shares_split_multi_task": {
+    "current": 0.6666666666666666,
+    "back_1": 0.2857142857142857,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.047619047619047616,
+    "earlier": 0.2857142857142857
+   },
+   "shares_opus_only": {
+    "current": 0.6666666666666666,
+    "back_1": 0.2857142857142857,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.047619047619047616,
+    "earlier": 0.2857142857142857
+   },
+   "shares_bullets_only": {
+    "current": 0.6666666666666666,
+    "back_1": 0.2857142857142857,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.047619047619047616,
+    "earlier": 0.2857142857142857
+   },
+   "n_bullet_entries": 42,
+   "decided_by_code": 17
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w2",
+   "boundary": 4,
+   "n_entries": 93,
+   "counts": {
+    "current": 65,
+    "back_1": 24,
+    "back_2": 3,
+    "back_3": 0,
+    "generic": 1
+   },
+   "n_labelled": 93,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.6989247311827957,
+    "back_1": 0.25806451612903225,
+    "back_2": 0.03225806451612903,
+    "back_3": 0.0,
+    "generic": 0.010752688172043012,
+    "earlier": 0.2903225806451613
+   },
+   "shares_split_multi_task": {
+    "current": 0.6989247311827957,
+    "back_1": 0.25268817204301075,
+    "back_2": 0.03763440860215054,
+    "back_3": 0.0,
+    "generic": 0.010752688172043012,
+    "earlier": 0.2903225806451613
+   },
+   "shares_opus_only": {
+    "current": 0.6881720430107527,
+    "back_1": 0.26881720430107525,
+    "back_2": 0.021505376344086023,
+    "back_3": 0.0,
+    "generic": 0.021505376344086023,
+    "earlier": 0.2903225806451613
+   },
+   "shares_bullets_only": {
+    "current": 0.6989247311827957,
+    "back_1": 0.25806451612903225,
+    "back_2": 0.03225806451612903,
+    "back_3": 0.0,
+    "generic": 0.010752688172043012,
+    "earlier": 0.2903225806451613
+   },
+   "n_bullet_entries": 93,
+   "decided_by_code": 46
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w3",
+   "boundary": 1,
+   "n_entries": 25,
+   "counts": {
+    "current": 25,
+    "back_1": 0,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 0
+   },
+   "n_labelled": 25,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_split_multi_task": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_opus_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_bullets_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "n_bullet_entries": 20,
+   "decided_by_code": 7
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w3",
+   "boundary": 2,
+   "n_entries": 45,
+   "counts": {
+    "current": 38,
+    "back_1": 3,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 4
+   },
+   "n_labelled": 45,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.8444444444444444,
+    "back_1": 0.06666666666666667,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.08888888888888889,
+    "earlier": 0.06666666666666667
+   },
+   "shares_split_multi_task": {
+    "current": 0.8444444444444444,
+    "back_1": 0.06666666666666667,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.08888888888888889,
+    "earlier": 0.06666666666666667
+   },
+   "shares_opus_only": {
+    "current": 0.8444444444444444,
+    "back_1": 0.06666666666666667,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.08888888888888889,
+    "earlier": 0.06666666666666667
+   },
+   "shares_bullets_only": {
+    "current": 0.8444444444444444,
+    "back_1": 0.06666666666666667,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.08888888888888889,
+    "earlier": 0.06666666666666667
+   },
+   "n_bullet_entries": 45,
+   "decided_by_code": 10
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w3",
+   "boundary": 3,
+   "n_entries": 67,
+   "counts": {
+    "current": 63,
+    "back_1": 1,
+    "back_2": 1,
+    "back_3": 0,
+    "generic": 2
+   },
+   "n_labelled": 67,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.9402985074626866,
+    "back_1": 0.014925373134328358,
+    "back_2": 0.014925373134328358,
+    "back_3": 0.0,
+    "generic": 0.029850746268656716,
+    "earlier": 0.029850746268656716
+   },
+   "shares_split_multi_task": {
+    "current": 0.9328358208955224,
+    "back_1": 0.022388059701492536,
+    "back_2": 0.014925373134328358,
+    "back_3": 0.0,
+    "generic": 0.029850746268656716,
+    "earlier": 0.03731343283582089
+   },
+   "shares_opus_only": {
+    "current": 0.9402985074626866,
+    "back_1": 0.014925373134328358,
+    "back_2": 0.014925373134328358,
+    "back_3": 0.0,
+    "generic": 0.029850746268656716,
+    "earlier": 0.029850746268656716
+   },
+   "shares_bullets_only": {
+    "current": 0.9402985074626866,
+    "back_1": 0.014925373134328358,
+    "back_2": 0.014925373134328358,
+    "back_3": 0.0,
+    "generic": 0.029850746268656716,
+    "earlier": 0.029850746268656716
+   },
+   "n_bullet_entries": 67,
+   "decided_by_code": 16
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w3",
+   "boundary": 4,
+   "n_entries": 48,
+   "counts": {
+    "current": 39,
+    "back_1": 7,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 2
+   },
+   "n_labelled": 48,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.8125,
+    "back_1": 0.14583333333333334,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.041666666666666664,
+    "earlier": 0.14583333333333334
+   },
+   "shares_split_multi_task": {
+    "current": 0.8125,
+    "back_1": 0.14583333333333334,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.041666666666666664,
+    "earlier": 0.14583333333333334
+   },
+   "shares_opus_only": {
+    "current": 0.8125,
+    "back_1": 0.14583333333333334,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.041666666666666664,
+    "earlier": 0.14583333333333334
+   },
+   "shares_bullets_only": {
+    "current": 0.8085106382978723,
+    "back_1": 0.14893617021276595,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0425531914893617,
+    "earlier": 0.14893617021276595
+   },
+   "n_bullet_entries": 47,
+   "decided_by_code": 21
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w4",
+   "boundary": 1,
+   "n_entries": 23,
+   "counts": {
+    "current": 23,
+    "back_1": 0,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 0
+   },
+   "n_labelled": 23,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_split_multi_task": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_opus_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "shares_bullets_only": {
+    "current": 1.0,
+    "back_1": 0.0,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.0,
+    "earlier": 0.0
+   },
+   "n_bullet_entries": 21,
+   "decided_by_code": 8
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w4",
+   "boundary": 2,
+   "n_entries": 60,
+   "counts": {
+    "current": 56,
+    "back_1": 3,
+    "back_2": 0,
+    "back_3": 0,
+    "generic": 1
+   },
+   "n_labelled": 60,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.9333333333333333,
+    "back_1": 0.05,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.016666666666666666,
+    "earlier": 0.05
+   },
+   "shares_split_multi_task": {
+    "current": 0.9333333333333333,
+    "back_1": 0.05,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.016666666666666666,
+    "earlier": 0.05
+   },
+   "shares_opus_only": {
+    "current": 0.9333333333333333,
+    "back_1": 0.05,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.016666666666666666,
+    "earlier": 0.05
+   },
+   "shares_bullets_only": {
+    "current": 0.9333333333333333,
+    "back_1": 0.05,
+    "back_2": 0.0,
+    "back_3": 0.0,
+    "generic": 0.016666666666666666,
+    "earlier": 0.05
+   },
+   "n_bullet_entries": 60,
+   "decided_by_code": 26
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w4",
+   "boundary": 3,
+   "n_entries": 73,
+   "counts": {
+    "current": 61,
+    "back_1": 8,
+    "back_2": 2,
+    "back_3": 0,
+    "generic": 2
+   },
+   "n_labelled": 73,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.8356164383561644,
+    "back_1": 0.1095890410958904,
+    "back_2": 0.0273972602739726,
+    "back_3": 0.0,
+    "generic": 0.0273972602739726,
+    "earlier": 0.136986301369863
+   },
+   "shares_split_multi_task": {
+    "current": 0.8424657534246576,
+    "back_1": 0.10273972602739725,
+    "back_2": 0.0273972602739726,
+    "back_3": 0.0,
+    "generic": 0.0273972602739726,
+    "earlier": 0.13013698630136986
+   },
+   "shares_opus_only": {
+    "current": 0.8356164383561644,
+    "back_1": 0.1095890410958904,
+    "back_2": 0.0273972602739726,
+    "back_3": 0.0,
+    "generic": 0.0273972602739726,
+    "earlier": 0.136986301369863
+   },
+   "shares_bullets_only": {
+    "current": 0.8356164383561644,
+    "back_1": 0.1095890410958904,
+    "back_2": 0.0273972602739726,
+    "back_3": 0.0,
+    "generic": 0.0273972602739726,
+    "earlier": 0.136986301369863
+   },
+   "n_bullet_entries": 73,
+   "decided_by_code": 42
+  },
+  {
+   "arm": "within_task",
+   "kind": "boundary",
+   "chain": "w4",
+   "boundary": 4,
+   "n_entries": 45,
+   "counts": {
+    "current": 43,
+    "back_1": 0,
+    "back_2": 1,
+    "back_3": 1,
+    "generic": 0
+   },
+   "n_labelled": 45,
+   "n_unlabelled": 0,
+   "shares": {
+    "current": 0.9555555555555556,
+    "back_1": 0.0,
+    "back_2": 0.022222222222222223,
+    "back_3": 0.022222222222222223,
+    "generic": 0.0,
+    "earlier": 0.044444444444444446
+   },
+   "shares_split_multi_task": {
+    "current": 0.9444444444444444,
+    "back_1": 0.011111111111111112,
+    "back_2": 0.022222222222222223,
+    "back_3": 0.022222222222222223,
+    "generic": 0.0,
+    "earlier": 0.05555555555555555
+   },
+   "shares_opus_only": {
+    "current": 0.9555555555555556,
+    "back_1": 0.0,
+    "back_2": 0.022222222222222223,
+    "back_3": 0.022222222222222223,
+    "generic": 0.0,
+    "earlier": 0.044444444444444446
+   },
+   "shares_bullets_only": {
+    "current": 0.9555555555555556,
+    "back_1": 0.0,
+    "back_2": 0.022222222222222223,
+    "back_3": 0.022222222222222223,
+    "generic": 0.0,
+    "earlier": 0.044444444444444446
+   },
+   "n_bullet_entries": 45,
+   "decided_by_code": 12
   }
  ],
  "prediction": {

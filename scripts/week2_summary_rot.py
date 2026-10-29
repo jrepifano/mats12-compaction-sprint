@@ -12,9 +12,9 @@ teammate_texts.json (tags, repos, branches) and results/sprint/week2/chain_stres
 
 Subcommands (outputs under results/sprint/week2/chain_stress/summary_rot/):
 - `attribute [--no-opus] [--max-calls 60] [--concurrency 3]`: splits every summary of the
-  unrelated and related chains into entries, labels them by code, then by Opus (one call per
-  summary, answers cached per summary under data/raw/sprint/s2/summary_rot/opus/, so a rerun
-  makes no call twice; a malformed answer gets one retry, then its entries stay unlabelled).
+  unrelated, related and within-task chains into entries, labels them by code, then by Opus
+  (one call per summary, answers cached per summary under data/raw/sprint/s2/summary_rot/opus/,
+  so a rerun makes no call twice; a malformed answer gets one retry, then its entries stay unlabelled).
   Writes attributions.jsonl (one row per entry) and attribute_meta.json.
 - `shares`: attributions.jsonl -> shares.json (per summary, chain-weighted per arm and
   boundary, the seeded bootstrap CI over chains for the earlier-task share, code-Opus agreement,
@@ -50,11 +50,13 @@ ATTR = OUT / "attributions.jsonl"
 META = OUT / "attribute_meta.json"
 SHARES = OUT / "shares.json"
 SAMPLE = OUT / "hand_check_sample.jsonl"
-ARMS = ("unrelated", "related")
+ARMS = ("unrelated", "related", "within_task")  # bootstrap seeds go by index: append only
+SAMPLE_ARMS = ("unrelated", "related")  # the 30 cards were drawn before within_task was added
 LEDGER_EXP = "SPRINT-S2-CHAIN-STRESS"
 PURPOSE = "week2-summary-rot"
 BOOT_SEED = 20261028
 TREND_SEED = 20261031
+WITHIN_SEED = 20261101
 SAMPLE_SEED = 20261029
 SAMPLE_N = 30
 PREDICTION = {"arm": "unrelated", "boundary": 4, "threshold": 0.30, "confidence": 0.65,
@@ -92,8 +94,8 @@ def load_inputs():
 
 
 def summaries(state: dict) -> tuple[list[dict], list[dict]]:
-    """(the pulled boundary and end summaries of the unrelated and related chains, in chain and
-    boundary order; the expected ones that are missing)."""
+    """(the pulled boundary and end summaries of the unrelated, related and within-task chains,
+    in chain and boundary order; the expected ones that are missing)."""
     out, missing = [], []
     for cid in sorted(state["chains"]):
         ch = state["chains"][cid]
@@ -334,6 +336,25 @@ def cmd_shares(args) -> None:
         trend[f"{a}-{b}"] = SR.paired_bootstrap_diff(ub[a]["earlier_by_chain"],
                                                      ub[b]["earlier_by_chain"],
                                                      TREND_SEED + i)
+    # within-task chain w<i> runs unrelated chain u<i>'s task order: pair them by task list
+    tasks = {(sm["chain"], sm["k"]): [t["task_id"] for t in sm["tasks"]]
+             for sm in meta["summaries"]}
+    wb = cells.get("within_task", {}).get("boundary", {})
+    within = {}
+    for i, k in enumerate(k for k in sorted(wb, key=int) if int(k) >= 2):  # no earlier at 1
+        w_by = {c: v for c, v in wb[k]["earlier_by_chain"].items() if v is not None}
+        u_by = {c: v for c, v in ub[k]["earlier_by_chain"].items() if v is not None}
+        pairs = {}
+        for wc in w_by:
+            m = [uc for uc in u_by if tasks[(uc, int(k))] == tasks[(wc, int(k))]]
+            if len(m) == 1:
+                pairs[wc] = m[0]
+        d = SR.paired_bootstrap_diff({wc: w_by[wc] for wc in pairs},
+                                     {wc: u_by[uc] for wc, uc in pairs.items()}, WITHIN_SEED + i)
+        within[k] = {**d, "pairs": pairs,
+                     "within_mean": sum(w_by[c] for c in pairs) / len(pairs) if pairs else None,
+                     "unrelated_mean": (sum(u_by[c] for c in pairs.values()) / len(pairs)
+                                        if pairs else None)}
     heads = []
     for sm in meta["summaries"]:
         if sm["kind"] != "boundary":
@@ -380,6 +401,11 @@ def cmd_shares(args) -> None:
             "what": "paired difference over chains of the unrelated earlier-task share, "
                     "boundary a minus boundary b; percentile bootstrap over chains, seeded",
             **trend},
+        "within_vs_unrelated_earlier": {
+            "what": "earlier-task share, within-task chain minus the unrelated chain with the "
+                    "same task order (w<i> vs u<i>), per boundary; paired percentile bootstrap "
+                    "over pairs, seeded",
+            **within},
         "excluded_headings": {
             "what": "boundary summaries' excluded headings and bold-only sub-headings that "
                     "name a task identifier (code matcher); not shown to Opus, not counted",
@@ -409,7 +435,7 @@ def cmd_shares(args) -> None:
 
 
 def cmd_sample(args) -> None:
-    rows = [r for r in _jsonl(ATTR) if r["kind"] == "boundary"]
+    rows = [r for r in _jsonl(ATTR) if r["kind"] == "boundary" and r["arm"] in SAMPLE_ARMS]
     meta = json.loads(META.read_text())
     tasks = {(s["chain"], s["k"]): s["tasks"] for s in meta["summaries"]}
     rng = random.Random(SAMPLE_SEED)
@@ -421,7 +447,8 @@ def cmd_sample(args) -> None:
         r = rows[pick[oi]]
         out.append({"card": n, "id": r["id"], "boundary": r["boundary"], "text": r["text"],
                     "tasks": tasks[(r["chain"], r["boundary"])], "sample_seed": SAMPLE_SEED,
-                    "population": f"{len(rows)} boundary-summary entries, all arms"})
+                    "population": f"{len(rows)} boundary-summary entries, arms "
+                                  + " and ".join(SAMPLE_ARMS)})
     SAMPLE.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in out))
     print(f"wrote {SAMPLE_N} cards to {rel(SAMPLE)}")
 
@@ -504,21 +531,23 @@ def cmd_figure(args) -> None:
 
     FIG.mkdir(parents=True, exist_ok=True)
     un, re_ = sh["cells"]["unrelated"]["boundary"], sh["cells"]["related"]["boundary"]
+    wi = sh["cells"]["within_task"]["boundary"]
     p = sh["prediction"]
     k4 = un[str(p["boundary"])]
     later = [100 * un[k]["earlier"] for k in sorted(un, key=int) if int(k) >= 2]
     tr = sh["trend_unrelated_earlier"]["4-2"]
     # chain means, not every summary: single chains range wider (astra r2)
-    title = (f"Across unrelated chains, earlier-task content averages "
-             f"{min(later):.0f}–{max(later):.0f}%\nof the summary after tasks 2–4")
+    title = (f"Compacted only between tasks, unrelated chains' summaries are on average "
+             f"{min(later):.0f}–{max(later):.0f}%\nabout earlier tasks after tasks 2–4")
     if tr["excludes_zero"]:  # claim a trend only when the paired interval excludes 0
         title += (", and the share " + ("grows" if tr["diff"] > 0 else "shrinks")
                   + " from task 2 to task 4")
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6.2), width_ratios=[4, 3], sharey=True)
-    fig.subplots_adjust(left=0.07, right=0.98, top=0.76, bottom=0.25, wspace=0.08)
-    nums = _panel(axes[0], un, colors, "Five unrelated projects in a row")
+    fig, axes = plt.subplots(1, 3, figsize=(16, 6.2), width_ratios=[4, 3, 4], sharey=True)
+    fig.subplots_adjust(left=0.055, right=0.985, top=0.76, bottom=0.25, wspace=0.08)
+    nums = _panel(axes[0], un, colors, "Five unrelated projects, compacted between tasks")
     nums += _panel(axes[1], re_, colors, "Several tasks in one repository",
                    " (the only four-task repository chain)")
+    nums += _panel(axes[2], wi, colors, "Unrelated, also compacted inside tasks")
     axes[0].set_ylabel("Share of summary entries (%)", fontsize=11.5)
     fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top", fontsize=16, fontweight="bold",
                  color=INK)
@@ -538,10 +567,13 @@ def cmd_figure(args) -> None:
                bbox_to_anchor=(0.5, 0.075), handlelength=1.1, handleheight=1.1)
     un_ch = sorted({c for v in un.values() for c in v["chains"]})
     re_ch = sorted({c for v in re_.values() for c in v["chains"]})
+    wi_ch = sorted({c for v in wi.values() for c in v["chains"]})
     fig.text(0.02, 0.012,
              f"Means over chains (each chain weighs the same); black whisker: 95% bootstrap "
              f"interval over chains for all earlier tasks together. Entries labelled by name "
-             f"matching, else Claude Opus 5.5. Chains: {', '.join(un_ch)}; {', '.join(re_ch)}.",
+             f"matching, else Claude Opus 5.5. Chains: {', '.join(un_ch)}; {', '.join(re_ch)}; "
+             f"{', '.join(wi_ch)} (the task orders of {', '.join('u' + c[1:] for c in wi_ch)}, "
+             f"compacted at 169k tokens inside tasks as well; w1 ended after task 2).",
              fontsize=8.5, color=MUTED, ha="left", va="bottom", wrap=True)
     for ext in ("png", "svg"):
         fig.savefig(FIG / f"summary_rot.{ext}", dpi=200 if ext == "png" else None)
@@ -550,8 +582,8 @@ def cmd_figure(args) -> None:
               ("Generated by `scripts/week2_summary_rot.py figure` from "
                f"`{rel(SHARES)}` only; every number is read from that file."), "",
               f"## summary_rot: {title.replace(chr(10), ' ')}", "", "![summary_rot](summary_rot.png)", "",
-              (f"**Source:** `{rel(SHARES)}`, fields `cells.unrelated.boundary.<k>` and "
-               "`cells.related.boundary.<k>` (`back_3`, `back_2`, `back_1`, `current`, "
+              (f"**Source:** `{rel(SHARES)}`, fields `cells.unrelated.boundary.<k>`, "
+               "`cells.related.boundary.<k>` and `cells.within_task.boundary.<k>` (`back_3`, `back_2`, `back_1`, `current`, "
                "`generic`, `earlier`, `earlier_ci95`, `n_chains`); the subtitle from "
                "`prediction`."), "", "**Numbers plotted:**"] + [f"- {n}" for n in nums]
     nums2, title2 = _by_chain(plt, colors, sh)
@@ -565,6 +597,23 @@ def cmd_figure(args) -> None:
                       f"[{100 * t['ci95'][0]:+.1f}, {100 * t['ci95'][1]:+.1f}]"
                       for (a, b), t in ((key.split("-"), v) for key, v in
                                         sh["trend_unrelated_earlier"].items() if key != "what"))
+    wv = {k: v for k, v in sh["within_vs_unrelated_earlier"].items() if k != "what"}
+    wdesc = "; ".join(f"after task {k}: {100 * v['within_mean']:.1f}% vs "
+                      f"{100 * v['unrelated_mean']:.1f}%, difference {100 * v['diff']:+.1f} "
+                      f"points [{100 * v['ci95'][0]:+.1f}, {100 * v['ci95'][1]:+.1f}] over "
+                      f"{v['n_chains']} pairs"
+                      for k, v in sorted(wv.items(), key=lambda kv: int(kv[0])))
+    readme += ["", ("**Within-task arm (right panel) against the unrelated chains with the same "
+                    "task order** (w<i> vs u<i>; `within_vs_unrelated_earlier` in shares.json; "
+                    f"earlier-task share, within-task vs unrelated): {wdesc}. Three pairs, so "
+                    "the bootstrap intervals are coarse; no difference is claimed. w1's boundary "
+                    "2 compaction failed (twice) and the chain ended after task 2, so it adds "
+                    "only the after-task-1 bar. The arm also compacted inside tasks once the "
+                    "context reached 169k tokens, so its boundary summaries were written from "
+                    "contexts already compacted inside the task, except w3 after task 4 (no "
+                    "in-task compaction fired in that task). The comparison is between the two "
+                    "compaction regimes, not an isolated effect on the boundary summary; the "
+                    "in-task summaries themselves are not counted here.")]
     readme += ["", ("**Trend (unrelated arm, earlier-task share, paired bootstrap over the 8 "
                     f"chains):** {tdesc}. The title claims a trend only if the task 4 minus "
                     "task 2 interval excludes 0."),
@@ -587,7 +636,11 @@ def cmd_figure(args) -> None:
                     "through \"several unrelated coding tasks\", including for the related arm, "
                     "whose tasks share one repository. The related-arm labels were not rerun."),
                "", ("**Related arm, after task 3:** one chain (koota), the only four-task "
-                    "repository chain; not comparable to the four-chain bars and no interval.")]
+                    "repository chain; not comparable to the four-chain bars and no interval."),
+               "", ("**End summaries** (after a chain's last task) are not plotted. Those of "
+                    "the five-task chains were not pulled, including w3's and w4's, which "
+                    "were dropped from the inputs after a first pull (their Opus answers stay "
+                    "cached, unused).")]
     readme += ["", ("**Notes:** an entry is one non-empty summary line (headings, separators and "
                "bold-only sub-headings excluded). Label: the one task whose ticket tag, repo, "
                "package, branch or task id the line names, else Claude Opus 5.5's call (Max "

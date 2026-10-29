@@ -1,14 +1,30 @@
 {
- "n_summaries": 45,
- "n_entries": 3050,
+ "n_summaries": 58,
+ "n_entries": 3667,
  "excluded_structure_lines": {
-  "no_history": 3,
-  "separator": 45,
-  "bold_heading": 129,
-  "heading": 473
+  "no_history": 7,
+  "separator": 53,
+  "bold_heading": 137,
+  "heading": 576
  },
- "n_excluded_structure_lines": 650,
- "missing_boundaries": [],
+ "n_excluded_structure_lines": 773,
+ "missing_boundaries": [
+  {
+   "chain": "w1",
+   "boundary": 2,
+   "logged": false
+  },
+  {
+   "chain": "w1",
+   "boundary": 3,
+   "logged": false
+  },
+  {
+   "chain": "w1",
+   "boundary": 4,
+   "logged": false
+  }
+ ],
  "opus_pending": [],
  "opus_failed_summaries": [],
  "n_unlabelled_entries": 0,
@@ -3271,6 +3287,968 @@
      "slug:conditional-attribute-requirements",
      "repo:dynamodb-toolbox",
      "repo:dynamodb"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w1",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w1/p1/compaction.json",
+   "summary_sha256": "e9e40d7a547f9718a53dc668c6adbc071215c649b2f9b3a4e8bae2a0fc7ffa0e",
+   "update": false,
+   "n_entries": 22,
+   "excluded": {
+    "no_history": 1,
+    "separator": 1,
+    "bold_heading": 1,
+    "heading": 6
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w2/p1/compaction.json",
+   "summary_sha256": "c37e467d71cfeffffcfcd838ab10ab016c4d43079574282879bae26902cdc558",
+   "update": false,
+   "n_entries": 19,
+   "excluded": {
+    "no_history": 1,
+    "separator": 1,
+    "bold_heading": 1,
+    "heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w2/p2/compaction.json",
+   "summary_sha256": "b4911703075c2be961ebf40cb03bafdec7cb7a49f2f26e00db99e434659af064",
+   "update": true,
+   "n_entries": 55,
+   "excluded": {
+    "heading": 9
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    },
+    {
+     "n": 2,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ],
+    "2": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w2/p3/compaction.json",
+   "summary_sha256": "8b6ac2eb034dca8c913c5774198715dd19cff30626baa88992d28f7e304a9f73",
+   "update": true,
+   "n_entries": 42,
+   "excluded": {
+    "heading": 4
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    },
+    {
+     "n": 2,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 3,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ],
+    "2": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "3": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w2/p4/compaction.json",
+   "summary_sha256": "8450a9b84e5d632bb3f2a734fde4b0fe74a61998234b214d15ffda3efce7d3d6",
+   "update": true,
+   "n_entries": 93,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "cattrs-partial-structuring-recovery",
+     "repo": "cattrs",
+     "tag": "CAT-518"
+    },
+    {
+     "n": 2,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 3,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    },
+    {
+     "n": 4,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:CAT-518",
+     "task_id:cattrs-partial-structuring-recovery",
+     "branch:feature/partial-structuring-recovery",
+     "slug:partial-structuring-recovery",
+     "repo:cattrs",
+     "package:cattr"
+    ],
+    "2": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "3": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ],
+    "4": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w3/p1/compaction.json",
+   "summary_sha256": "d5565db7d056da1bf481bff4028ea5de1cbdd95addfcbaf237dc1feb629e1a0a",
+   "update": false,
+   "n_entries": 25,
+   "excluded": {
+    "no_history": 1,
+    "separator": 1,
+    "bold_heading": 1,
+    "heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w3/p2/compaction.json",
+   "summary_sha256": "ffd916f2f5971f9d409bdc23ec8fde34ff330846dd694024829c8e1fd9114e09",
+   "update": true,
+   "n_entries": 45,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 2,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "2": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w3/p3/compaction.json",
+   "summary_sha256": "43831f5fad695e18eeb95e9179bea1e28d01728fdb2e828fdb6df794a1a478a7",
+   "update": true,
+   "n_entries": 67,
+   "excluded": {
+    "heading": 9
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 2,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 3,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "2": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "3": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w3/p4/compaction.json",
+   "summary_sha256": "1f26cc2461ab5985f239cca4f76eb3b0891434d11bf7bb57ea59c00d5b8fa430",
+   "update": true,
+   "n_entries": 48,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "boa-hierarchical-evaluation-cancellation",
+     "repo": "boa",
+     "tag": "BOA-332"
+    },
+    {
+     "n": 2,
+     "task_id": "pebble-durability-wait-apis",
+     "repo": "pebble",
+     "tag": "PEB-927"
+    },
+    {
+     "n": 3,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 4,
+     "task_id": "kcp-go-multiplexed-kcp-streams",
+     "repo": "kcp-go",
+     "tag": "KCP-256"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:BOA-332",
+     "task_id:boa-hierarchical-evaluation-cancellation",
+     "branch:feature/hierarchical-evaluation-cancellation",
+     "slug:hierarchical-evaluation-cancellation",
+     "repo:boa",
+     "package:boa_ast",
+     "package:boa_cli",
+     "package:boa_engine",
+     "package:boa_gc",
+     "package:boa_icu_provider",
+     "package:boa_interner",
+     "package:boa_macros",
+     "package:boa_parser",
+     "package:boa_runtime",
+     "package:boa_string",
+     "package:boa_wasm"
+    ],
+    "2": [
+     "tag:PEB-927",
+     "task_id:pebble-durability-wait-apis",
+     "branch:feature/durability-wait-apis",
+     "slug:durability-wait-apis",
+     "repo:pebble",
+     "package:github.com/cockroachdb/pebble",
+     "package:github.com/cockroachdb/pebble/internal/devtools"
+    ],
+    "3": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "4": [
+     "tag:KCP-256",
+     "task_id:kcp-go-multiplexed-kcp-streams",
+     "branch:feature/multiplexed-kcp-streams",
+     "slug:multiplexed-kcp-streams",
+     "repo:kcp-go",
+     "repo:kcp",
+     "package:github.com/xtaci/kcp-go/v5"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 1,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w4/p1/compaction.json",
+   "summary_sha256": "b2f7e216ba67f3eb06acb4e3025f7377798107187aacc62e67d49d5156adeda4",
+   "update": false,
+   "n_entries": 23,
+   "excluded": {
+    "no_history": 1,
+    "separator": 1,
+    "bold_heading": 1,
+    "heading": 3
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w4/p2/compaction.json",
+   "summary_sha256": "17975909fce4f2e53453c51a8dd5241471dd91c52c56d5417fb20efbd4368644",
+   "update": true,
+   "n_entries": 60,
+   "excluded": {
+    "heading": 9
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 2,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "2": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 3,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w4/p3/compaction.json",
+   "summary_sha256": "0e1064d25ee8964748a3da8de9ca389e82fe1e6cb973003aa33c718fb15dd470",
+   "update": true,
+   "n_entries": 73,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 2,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    },
+    {
+     "n": 3,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "repo:vitest",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/ui",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "2": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ],
+    "3": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "kind": "boundary",
+   "k": 4,
+   "file": "data/raw/sprint/s2/summary_rot/chains/w4/p4/compaction.json",
+   "summary_sha256": "1ce85eba9641f6262fa072d3036f6c09774a7419e5845803f4596d1309de7e3e",
+   "update": true,
+   "n_entries": 45,
+   "excluded": {
+    "heading": 9
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "vitest-duration-sharding",
+     "repo": "vitest",
+     "tag": "VIT-295"
+    },
+    {
+     "n": 2,
+     "task_id": "returns-validated-error-accumulation",
+     "repo": "returns",
+     "tag": "RET-292"
+    },
+    {
+     "n": 3,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    },
+    {
+     "n": 4,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:VIT-295",
+     "task_id:vitest-duration-sharding",
+     "branch:feature/duration-sharding",
+     "slug:duration-sharding",
+     "package:@vitest/browser",
+     "package:@vitest/browser-playwright",
+     "package:@vitest/browser-preview",
+     "package:@vitest/browser-webdriverio",
+     "package:@vitest/coverage-istanbul",
+     "package:@vitest/coverage-v8",
+     "package:@vitest/expect",
+     "package:@vitest/mocker",
+     "package:@vitest/monorepo",
+     "package:@vitest/pretty-format",
+     "package:@vitest/runner",
+     "package:@vitest/snapshot",
+     "package:@vitest/spy",
+     "package:@vitest/utils",
+     "package:@vitest/web-worker",
+     "package:@vitest/ws-client"
+    ],
+    "2": [
+     "tag:RET-292",
+     "task_id:returns-validated-error-accumulation",
+     "branch:feature/validated-error-accumulation",
+     "slug:validated-error-accumulation",
+     "repo:returns"
+    ],
+    "3": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ],
+    "4": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
     ]
    },
    "opus": {
