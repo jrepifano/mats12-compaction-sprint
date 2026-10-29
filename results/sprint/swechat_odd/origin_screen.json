@@ -1,0 +1,134 @@
+{
+  "n_none": 82,
+  "n_candidates": 16,
+  "candidates": [
+    {
+      "rid": "swe-chat-v1:2fe9795d-e760-465b-a19a-ba0898e8dad0:0",
+      "cid": "C1",
+      "assertion": "Tasks 1-10 complete (including Task 9)",
+      "msg": 135,
+      "sentence": "all tier 1 tasks complete.",
+      "rc_msg": 199
+    },
+    {
+      "rid": "swe-chat-v1:6b8939da-9f41-46bf-9354-dc27fda208a0:1",
+      "cid": "C4",
+      "assertion": "Todo file was renamed to 029-done-p1-client-type-mismatches.md",
+      "msg": 145,
+      "sentence": "the plan file has been updated with simulation_mode rename and client type fixes (todo 029 marked done).",
+      "rc_msg": null
+    },
+    {
+      "rid": "swe-chat-v1:77ca7a90-76ec-44ba-b502-78254bbc3f6b:0",
+      "cid": "C10",
+      "assertion": "popover updated to fixed positioning on document.body",
+      "msg": 296,
+      "sentence": "also update the `showforkpopover` to use fixed positioning (same issue as confirm dialog — placing it inside the indicator causes click problems):",
+      "rc_msg": 296
+    },
+    {
+      "rid": "swe-chat-v1:77ca7a90-76ec-44ba-b502-78254bbc3f6b:0",
+      "cid": "C11",
+      "assertion": "popups (including popover) moved to document.body with fixed positioning",
+      "msg": 296,
+      "sentence": "also update the `showforkpopover` to use fixed positioning (same issue as confirm dialog — placing it inside the indicator causes click problems):",
+      "rc_msg": 296
+    },
+    {
+      "rid": "swe-chat-v1:77ca7a90-76ec-44ba-b502-78254bbc3f6b:0",
+      "cid": "C14",
+      "assertion": "confirm CSS still absolute and popover overridden inline by fixed",
+      "msg": 287,
+      "sentence": "gv-fork-confirm` — remove the `position: absolute` since we now use fixed positioning set inline:",
+      "rc_msg": 288
+    },
+    {
+      "rid": "swe-chat-v1:77ca7a90-76ec-44ba-b502-78254bbc3f6b:0",
+      "cid": "C17",
+      "assertion": "popover updated to fixed positioning on document.body",
+      "msg": 296,
+      "sentence": "also update the `showforkpopover` to use fixed positioning (same issue as confirm dialog — placing it inside the indicator causes click problems):",
+      "rc_msg": 296
+    },
+    {
+      "rid": "swe-chat-v1:77ca7a90-76ec-44ba-b502-78254bbc3f6b:0",
+      "cid": "C2",
+      "assertion": "updated showForkPopover to use fixed positioning",
+      "msg": 296,
+      "sentence": "also update the `showforkpopover` to use fixed positioning (same issue as confirm dialog — placing it inside the indicator causes click problems):",
+      "rc_msg": 296
+    },
+    {
+      "rid": "swe-chat-v1:77ca7a90-76ec-44ba-b502-78254bbc3f6b:0",
+      "cid": "C4",
+      "assertion": "popover and confirm CSS absolute now overridden inline by fixed",
+      "msg": 287,
+      "sentence": "gv-fork-confirm` — remove the `position: absolute` since we now use fixed positioning set inline:",
+      "rc_msg": 288
+    },
+    {
+      "rid": "swe-chat-v1:77ca7a90-76ec-44ba-b502-78254bbc3f6b:0",
+      "cid": "C8",
+      "assertion": "popover moved to document.body with fixed positioning",
+      "msg": 296,
+      "sentence": "also update the `showforkpopover` to use fixed positioning (same issue as confirm dialog — placing it inside the indicator causes click problems):",
+      "rc_msg": 296
+    },
+    {
+      "rid": "swe-chat-v1:c60e3f8e-333d-40f6-9b77-1141b1fb9025:2",
+      "cid": "C5",
+      "assertion": "The test was fixed to stub FilesystemService instead of SecurityService",
+      "msg": 152,
+      "sentence": "- **temporaryfile**: fixed to call `filesystemservice->setsecurefilepermissions()` instead of `securityservice->setsecurefilepermissions()`",
+      "rc_msg": 167
+    },
+    {
+      "rid": "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:1",
+      "cid": "C10",
+      "assertion": "HandleUpdateTask fetch logic refactor completed",
+      "msg": 232,
+      "sentence": "✅ **completed task #20 - refactored task handlers:**",
+      "rc_msg": 253
+    },
+    {
+      "rid": "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:1",
+      "cid": "C11",
+      "assertion": "All 5 task handlers refactored",
+      "msg": 232,
+      "sentence": "✅ **completed task #20 - refactored task handlers:**",
+      "rc_msg": 253
+    },
+    {
+      "rid": "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:1",
+      "cid": "C20",
+      "assertion": "Remaining three handlers work is complete",
+      "msg": 232,
+      "sentence": "**remaining work for complete ent migration:**",
+      "rc_msg": 253
+    },
+    {
+      "rid": "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:1",
+      "cid": "C4",
+      "assertion": "Completed refactoring all remaining task handlers",
+      "msg": 129,
+      "sentence": "the ent migration is progressing well - we've completed the authentication handlers, project handlers, and started on task handlers.",
+      "rc_msg": 253
+    },
+    {
+      "rid": "swe-chat-v1:dd8fc813-912f-4c11-a3eb-2722574a8585:0",
+      "cid": "C4",
+      "assertion": "Wild Card review is complete",
+      "msg": 183,
+      "sentence": "| **tier 1** | **complete** (pr #95) | no impact — session row enhancements, insight cards all still work |",
+      "rc_msg": 265
+    },
+    {
+      "rid": "swe-chat-v1:f585e6e9-7dc1-4135-a4dc-9021adb21c96:2",
+      "cid": "C8",
+      "assertion": "The dialog component updates (adding shareId to all preview dialogs) were completed.",
+      "msg": 205,
+      "sentence": "let me fix `usefilepreview` to support shared files, then pass `shareid` through the preview dialogs.",
+      "rc_msg": 263
+    }
+  ]
+}
