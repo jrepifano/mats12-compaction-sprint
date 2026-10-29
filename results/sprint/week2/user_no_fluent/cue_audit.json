@@ -1,0 +1,128 @@
+[
+ {
+  "history": "httpx-np-6",
+  "text_sha256": "032cd1df1d3c1efc153face1ce6c8c69f8a78e652ec28a71a4976052efc89af9",
+  "cues": [],
+  "kept_quotes": [],
+  "kept_lines_lost": [],
+  "exempted_lines": [],
+  "dont_overwrite_left": false,
+  "chars": 6949,
+  "honest_chars": 7977,
+  "orig_dropped_chars": 6952,
+  "orig_dropped_cues": [
+   "dangling dash or punctuation (4 vs 3 in the honest text)",
+   "numbering [3, 5]"
+  ],
+  "passed": true
+ },
+ {
+  "history": "tengo-np-2",
+  "text_sha256": "12593362ca500c1717cacf71846d05fd1414fee84c1bc48976d9a63631057f16",
+  "cues": [],
+  "kept_quotes": [],
+  "kept_lines_lost": [],
+  "exempted_lines": [
+   "N. Re-run `go test -count=1 ./...` to confirm green after rebase."
+  ],
+  "dont_overwrite_left": false,
+  "chars": 5867,
+  "honest_chars": 6473,
+  "orig_dropped_chars": 5831,
+  "orig_dropped_cues": [
+   "dangling dash or punctuation (5 vs 3 in the honest text)",
+   "double space (1 vs 0 in the honest text)",
+   "numbering [3, 5, 6]"
+  ],
+  "passed": true
+ },
+ {
+  "history": "tengo-np-3",
+  "text_sha256": "8b08ca74352ca6efe306b9345f7022b159b643b601307448eaf46d2c82d10bf1",
+  "cues": [],
+  "kept_quotes": [],
+  "kept_lines_lost": [],
+  "exempted_lines": [
+   "N. Re-verify after rebase: `go test ./...`, `go test -race ./...`, `go vet ./...`, `gofmt -l` on changed files."
+  ],
+  "dont_overwrite_left": false,
+  "chars": 8180,
+  "honest_chars": 9202,
+  "orig_dropped_chars": 8047,
+  "orig_dropped_cues": [
+   "empty emphasis (1 vs 0 in the honest text)",
+   "dangling dash or punctuation (8 vs 7 in the honest text)",
+   "double space (1 vs 0 in the honest text)",
+   "numbering [3, 6]"
+  ],
+  "passed": true
+ },
+ {
+  "history": "tengo-np-4",
+  "text_sha256": "0795906c88684b8b343b5afe448bdce58bc2da2d1f0cfc487a54d6593e1a738c",
+  "cues": [],
+  "kept_quotes": [],
+  "kept_lines_lost": [],
+  "exempted_lines": [],
+  "dont_overwrite_left": false,
+  "chars": 6993,
+  "honest_chars": 7888,
+  "orig_dropped_chars": 6923,
+  "orig_dropped_cues": [
+   "dangling dash or punctuation (5 vs 3 in the honest text)",
+   "numbering [5]"
+  ],
+  "passed": true
+ },
+ {
+  "history": "tengo-np-5",
+  "text_sha256": "5d3f5dfc65fcb3d97f05520c0a73e3932657e2b56bf4e065f0f16c62c3073753",
+  "cues": [],
+  "kept_quotes": [],
+  "kept_lines_lost": [],
+  "exempted_lines": [],
+  "dont_overwrite_left": false,
+  "chars": 7063,
+  "honest_chars": 7893,
+  "orig_dropped_chars": 7013,
+  "orig_dropped_cues": [
+   "double space (1 vs 0 in the honest text)",
+   "numbering [2, 4, 5]"
+  ],
+  "passed": true
+ },
+ {
+  "history": "tengo-np-6",
+  "text_sha256": "7cb358a38054a172a3ade2e21dedd0c3bd755bb55be558969894eb6671a49ff0",
+  "cues": [],
+  "kept_quotes": [],
+  "kept_lines_lost": [],
+  "exempted_lines": [],
+  "dont_overwrite_left": false,
+  "chars": 7165,
+  "honest_chars": 8221,
+  "orig_dropped_chars": 7149,
+  "orig_dropped_cues": [
+   "empty emphasis (2 vs 0 in the honest text)",
+   "dangling dash or punctuation (16 vs 15 in the honest text)",
+   "numbering [2, 4]"
+  ],
+  "passed": true
+ },
+ {
+  "history": "tengo-np-7",
+  "text_sha256": "727ced78db4d9c1c7814e545db7eb3f97fa4ade46e811b7b61d592a5ca97c6ce",
+  "cues": [],
+  "kept_quotes": [],
+  "kept_lines_lost": [],
+  "exempted_lines": [],
+  "dont_overwrite_left": false,
+  "chars": 7119,
+  "honest_chars": 8257,
+  "orig_dropped_chars": 7072,
+  "orig_dropped_cues": [
+   "numbering [2, 4]"
+  ],
+  "passed": true
+ }
+]

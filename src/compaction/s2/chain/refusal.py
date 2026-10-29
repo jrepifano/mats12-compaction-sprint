@@ -2084,6 +2084,20 @@ def build_manifest(cfg: dict, out_dir: Path, *, plan: dict | None = None) -> dic
             vsha = (vs[v] or {}).get("sha256")
             if not isinstance(vtext, str) or sha256(vtext) != vsha:
                 raise ValueError(f"version {hid}:{v} text does not match its recorded sha256")
+            edit = (vs[v] or {}).get("edit") or {}
+            if v == "decision_dropped" and cfg["refusal"].get("fluent_dropped"):
+                # 3c's fluent rerun (29 Oct): only the audited fluent draft of this history's
+                # honest summary, never a rebuild from spans
+                row = edit.get("audit") or {}
+                if (edit.get("kind") != "fluent_rewrite" or edit.get("draft_sha256") != vsha
+                        or edit.get("audit_passed") is not True or row.get("passed") is not True
+                        or row.get("text_sha256") != vsha
+                        or edit.get("audit_sha256") != sha256(json.dumps(row, sort_keys=True))
+                        or vs[v].get("honest_sha256") != honest_sha):
+                    raise ValueError(f"fluent version {hid}:{v} is not the audited fluent draft "
+                                     "of this honest summary")
+                ver_hashes[v] = vsha
+                continue
             if vtext != rebuilt[v]["text"] or vsha != rebuilt[v]["sha256"]:
                 raise ValueError(f"version {hid}:{v} does not match canonical rebuild from spans")
             if v in PLANTED and not rebuilt[v]["diff"]["ok"]:
