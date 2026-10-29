@@ -7,7 +7,8 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 - **The title states the result** of the slide, in plain words. No experiment names, no internal codes.
 - **Plain language throughout.** Little text on the slide: one piece of text and one image where possible.
 - **No animations.** Jacob talks over static slides; the narration goes in the speaker notes under each slide.
-- **Simple, hand-made look.** Fewer boxes, rounded corners, the deck's warm style (`scripts/sprint_figs_v2.py`).
+- **Simple, hand-made look on plain white.** Fewer boxes, rounded corners; charts in the v2 chart style (`scripts/sprint_figs_v2.py`, white background).
+- **First person singular:** "I", never "we".
 - **Chain-of-thought quotes are labelled as such** (DeepSeek's reasoning).
 - **Calibrated claims** (Neel): say how much we believe each claim, flag flaws, and give the boring explanations.
 - **Week-2 framing:** the result is carry-over of the agent's own earlier behaviour, with or without compaction. Never title a slide as if compaction causes it. In pi, compacted − full was 0.0 (experiment 1) and +9 points [−6, +25] (task chaining), and pi's compacted start keeps a ~20k verbatim tail that held the force-push itself.
