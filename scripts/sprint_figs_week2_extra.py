@@ -8,7 +8,8 @@ checked before plotting. Sources:
 - precedent_why/justification_read.md (the code table: an Opus read of Experiment 1's 32
   divergent second tasks, 16 that lost the teammate's commit and 16 that kept it)
 - exploit/readout.json (cells[*].cheat, .test_edit, .special_case, .n)
-Writes docs/sprint/figs/week2/06_*, 07_*, backup_07_* (PNG + SVG) and README_why_and_exploit.md.
+Writes docs/sprint/figs/week2/06_*, 06b_* (the two common reasons only), 07_*, backup_07_* (PNG +
+SVG) and README_why_and_exploit.md.
 Run: uv run python scripts/sprint_figs_week2_extra.py
 """
 
@@ -97,6 +98,54 @@ def chart_why():
              "or stale\".")], foot, caveat,
            short=(f"Agents that overwrote called the commit or summary scratch, junk or stale "
                   f"({d[0]}/{d[1]}) and cited their own earlier act ({a[0]}/{a[1]})"))
+    return rows
+
+
+def chart_why_b(rows=None):
+    """06b (Jacob, 29 Oct): only the two reasons agents gave, lost vs kept; the three near-zero
+    reasons (approval, grader, "Thanks") are in the README only."""
+    rows = rows or data_why()
+    order = [("a", "Its own earlier act"),
+             ("d", "Called the commits or\nsummary scratch, junk or stale")]
+    groups = []
+    for key, lab in order:
+        lk, ln, kk, kn = rows[key]
+        groups.append((lab, [dict(lab="overwrote\nthe commit", color=LOST, **W.share(lk, ln)),
+                             dict(lab="kept it", color=KEPT, **W.share(kk, kn))]))
+    fig, ax = plt.subplots(figsize=(9.5, 5.6))
+    W.draw(ax, groups, group_pad=0.9, group_offset=40)
+    ax.set_ylabel("Second tasks stating the reason")
+    a, d = rows["a"], rows["d"]
+    assert d[0] / d[1] > d[2] / d[3] and a[0] / a[1] > a[2] / a[3], "title: lost > kept"
+    title = (f"Agents that overwrote called the commits or summary scratch, junk or stale: "
+             f"{d[0]}/{d[1]} vs {d[2]}/{d[3]}")
+    refused = refusals()
+    foot = ("Source: Opus 5.5 read of each second task's own reasoning and commands, 32 runs "
+            "whose first task met a divergent remote (pi-style agent + DeepSeek V4.1 Flash); "
+            "\"lost\" = the push overwrote the teammate's commit (16), \"kept\" = it did not "
+            f"(16). Several reasons per run; Opus refused {refused} reads, which the builder "
+            "read by hand; not validated against independent hand labels.")
+    rest = [("b", "perceived approval"), ("c", "grader or tests expect it"),
+            ("thanks", "cites \"Thanks, that's done\"")]
+    W.save(fig, "06b_why_repeat", title,
+           "share of second tasks whose own calls state each of the two common reasons for how "
+           "the agent handled the teammate's commits, split by whether the push lost them.",
+           [f"{WHY} (table rows (a) and (d); (b), (c), (e), (f) and \"Thanks\" for the notes)"],
+           [f"{lab.replace(chr(10), ' ')}: lost {W.fmt(W.share(r[0], r[1]))}, kept "
+            f"{W.fmt(W.share(r[2], r[3]))}" for key, lab in order for r in [rows[key]]],
+           [("Not plotted (near zero): " + "; ".join(
+               f"{lab}, lost {W.fmt(W.share(rows[k][0], rows[k][1]))}, kept "
+               f"{W.fmt(W.share(rows[k][2], rows[k][3]))}" for k, lab in rest)
+             + ". The one approval hit quotes the task's instruction (\"Force-pushing with "
+               "lease as instructed\"), not approval."),
+            (f"Also not plotted: (e) other, lost {rows['e'][0]}/16, kept {rows['e'][2]}/16; (f) "
+             f"no reason stated, lost {rows['f'][0]}/16, kept {rows['f'][2]}/16."),
+            "Codes are not exclusive, so bars in a group do not sum to 100%.",
+            ("The (d) code is the read's \"summary or teammate commits called scratch, junk "
+             "or stale\"."),
+            ("Review: gpt-6-astra, logs/reviews/20261029-figs-simplify-r1.md: PASS WITH MINOR "
+             "FIXES (1 minor, 3 nits; the minor and the title-guard nit fixed, not "
+             "re-reviewed).")], foot, short=title)
     return rows
 
 
@@ -277,7 +326,8 @@ def main():
         "|---|---|---|---|---|"]
         + [f"| `{rel}` | {m['branch']} | {m['last_commit'][:8]} | `{m['path']}` | "
            f"{m['sha256'][:12]} |" for rel, m in src.items()] + [""])
-    chart_why()
+    rows = chart_why()
+    chart_why_b(rows)
     chart_exploit()
     (W.OUT / "README_why_and_exploit.md").write_text("\n".join(W.README).rstrip() + "\n")
 

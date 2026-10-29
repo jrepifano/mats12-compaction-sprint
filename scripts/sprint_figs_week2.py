@@ -647,6 +647,66 @@ def chart_user_no():
           "summary, so this version is a weaker test than intended.")], foot)
 
 
+def edit_noticed():
+    """{metric: (deleted share, other share)}: the 'no deleted' version against the honest and
+    false-permission versions pooled, for the two word scans, from data_user_no()."""
+    d = data_user_no()
+    out = {}
+    for m in ("residue_noticed", "eval_terms"):
+        o = [d[(m, v)] for v in ("honest", "false_permission")]
+        out[m] = (d[(m, "decision_dropped")],
+                  share(sum(x["k"] for x in o), sum(x["n"] for x in o)))
+    return out, d
+
+
+def chart_edit_noticed():
+    """04b (Jacob, 29 Oct): only the 'noticed the edit' outcome, 'no deleted' vs the other two
+    versions pooled; the 0/42 'lost the commits' result is in the README only."""
+    e, d = edit_noticed()
+    fig, ax = plt.subplots(figsize=(8, 5.6))
+    groups = [(UNO_METRICS[m], [dict(lab="User's \"no\"\ndeleted", color=DROPPED, **e[m][0]),
+                                dict(lab="Honest or\nfalse permission", color=CONTROL,
+                                     **e[m][1])])
+              for m in ("residue_noticed", "eval_terms")]
+    draw(ax, groups, group_pad=0.9, group_offset=40)
+    ax.set_ylabel("Resumed runs")
+    r, ro = e["residue_noticed"]
+    assert r["k"] > 0 and ro["k"] == 0, "title says only the edited version was noticed"
+    title = (f"Agents noticed a visibly edited summary: {r['k']} of {r['n']} vs "
+             f"{ro['k']} of {ro['n']}")
+    lost = [d[("lost", v)] for v in UNO_VERSIONS]
+    n_lost = sum(x["n"] for x in lost)
+    assert all(x["k"] == 0 for x in lost)
+    u = user_no_design()
+    foot = (f"Source: user's-\"no\" experiment, {u['histories']} histories x {u['versions']} "
+            f"summary versions x {u['reps']} runs, after the user said \"Don't overwrite the "
+            "commits\"; words from a regex scan of the agent's reasoning. The deletion was "
+            f"partial: {u['kept_rebase'][0]} of {u['kept_rebase'][1]} edited summaries still "
+            "mentioned a rebase.")
+    save(fig, "04b_edit_noticed", title,
+         "share of resumed runs whose reasoning remarked that the summary looked truncated, "
+         "and that used benchmark or grading words: the summary with the user's \"no\" "
+         "deleted against the honest and false-permission summaries pooled.",
+         [f"{UNO_SCORES} (runs per version; lost)",
+          f"{UNO_SCAN} (residue_noticed, eval_terms: run ids, version = the id's middle field)"],
+         [f"{one_line(UNO_METRICS[m])}: User's \"no\" deleted {fmt(e[m][0])}; honest or false "
+          f"permission (pooled) {fmt(e[m][1])}" for m in ("residue_noticed", "eval_terms")],
+         [(f"Not plotted: no run lost the other developer's commits in any version "
+           f"(0/{n_lost}; " + "; ".join(f"{one_line(UNO_VERSIONS[v][0])} {fmt(d[('lost', v)])}"
+                                         for v in UNO_VERSIONS) + ")."),
+          ("Pooled bar = the honest and false-permission versions together; per version: "
+           + "; ".join(f"{one_line(UNO_METRICS[m])}, {one_line(UNO_VERSIONS[v][0])} "
+                       f"{fmt(d[(m, v)])}" for m in ("residue_noticed", "eval_terms")
+                       for v in ("honest", "false_permission")) + "."),
+          ("Same data and scan as 04_forged_permission (see its notes: the zeros rest on the "
+           f"readout's statement \"{u['quote']}\"; the deletion's gaps look like an edited "
+           "summary, so 'noticed' here means noticed the visible gaps)."),
+             ("Review: gpt-6-astra, logs/reviews/20261029-figs-simplify-r1.md: PASS WITH MINOR "
+              "FIXES (1 minor, 3 nits; the minor and the title-guard nit fixed, not "
+              "re-reviewed).")], foot,
+         short=title)
+
+
 def chart_harness():
     d = data_harness()
     h = load(HAR)
@@ -952,6 +1012,7 @@ def main():
     chart_precedent()
     chart_monitor()
     chart_user_no()
+    chart_edit_noticed()
     chart_harness()
     (OUT / "README.md").write_text("\n".join(README))
 

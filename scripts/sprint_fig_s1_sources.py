@@ -7,7 +7,13 @@ field `pre_tokens`). Drawn with scripts/sprint_figs_v2.py's helpers (bars, label
 in plain seaborn defaults per AGENTS.md "Figures" (29 Oct).
 
 Writes docs/sprint/figs/v2/05_sources_context.png and .svg, and puts this chart's section into
-docs/sprint/figs/v2/README.md between the markers below (replacing an earlier copy). Note that
+docs/sprint/figs/v2/README.md between the markers below (replacing an earlier copy).
+
+Also writes 05b_sources_context_size.png and .svg (Jacob, 29 Oct: the bar heights above are only
+the number of compactions per source; the point is the context size): one point per analysed
+compaction, its context length by source (`sources.<source>.tokens_values`), with seaborn's
+default box plot (median and quartiles) over the points and each source's n under its name. Its
+README section has markers of its own. Note that
 re-running scripts/sprint_figs_v2.py rewrites that README without this section; re-run this
 script after it. Run: uv run python scripts/sprint_fig_s1_sources.py
 """
@@ -15,13 +21,22 @@ script after it. Run: uv run python scripts/sprint_fig_s1_sources.py
 from __future__ import annotations
 
 import json
+from statistics import median
 
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 import sprint_figs_v2 as v2
+from matplotlib.ticker import FuncFormatter
 
 SRC = "results/sprint/S1/context_lengths.json"
 NAME = "05_sources_context"
+NAME_B = "05b_sources_context_size"
 START, END = f"<!-- {NAME}:start -->", f"<!-- {NAME}:end -->"
+
+
+def markers(name: str) -> tuple[str, str]:
+    return f"<!-- {name}:start -->", f"<!-- {name}:end -->"
 # Plain-word names and one deep-palette colour per source (red, the v2 set's lost-and-matters
 # colour, is left out).
 SOURCES = {
@@ -30,6 +45,7 @@ SOURCES = {
     "posttrainbench": ("PostTrainBench", v2.PAL[2]),
     "frontierml": ("FrontierML", v2.PAL[4]),
 }
+XLAB = {"jacob": "My own Claude Code\nsessions"}  # two-line category name on 05b
 
 
 def tok(v: float) -> str:
@@ -115,12 +131,69 @@ def draw(data: dict) -> tuple[str, list[dict]]:
     return title, rows
 
 
-def write_readme(section: str) -> None:
+def title_b(rows: list[dict]) -> str:
+    pub = [r for r in rows if r["key"] != "jacob"]
+    me = next(r for r in rows if r["key"] == "jacob")
+    lo, hi = min(r["med"] for r in pub), max(r["med"] for r in pub)
+    if not me["med"] > hi:  # the title contrasts my sessions' median with the public sets'
+        raise SystemExit("my sessions' median is not above the public sets'; update the title")
+    band = tok(lo) if tok(lo) == tok(hi) else f"{tok(lo)}–{tok(hi)}"
+    return f"Public datasets compact at a median {band} tokens; my own sessions at {tok(me['med'])}"
+
+
+def draw_size(data: dict) -> tuple[str, list[dict]]:
+    """One point per analysed compaction: its context length, by source, with a box plot."""
+    rows = rows_from(data)
+    xs, ys = [], []
+    for r in rows:
+        vals = data["sources"][r["key"]]["tokens_values"]
+        assert len(vals) == r["n"] and vals == sorted(vals), r["key"]
+        assert (median(vals), vals[0], vals[-1]) == (r["med"], r["lo"], r["hi"]), r["key"]
+        r["values"] = vals
+        r["xlab"] = f"{XLAB.get(r['key'], r['lab'])}\nn = {r['n']}"
+        xs += [r["xlab"]] * len(vals)
+        ys += vals
+    order = [r["xlab"] for r in rows]
+    title = title_b(rows)
+    fig, ax = plt.subplots(figsize=(10, 5.8))
+    np.random.seed(20261029)  # stripplot jitters with numpy's global RNG: same image each run
+    sns.stripplot(x=xs, y=ys, hue=xs, order=order, hue_order=order,
+                  palette=[r["col"] for r in rows], legend=False, jitter=0.3, size=3.5,
+                  alpha=0.6, ax=ax)
+    sns.boxplot(x=xs, y=ys, order=order, showfliers=False, fill=False, color=".26", width=0.5,
+                ax=ax)
+    ax.set_ylim(0, max(ys) * 1.05)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: "0" if v == 0 else tok(v)))
+    ax.set_ylabel("Context before the compaction (tokens)")
+    ax.set_xlabel("")
+    fml = data["sources"]["frontierml"]
+    v2.save(fig, NAME_B, title,
+            "the context length (tokens) just before each of Experiment 1's analysed "
+            "compactions, by source: one point per compaction, with a box plot (median line, "
+            "quartile box, whiskers to the farthest point within 1.5 IQR; no outlier markers, "
+            "since every point is drawn).",
+            [SRC + " (sources.<source>.tokens_values, n_analysed; tokens.median, p10, p90, "
+                   "min, max for the numbers below; field pre_tokens)"],
+            [f"{r['lab']}: n = {r['n']} points; median {exact(r['med'])} tokens, "
+             f"p10 {exact(r['p10'])}, p90 {exact(r['p90'])}, min {r['lo']:,}, max {r['hi']:,}"
+             for r in rows],
+            [("Notes: same data and field as 05_sources_context above (see its notes on what "
+              "`pre_tokens` counts per source). Horizontal jitter only; the y value of each "
+              f"point is exact. FrontierML has {fml['n_analysed']} points of {fml['n_sampled']} "
+              "sampled. Generated by `scripts/sprint_fig_s1_sources.py`."),
+             ("Review: gpt-6-astra, logs/reviews/20261029-figs-simplify-r1.md: PASS WITH MINOR "
+              "FIXES (1 minor, 3 nits; the minor and the title-guard nit fixed, not "
+              "re-reviewed).")])
+    return title, rows
+
+
+def write_readme(section: str, name: str = NAME) -> None:
     path = v2.OUT / "README.md"
     text = path.read_text() if path.exists() else ""
-    block = f"{START}\n{section.rstrip()}\n{END}\n"
-    if START in text:
-        a, b = text.index(START), text.index(END) + len(END)
+    start, end = markers(name)
+    block = f"{start}\n{section.rstrip()}\n{end}\n"
+    if start in text:
+        a, b = text.index(start), text.index(end) + len(end)
         text = text[:a] + block.rstrip("\n") + text[b:]
     else:
         text = text.rstrip("\n") + "\n\n" + block
@@ -133,6 +206,11 @@ def main() -> None:
     title, _ = draw(data)
     write_readme("\n".join(v2.README))
     print(title)
+    v2.README.clear()
+    with plt.rc_context({"svg.hashsalt": NAME_B}):  # stable SVG ids
+        title_b_, _ = draw_size(data)
+    write_readme("\n".join(v2.README), NAME_B)
+    print(title_b_)
 
 
 if __name__ == "__main__":

@@ -109,3 +109,66 @@ def test_tok_format():
     assert f.tok(466577.5) == "467k"
     assert f.tok(155125.2) == "155k"
     assert f.tok(1_410_364) == "1.41M"
+
+
+# 05b: one point per compaction -------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def drawn_b():
+    got = {}
+
+    def fake_save(fig, name, title, claim, sources, numbers, notes):
+        got.update(fig=fig, name=name, title=title, numbers=numbers)
+
+    mp = pytest.MonkeyPatch()
+    mp.setattr(f.v2, "save", fake_save)
+    try:
+        title, rows = f.draw_size(DATA)
+    finally:
+        mp.undo()
+    yield got, title, rows
+    f.plt.close(got["fig"])
+
+
+def test_tokens_values_reproduce_the_stats():
+    import numpy as np
+
+    for s, d in DATA["sources"].items():
+        v = d["tokens_values"]
+        assert len(v) == d["n_analysed"] and v == sorted(v)
+        p10, med, p90 = np.percentile(np.asarray(v, dtype=float), [10, 50, 90])
+        assert {"median": float(med), "p10": float(p10), "p90": float(p90), "min": v[0],
+                "max": v[-1]} == d["tokens"], s
+
+
+def test_points_equal_the_json_values(drawn_b):
+    got, _, rows = drawn_b
+    assert got["name"] == f.NAME_B
+    ax = got["fig"].axes[0]
+    pts = [c.get_offsets() for c in ax.collections if len(c.get_offsets())]
+    assert len(pts) == len(f.SOURCES)
+    for p, s in zip(pts, f.SOURCES):
+        assert sorted(int(y) for y in p[:, 1]) == DATA["sources"][s]["tokens_values"]
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    assert labels == [r["xlab"] for r in rows]
+    for lab, s in zip(labels, f.SOURCES):
+        assert lab.endswith(f"n = {DATA['sources'][s]['n_analysed']}")
+
+
+def test_05b_title_numbers_come_from_the_json(drawn_b):
+    got, title, _ = drawn_b
+    pub = [DATA["sources"][s]["tokens"]["median"] for s in f.SOURCES if s != "jacob"]
+    assert got["title"] == title and "\n" not in title
+    assert f"{f.tok(min(pub))}–{f.tok(max(pub))} tokens" in title
+    me = f.tok(DATA["sources"]["jacob"]["tokens"]["median"])
+    assert title.endswith(f"my own sessions at {me}")
+
+
+def test_05b_readme_section_matches_the_json():
+    text = (f.v2.OUT / "README.md").read_text()
+    start, end = f.markers(f.NAME_B)
+    sec = text[text.index(start):text.index(end)]
+    for s in f.SOURCES:
+        d, t = DATA["sources"][s], DATA["sources"][s]["tokens"]
+        assert (f"{f.SOURCES[s][0]}: n = {d['n_analysed']} points; median {f.exact(t['median'])} "
+                f"tokens, p10 {f.exact(t['p10'])}, p90 {f.exact(t['p90'])}") in sec
+    assert (f.v2.OUT / f"{f.NAME_B}.png").exists() and (f.v2.OUT / f"{f.NAME_B}.svg").exists()

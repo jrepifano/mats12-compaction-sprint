@@ -277,3 +277,72 @@ def test_harness_renders_with_deepseek_pending(monkeypatch, tmp_path):
     readme = _render_harness(monkeypatch, tmp_path)
     assert "Claude Code still running." in readme and "Caveat on the chart" not in readme
     assert "Antigravity overwrote the remote in the first task" in readme
+
+
+# 04b and 06b: one point each ---------------------------------------------------------------------
+def test_edit_noticed_pools_the_other_two_versions():
+    e, d = w.edit_noticed()
+    assert kn(e["residue_noticed"][0]) == (6, 14) and kn(e["residue_noticed"][1]) == (0, 28)
+    assert kn(e["eval_terms"][0]) == (5, 14) and kn(e["eval_terms"][1]) == (0, 28)
+    for m in ("residue_noticed", "eval_terms"):
+        assert e[m][0] == d[(m, "decision_dropped")]
+        assert e[m][1]["k"] == sum(d[(m, v)]["k"] for v in ("honest", "false_permission"))
+
+
+def test_edit_noticed_chart_draws_the_pooled_bars(monkeypatch):
+    got = {}
+
+    def fake_save(fig, name, title, claim, sources, numbers, notes, foot, caveat=None,
+                  short=None):
+        got.update(fig=fig, name=name, title=title, short=short, notes=notes)
+
+    monkeypatch.setattr(w, "save", fake_save)
+    w.chart_edit_noticed()
+    ax = got["fig"].axes[0]
+    assert [p.get_height() for p in ax.patches] == pytest.approx([100 * 6 / 14, 0, 100 * 5 / 14, 0])
+    texts = [t.get_text() for t in ax.texts]
+    assert texts.count("0/28") == 2 and "6/14" in texts and "5/14" in texts
+    assert got["name"] == "04b_edit_noticed" and got["short"] == got["title"]
+    assert got["title"].endswith("6 of 14 vs 0 of 28")
+    assert any("0/42" in n for n in got["notes"])
+    w.plt.close(got["fig"])
+
+
+def test_why_b_plots_rows_a_and_d_only(monkeypatch):
+    import sprint_figs_week2_extra as x
+
+    got = {}
+
+    def fake_save(fig, name, title, claim, sources, numbers, notes, foot, caveat=None,
+                  short=None):
+        got.update(fig=fig, name=name, title=title, numbers=numbers, notes=notes)
+
+    monkeypatch.setattr(x.W, "save", fake_save)
+    rows = x.chart_why_b()
+    ax = got["fig"].axes[0]
+    heights = [p.get_height() for p in ax.patches]
+    want = [100 * k / n for key in ("a", "d") for k, n in (rows[key][:2], rows[key][2:])]
+    assert heights == pytest.approx(want)
+    assert got["name"] == "06b_why_repeat"
+    assert f"{rows['d'][0]}/{rows['d'][1]} vs {rows['d'][2]}/{rows['d'][3]}" in got["title"]
+    assert rows["a"] == (10, 16, 7, 16) and rows["d"] == (15, 16, 8, 16)
+    w.plt.close(got["fig"])
+
+
+def test_new_readmes_list_the_04b_and_06b_numbers():
+    import sprint_figs_week2_extra as x
+
+    readme = (w.OUT / "README.md").read_text()
+    e, _ = w.edit_noticed()
+    sec4 = readme[readme.index("## 04b_edit_noticed:"):readme.index("## 05a_harness_first_task:")]
+    for m in e:
+        assert (f"{w.UNO_METRICS[m]}: User's \"no\" deleted {w.fmt(e[m][0])}; honest or false "
+                f"permission (pooled) {w.fmt(e[m][1])}") in sec4
+    why = (w.OUT / "README_why_and_exploit.md").read_text()
+    sec = why[why.index("## 06b_why_repeat:"):why.index("## 07_exploit_rule:")]
+    rows = x.data_why()
+    for key in ("a", "d"):
+        r = rows[key]
+        assert f"lost {w.fmt(w.share(r[0], r[1]))}, kept {w.fmt(w.share(r[2], r[3]))}" in sec
+    for name in ("04b_edit_noticed", "06b_why_repeat"):
+        assert (w.OUT / f"{name}.png").exists() and (w.OUT / f"{name}.svg").exists()

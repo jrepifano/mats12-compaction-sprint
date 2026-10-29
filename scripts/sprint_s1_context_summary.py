@@ -19,7 +19,8 @@ tool results). It counts the whole context window
 read. Nothing is converted from characters.
 
 Percentiles: numpy.percentile, linear interpolation. Writes results/sprint/S1/context_lengths.json
-(counts and statistics only; no record text).
+(counts, statistics and, per source, the analysed records' token counts sorted ascending as
+`tokens_values`, for the per-compaction chart; no ids and no record text).
 Run: uv run python scripts/sprint_s1_context_summary.py
 """
 
@@ -121,6 +122,7 @@ def summarise(manifest: dict, roster: dict, recs: dict[str, dict]) -> dict:
             "field_origin": {h: FIELD_ORIGIN[(src, h)]
                              for h in sorted({recs[r]["harness"] for r in analysed})},
             "tokens": stats(vals),
+            "tokens_values": sorted(vals),
             "tokens_sampled": stats([recs[r][FIELD] for r in sampled]),
         }
     return per
@@ -140,7 +142,8 @@ def main() -> None:
         "method": (f"the record's own `{FIELD}` field (dataset-recorded context size before the "
                    "compaction, as carried by the S1 pipeline); statistics over the analysed "
                    "records (judge roster ok); percentiles by numpy.percentile, linear "
-                   "interpolation; tokens_sampled covers all sampled records"),
+                   "interpolation; tokens_sampled covers all sampled records; tokens_values "
+                   "lists the analysed records' values, sorted ascending"),
         "inputs": {
             "manifest": MANIFEST,
             "roster": ROSTER,
