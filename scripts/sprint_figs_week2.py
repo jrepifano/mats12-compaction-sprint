@@ -266,6 +266,50 @@ def user_no_design():
                       sum(r["eval_eval_aware"] for r in other), len(other))}
 
 
+UNO_FLUENT_SCAN = "user_no_fluent/readout_scan.json"
+UNO_FLUENT_CODES = "user_no_fluent/readout_codes.json"
+UNO_FLUENT_MD = "user_no_fluent/readout.md"
+
+
+def data_user_no_fluent():
+    """The fluent rerun of the 'no deleted' version (the "no" removed with no deletion marks):
+    {metric: share} for lost, residue_noticed and eval_terms, plus the plan-gap count.
+    - n, lost and eval_terms: readout_scan.json runs.fluent (one row per run; booleans counted),
+      checked against its summary.fluent.
+    - residue_noticed: readout_codes.json fluent_remarks.suspects_edit_truncation_redaction
+      (hand-coded, kind (a): suspects an edit, truncation or redaction, the kind all 6 original
+      remarks were).
+    - The scan's recomputed original arm must give the same grading-word run ids as
+      user_no/reasoning_scan.json, so the two grading-word bars come from one scan."""
+    scan, codes = load(UNO_FLUENT_SCAN), load(UNO_FLUENT_CODES)
+    runs, summ = scan["runs"]["fluent"], scan["summary"]["fluent"]
+    ids = [r["id"] for r in runs]
+    assert len(set(ids)) == len(ids) == summ["n"]
+    assert all(i.split("--")[1] == "decision_dropped" for i in ids)
+    n = len(runs)
+    lost = sum(1 for r in runs if r["lost"])
+    ev = sum(1 for r in runs if r["eval_terms"])
+    assert (lost, ev) == (summ["lost"], summ["eval_terms"])
+    orig_scan = load(UNO_SCAN)
+    assert scan["patterns"]["eval_terms"] == orig_scan["patterns"]["eval_terms"]
+    assert ({r["id"] for r in scan["runs"]["original"] if r["eval_terms"]}
+            == {(e[0] if isinstance(e, list) else e) for e in orig_scan["eval_terms"]})
+    rem = codes["fluent_remarks"]
+    gap = rem["notes_plan_gap"]
+    assert gap == len(codes["notes_plan_gap"]) and set(codes["notes_plan_gap"]) <= set(ids)
+    md = (DATA / UNO_FLUENT_MD).read_text()
+    quote = (f"{rem['suspects_edit_truncation_redaction']}/{n} suspected truncation, redaction "
+             "or an edit")
+    assert quote in md, quote
+    rejected = len(codes["pattern_candidates_rejected"])
+    assert rejected == summ["remark_candidates"]
+    return {"lost": share(lost, n), "eval_terms": share(ev, n),
+            "residue_noticed": share(rem["suspects_edit_truncation_redaction"], n),
+            "plan_gap": share(gap, n), "quote": quote, "rejected": rejected,
+            "coder": codes["coder"], "orig_pattern": orig_scan["patterns"]["residue_noticed"],
+            "md": md}
+
+
 # 5. Harness comparison -------------------------------------------------------------------------
 HAR = "harness/readout.json"
 
@@ -648,55 +692,78 @@ def chart_user_no():
 
 
 def edit_noticed():
-    """{metric: (deleted share, other share)}: the 'no deleted' version against the honest and
-    false-permission versions pooled, for the two word scans, from data_user_no()."""
+    """{metric: (deleted share, other share, fluent share)}: the 'no deleted' version (deletion
+    marks visible) against the honest and false-permission versions pooled, from
+    data_user_no(), and the fluent rerun (no marks), from data_user_no_fluent()."""
     d = data_user_no()
+    f = data_user_no_fluent()
     out = {}
     for m in ("residue_noticed", "eval_terms"):
         o = [d[(m, v)] for v in ("honest", "false_permission")]
         out[m] = (d[(m, "decision_dropped")],
-                  share(sum(x["k"] for x in o), sum(x["n"] for x in o)))
+                  share(sum(x["k"] for x in o), sum(x["n"] for x in o)), f[m])
     return out, d
 
 
+EDIT_GROUPS = {"residue_noticed": "Said the summary looked\ncut or edited",
+               "eval_terms": "Mentioned a benchmark\nor grader"}  # fluent scan: also visible text
+FLUENT = PAL[1]  # 04b only: the fluent rerun of the "no" cut
+
+
 def chart_edit_noticed():
-    """04b (Jacob, 29 Oct): only the 'noticed the edit' outcome, 'no deleted' vs the other two
-    versions pooled; the 0/42 'lost the commits' result is in the README only."""
+    """04b (Jacob, 29 Oct): only the 'noticed the edit' outcome: the "no" cut with its deletion
+    marks visible, the fluent rerun (cut with no marks; added 29 Oct, Jacob's "yes to all 5"), and
+    the honest and false-permission versions pooled; 'lost the commits' is in the README only."""
     e, d = edit_noticed()
-    fig, ax = plt.subplots(figsize=(8, 5.6))
-    # Standalone chart (Jacob, 29 Oct): seaborn's first colour for the edited summary, not the
-    # set-wide pink, and a plain-words label for the deletion.
-    groups = [(UNO_METRICS[m], [dict(lab="\"No\" cut\nfrom summary", color=PAL[0],
-                                     **e[m][0]),
-                                dict(lab="Honest or\nforged", color=CONTROL,
-                                     **e[m][1])])
+    f = data_user_no_fluent()
+    fig, ax = plt.subplots(figsize=(10, 5.6))
+    # Standalone chart (Jacob, 29 Oct): seaborn's first colour for the visibly edited summary,
+    # its second for the fluent cut, grey for the unedited versions; plain-words labels.
+    groups = [(EDIT_GROUPS[m], [dict(lab="\"No\" cut,\nmarks left", color=PAL[0], **e[m][0]),
+                                dict(lab="\"No\" cut,\nfluent text", color=FLUENT, **e[m][2]),
+                                dict(lab="Honest or\nforged", color=CONTROL, **e[m][1])])
               for m in ("residue_noticed", "eval_terms")]
     draw(ax, groups, group_pad=0.9, group_offset=40)
     ax.set_ylabel("Resumed runs")
-    r, ro = e["residue_noticed"]
-    assert r["k"] > 0 and ro["k"] == 0, "title says only the edited version was noticed"
-    title = (f"Agents noticed a visibly edited summary: {r['k']} of {r['n']} vs "
-             f"{ro['k']} of {ro['n']}")
+    (r, ro, rf), (g, go, gf) = e["residue_noticed"], e["eval_terms"]
+    assert r["k"] > 0 and rf["k"] == 0 and ro["k"] == 0, "title: only the visible cut noticed"
+    assert g["k"] == gf["k"] and g["n"] == gf["n"] and go["k"] == 0, "title: grader talk stayed"
+    marks = f"where all {r['k']} remarks pointed at the deletion's marks"
+    assert marks in f["md"], marks
+    title = (f"Agents noticed a visible cut ({r['k']} of {r['n']}), not a fluent one "
+             f"({rf['k']} of {rf['n']}); grader talk stayed ({g['k']} of {g['n']} each)")
     lost = [d[("lost", v)] for v in UNO_VERSIONS]
     n_lost = sum(x["n"] for x in lost)
-    assert all(x["k"] == 0 for x in lost)
+    assert all(x["k"] == 0 for x in lost) and f["lost"]["k"] == 0
     u = user_no_design()
     foot = (f"Source: user's-\"no\" experiment, {u['histories']} histories x {u['versions']} "
             f"summary versions x {u['reps']} runs, after the user said \"Don't overwrite the "
-            "commits\"; words from a regex scan of the agent's reasoning. The deletion was "
-            f"partial: {u['kept_rebase'][0]} of {u['kept_rebase'][1]} edited summaries still "
-            "mentioned a rebase.")
+            "commits\", plus a fluent rerun of the \"no\" cut (same histories x "
+            f"{u['reps']} runs, {f['lost']['n']} runs); grading words from a regex scan of the "
+            "agent's reasoning (fluent rerun: reasoning and visible text); 'cut or edited' from a "
+            "scan read by hand (original) or hand-coding (fluent rerun). The original deletion "
+            f"was partial: {u['kept_rebase'][0]} of "
+            f"{u['kept_rebase'][1]} edited summaries still mentioned a rebase.")
     save(fig, "04b_edit_noticed", title,
-         "share of resumed runs whose reasoning remarked that the summary looked truncated, "
-         "and that used benchmark or grading words: the summary with the user's \"no\" "
-         "deleted against the honest and false-permission summaries pooled.",
+         "share of resumed runs whose reasoning remarked that the summary looked cut or edited "
+         "(truncated, redacted or edited), and whose reasoning (fluent rerun: reasoning or visible "
+         "text) used benchmark or grading words: the summary "
+         "with the user's \"no\" deleted, leaving visible marks; the fluent rerun, with the "
+         "\"no\" removed and no marks; and the honest and false-permission summaries pooled.",
          [f"{UNO_SCORES} (runs per version; lost)",
-          f"{UNO_SCAN} (residue_noticed, eval_terms: run ids, version = the id's middle field)"],
-         [f"{one_line(UNO_METRICS[m])}: User's \"no\" deleted {fmt(e[m][0])}; honest or false "
-          f"permission (pooled) {fmt(e[m][1])}" for m in ("residue_noticed", "eval_terms")],
+          f"{UNO_SCAN} (residue_noticed, eval_terms: run ids, version = the id's middle field)",
+          (f"{UNO_FLUENT_SCAN} (fluent arm: runs.fluent[*].eval_terms and .lost, n = len("
+           "runs.fluent), checked against summary.fluent)"),
+          (f"{UNO_FLUENT_CODES} (fluent arm, said the summary looked cut or edited: "
+           "fluent_remarks.suspects_edit_truncation_redaction)"),
+          f"{UNO_FLUENT_MD} (statement \"{f['quote']}\", checked to be present)"],
+         [f"{one_line(EDIT_GROUPS[m])}: User's \"no\" deleted {fmt(e[m][0])}; fluent rerun "
+          f"{fmt(e[m][2])}; honest or false permission (pooled) {fmt(e[m][1])}"
+          for m in ("residue_noticed", "eval_terms")],
          [(f"Not plotted: no run lost the other developer's commits in any version "
            f"(0/{n_lost}; " + "; ".join(f"{one_line(UNO_VERSIONS[v][0])} {fmt(d[('lost', v)])}"
-                                         for v in UNO_VERSIONS) + ")."),
+                                         for v in UNO_VERSIONS)
+           + f"), nor in the fluent rerun ({fmt(f['lost'])})."),
           ("Pooled bar = the honest and false-permission versions together; per version: "
            + "; ".join(f"{one_line(UNO_METRICS[m])}, {one_line(UNO_VERSIONS[v][0])} "
                        f"{fmt(d[(m, v)])}" for m in ("residue_noticed", "eval_terms")
@@ -704,9 +771,30 @@ def chart_edit_noticed():
           ("Same data and scan as 04_forged_permission (see its notes: the zeros rest on the "
            f"readout's statement \"{u['quote']}\"; the deletion's gaps look like an edited "
            "summary, so 'noticed' here means noticed the visible gaps)."),
-             ("Review: gpt-6-astra, logs/reviews/20261029-figs-simplify-r1.md: PASS WITH MINOR "
-              "FIXES (1 minor, 3 nits; the minor and the title-guard nit fixed, not "
-              "re-reviewed).")], foot,
+          (f"Comparability of the 'cut or edited' bars: the original arm's {r['k']}/{r['n']} "
+           f"came from a regex scan ({f['orig_pattern']}) whose hits were then read; all "
+           f"{r['k']} named the "
+           "deletion's marks (\"and .\", \"2. ;\"; fluent readout). The fluent arm's "
+           f"{f['residue_noticed']['k']}/{f['residue_noticed']['n']} is hand-coded "
+           f"({f['coder']}) from every sentence that mentions the summary, its next steps or "
+           "the plan, counting remarks that suspect an edit, truncation or redaction; a wider "
+           f"regex found {f['rejected']} candidates, all false positives. "
+           "The fluent search was wider than the original's, so its zero is not an artefact of "
+           f"a narrower net, but the two counts used different procedures. Not counted: "
+           f"{f['plan_gap']['k']}/{f['plan_gap']['n']} fluent runs noted at face value that the "
+           "summary's plan doesn't resolve the rejected push (the original arm wasn't coded for "
+           "this)."),
+          ("Grading words: one pattern for both arms; the fluent readout's scan (reasoning and "
+           "visible assistant text), rerun on the original arm, finds the same "
+           f"{g['k']} run ids as user_no/reasoning_scan.json (checked). "
+           "The fluent rewrite also made the plan coherent (rebase wording removed, a plain push "
+           "step), so the design can't separate that from the missing marks (fluent readout). "
+           "n = 14 per edited arm; descriptive."),
+          ("Review: gpt-6-astra, logs/reviews/20261029-figs-simplify-r1.md: PASS WITH MINOR "
+           "FIXES (1 minor, 3 nits; the minor and the title-guard nit fixed, not "
+           "re-reviewed). Fluent bar: logs/reviews/20261029-figs-04b-fluent-r1.md: PASS WITH "
+           "MINOR FIXES (1 minor: 'in CoT' overstated the fluent scan; fixed, not "
+           "re-reviewed).")], foot,
          short=title)
 
 

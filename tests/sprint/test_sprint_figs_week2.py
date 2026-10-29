@@ -284,9 +284,23 @@ def test_edit_noticed_pools_the_other_two_versions():
     e, d = w.edit_noticed()
     assert kn(e["residue_noticed"][0]) == (6, 14) and kn(e["residue_noticed"][1]) == (0, 28)
     assert kn(e["eval_terms"][0]) == (5, 14) and kn(e["eval_terms"][1]) == (0, 28)
+    assert kn(e["residue_noticed"][2]) == (0, 14) and kn(e["eval_terms"][2]) == (5, 14)
     for m in ("residue_noticed", "eval_terms"):
         assert e[m][0] == d[(m, "decision_dropped")]
         assert e[m][1]["k"] == sum(d[(m, v)]["k"] for v in ("honest", "false_permission"))
+
+
+def test_fluent_rerun_recounts_from_the_scan_and_codes():
+    f = w.data_user_no_fluent()
+    scan = json.loads(text("user_no_fluent/readout_scan.json"))
+    codes = json.loads(text("user_no_fluent/readout_codes.json"))
+    runs = scan["runs"]["fluent"]
+    assert len(runs) == 14 and kn(f["lost"]) == (sum(r["lost"] for r in runs), 14) == (0, 14)
+    assert kn(f["eval_terms"]) == (sum(r["eval_terms"] for r in runs), 14) == (5, 14)
+    assert kn(f["residue_noticed"]) == (
+        codes["fluent_remarks"]["suspects_edit_truncation_redaction"], 14) == (0, 14)
+    assert kn(f["plan_gap"]) == (3, 14)
+    assert "0/14 suspected truncation, redaction or an edit" in text("user_no_fluent/readout.md")
 
 
 def test_edit_noticed_chart_draws_the_pooled_bars(monkeypatch):
@@ -299,12 +313,16 @@ def test_edit_noticed_chart_draws_the_pooled_bars(monkeypatch):
     monkeypatch.setattr(w, "save", fake_save)
     w.chart_edit_noticed()
     ax = got["fig"].axes[0]
-    assert [p.get_height() for p in ax.patches] == pytest.approx([100 * 6 / 14, 0, 100 * 5 / 14, 0])
+    assert [p.get_height() for p in ax.patches] == pytest.approx(
+        [100 * 6 / 14, 0, 0, 100 * 5 / 14, 100 * 5 / 14, 0])
     texts = [t.get_text() for t in ax.texts]
-    assert texts.count("0/28") == 2 and "6/14" in texts and "5/14" in texts
+    assert texts.count("0/28") == 2 and texts.count("5/14") == 2
+    assert "6/14" in texts and "0/14" in texts
     assert got["name"] == "04b_edit_noticed" and got["short"] == got["title"]
-    assert got["title"].endswith("6 of 14 vs 0 of 28")
-    assert any("0/42" in n for n in got["notes"])
+    assert got["title"] == ("Agents noticed a visible cut (6 of 14), not a fluent one (0 of 14); "
+                            "grader talk stayed (5 of 14 each)")
+    assert any("0/42" in n and "fluent rerun (0/14" in n for n in got["notes"])
+    assert any(n.startswith("Comparability") for n in got["notes"])
     w.plt.close(got["fig"])
 
 
@@ -336,8 +354,9 @@ def test_new_readmes_list_the_04b_and_06b_numbers():
     e, _ = w.edit_noticed()
     sec4 = readme[readme.index("## 04b_edit_noticed:"):readme.index("## 05a_harness_first_task:")]
     for m in e:
-        assert (f"{w.one_line(w.UNO_METRICS[m])}: User's \"no\" deleted {w.fmt(e[m][0])}; honest or false "
-                f"permission (pooled) {w.fmt(e[m][1])}") in sec4
+        assert (f"{w.one_line(w.EDIT_GROUPS[m])}: User's \"no\" deleted {w.fmt(e[m][0])}; fluent "
+                f"rerun {w.fmt(e[m][2])}; honest or false permission (pooled) "
+                f"{w.fmt(e[m][1])}") in sec4
     why = (w.OUT / "README_why_and_exploit.md").read_text()
     sec = why[why.index("## 06b_why_repeat:"):why.index("## 07_exploit_rule:")]
     rows = x.data_why()
