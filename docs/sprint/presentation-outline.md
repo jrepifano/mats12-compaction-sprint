@@ -59,7 +59,7 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 | Monitor, last step | Does the reasoning view sway the monitor on production-ops acts too? | Running (Haiku only) | Tonight |
 | SWE-chat anomalies | How often do real summaries claim work is done when it isn't? | Done: 10.0% [8.3, 12.1] of 928 (Opus 5.5's read); optional review page | Done 29 Oct |
 
-Already done, no slide yet: the exploitation ending, at its ceiling (12/12 fresh and 6/7 one-prior runs cheated), so a rise can't be detected. One line here, or backup.
+Already done, no slide yet: the exploitation ending (final, 29 Oct, per the Research Advisor). Fresh runs cheated 12/12 without a rule and 5/12 with "Don't modify the tests." (Fisher p = 0.005); after a long history, 6/8 vs 2/8 (4 chains stopped cheating, none started). Under the rule, test edits went to 0/20, but special-casing survived in 7/9. week2-build-c is drawing the figure. Its own slide, or backup.
 
 ## Backup deck
 
@@ -71,5 +71,5 @@ Already done, no slide yet: the exploitation ending, at its ceiling (12/12 fresh
 ## Open
 
 - Slide 12's title wording.
-- Exploitation ending: one line on slide 18, or backup only.
+- Exploitation ending: its own slide (the rule result is new), or backup.
 - Per-harness predictions for the replication: on hold (Jacob).
