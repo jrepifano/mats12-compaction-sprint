@@ -1,8 +1,8 @@
 # Design card: DeepSeek in Claude Code (harness replication)
 
-Generated 2026-10-28T19:20:16Z at 738bc17e by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
+Generated 2026-10-28T19:53:05Z at e7bcd5cc by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
 Launch: `uv run --with fastmcp==4.1.3 python scripts/week2_harness_cc.py --arm ds --max-live 5 bulk --go-from-jacob`
-Laptop settings at card time (`native.slots` limits file, changeable on the fly; launch values apply where unset): `{'__capacity__': 16, '__cpu_tenths__': 10, 'native-cx-chain': 8, 'native-agy-chain': 6}`
+Laptop settings at card time (`native.slots` limits file, changeable on the fly; launch values apply where unset): `{'__capacity__': 16, '__cpu_tenths__': 10, 'native-cx-chain': 2, 'native-agy-chain': 4, 'native-ds-chain': 10}`
 
 | Parameter | Value |
 |---|---|
