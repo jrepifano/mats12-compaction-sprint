@@ -379,17 +379,22 @@ def retention_line(d: int, safe: bool, c: dict) -> str:
 
 def retention_by_age(rows: list[dict]) -> dict:
     """Retention by age d = k - j: entries about task j at boundary j + d over those at boundary
-    j, per class (`safe`), pooled over (chain, task) pairs; bootstrap over chains."""
+    j, per class (`safe`), pooled over (chain, task) pairs whose two summaries both exist (a chain
+    cut short drops its later pairs instead of counting them as lost); bootstrap over chains."""
     cnt = Counter()
+    present = {(r["chain"], r["boundary"]) for r in rows}
     for r in rows:
         j = task_of(r["final_label"])
         if j is not None:
             cnt[(r["chain"], j, r["boundary"] - j, r["safe"])] += 1
     chains = sorted({r["chain"] for r in rows})
 
+    def pairs(c: str, d: int) -> list[int]:
+        return [j for j in range(1, K + 1 - d) if (c, j) in present and (c, j + d) in present]
+
     def retention(chs: list[str], d: int, safe: bool) -> float | None:
-        num = sum(cnt[(c, j, d, safe)] for c in chs for j in range(1, K + 1 - d))
-        den = sum(cnt[(c, j, 0, safe)] for c in chs for j in range(1, K + 1 - d))
+        num = sum(cnt[(c, j, d, safe)] for c in chs for j in pairs(c, d))
+        den = sum(cnt[(c, j, 0, safe)] for c in chs for j in pairs(c, d))
         return num / den if den else None
 
     ret = {}
@@ -399,13 +404,13 @@ def retention_by_age(rows: list[dict]) -> dict:
             rng_b = random.Random(SEED + 100 * d + safe)
             bs = sorted(x for x in (retention([rng_b.choice(chains) for _ in chains], d, safe)
                                     for _ in range(BOOT)) if x is not None)
+            ci = [bs[int(0.025 * len(bs))], bs[int(0.975 * len(bs)) - 1]] if bs else [None, None]
             ret[f"{d}:{'safety' if safe else 'other'}"] = {
-                "retention": v, "ci95": [bs[int(0.025 * len(bs))], bs[int(0.975 * len(bs)) - 1]],
-                "n_pairs": len(chains) * (K - d),
+                "retention": v, "ci95": ci,
+                "n_pairs": sum(len(pairs(c, d)) for c in chains),
                 "entries_at_age0": sum(cnt[(c, j, 0, safe)] for c in chains
-                                       for j in range(1, K + 1 - d)),
-                "entries_at_age": sum(cnt[(c, j, d, safe)] for c in chains
-                                      for j in range(1, K + 1 - d))}
+                                       for j in pairs(c, d)),
+                "entries_at_age": sum(cnt[(c, j, d, safe)] for c in chains for j in pairs(c, d))}
     return ret
 
 

@@ -40,6 +40,9 @@ SETS = {
                      "results/sprint/week2/agy_chain5/agy/bulk/summary_rot/attributions.jsonl")},
     "agy_sonnet": {"agy_sonnet": (
         "d92212c5", "results/sprint/week2/agy_chain5/agy_sonnet/bulk/summary_rot/attributions.jsonl")},
+    "cc_sonnet": {"cc_sonnet": (
+        "7df56fc1",
+        "results/sprint/week2/agy_chain5/claude_code_sonnet/bulk/summary_rot/attributions.jsonl")},
 }
 DEFINITION = (
     "Each line comes from a coding agent's working summary, written when its context was "

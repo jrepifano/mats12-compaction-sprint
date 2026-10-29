@@ -35,7 +35,7 @@ SIDES = (
     ("agy", "Antigravity (Gemini 3.8 Flash)", A.REF_AGY, A.AGY_ATTR, "main"),
     ("agy_sonnet", "Antigravity (Sonnet 5.5)", "d92212c5", f"{CB}/agy_sonnet/{RA}", "agy_sonnet"),
     ("cc", "Claude Code (Haiku 5.5)", "", f"{CB}/claude_code/{RA}", "cc"),
-    ("cc_sonnet", "Claude Code (Sonnet 5.5)", "", f"{CB}/claude_code_sonnet/{RA}", "cc_sonnet"),
+    ("cc_sonnet", "Claude Code (Sonnet 5.5)", "7df56fc1", f"{CB}/claude_code_sonnet/{RA}", "cc_sonnet"),
 )
 FLAGS = A.OUT / "safety_labels"
 SHORT = {"pi": "pi", "agy": "Antigravity+Flash", "agy_sonnet": "Antigravity+Sonnet",
@@ -84,7 +84,11 @@ def main() -> None:
 
     OUT.mkdir(parents=True, exist_ok=True)
     n = len(sides)
-    labels = {k: f"{lbl}, n = {len(chains[k])}" for k, lbl in sides}
+    def n_label(k: str) -> str:  # chains per boundary, when a chain was cut short
+        ns = [cells[k][str(b)]["n_chains"] for b in range(1, K + 1)]
+        return str(ns[0]) if len(set(ns)) == 1 else "/".join(map(str, ns)) + " (by boundary)"
+
+    labels = {k: f"{lbl}, n = {n_label(k)}" for k, lbl in sides}
     # by task
     colors = D.task_colors(deep)
     t1 = {k: 100 * cells[k][str(K)]["task_1"]["mean"] for k, _ in sides}
@@ -108,7 +112,8 @@ def main() -> None:
         fig.savefig(OUT / f"by_task_harness.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)
     # safety-relevant against other (gpt-6-astra flags)
-    top = max(100 * c["ci95"][1] for r in ret.values() for c in r.values())
+    top = max(100 * c["ci95"][1] for r in ret.values() for c in r.values()
+              if c["ci95"][1] is not None)
     fig, axes = plt.subplots(1, n, figsize=(5 * n, 6.4), sharey=True, squeeze=False)
     axes = axes[0]
     fig.subplots_adjust(left=0.05, right=0.99, top=0.8, bottom=0.2, wspace=0.06)
@@ -162,13 +167,16 @@ def main() -> None:
          "runs). Antigravity with Flash and with Sonnet share a harness and differ in model; "
          "summary style suggests Antigravity's summarizer follows the session model (probe "
          "a9a6d023: 3/3 vs 0/3; suggestive, the summarizer's identity is not recorded). "
+         "Antigravity+Sonnet and Claude Code+Sonnet share a model and differ in harness. "
          "Other pairs differ in model and harness together. Antigravity and Codex also carry "
          "the user's earlier requests verbatim outside the summary; those are not counted. "
          "n = 2 chains gives coarse intervals."), "",
         "**Numbers plotted:**", *[f"- {x}" for x in nums_bt], "",
         f"## safety_harness: {title_sf}", "", "![safety_harness](safety_harness.png)", "",
         (f"**Source:** `harness.json`, `retention_by_age.<side>`. "
-         f"{D.RETENTION_DEF.capitalize()}. Safety-relevant flags by gpt-6-astra (unvalidated, "
+         f"{D.RETENTION_DEF.capitalize()}; a (chain, task) pair counts only where both "
+         "summaries exist, so a chain cut short drops its later pairs. Safety-relevant flags by "
+         "gpt-6-astra (unvalidated, "
          "no hand check; definition in each flags.json): "
          + "; ".join(f"{lbl} {n_s[k]} of {n_e[k]}" for k, lbl in sides) + "."), "",
         "**Numbers plotted:**", *[f"- {x}" for x in nums_sf], ""]

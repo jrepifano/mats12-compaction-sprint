@@ -14,6 +14,11 @@
    "attribution": "d92212c5:results/sprint/week2/agy_chain5/agy_sonnet/bulk/summary_rot/attributions.jsonl",
    "sha256": "2a6d21db7d76d27e1c132f3d3c897fc8a04756aeffb13eddc0ab877f02874efe",
    "flags": "results/sprint/week2/chain_stress/summary_rot/decay/agy/safety_labels/agy_sonnet/flags.json"
+  },
+  "cc_sonnet": {
+   "attribution": "7df56fc1:results/sprint/week2/agy_chain5/claude_code_sonnet/bulk/summary_rot/attributions.jsonl",
+   "sha256": "a2ea21653c640806b7cf04538d2a8a96e5f1f05dc711d8f7ddc00c358eff07de",
+   "flags": "results/sprint/week2/chain_stress/summary_rot/decay/agy/safety_labels/cc_sonnet/flags.json"
   }
  },
  "chains": {
@@ -30,6 +35,10 @@
    "u4"
   ],
   "agy_sonnet": [
+   "u1",
+   "u2"
+  ],
+  "cc_sonnet": [
    "u1",
    "u2"
   ]
@@ -482,6 +491,142 @@
      "mean": 0.12586206896551724
     }
    }
+  },
+  "cc_sonnet": {
+   "1": {
+    "n_chains": 2,
+    "task_1": {
+     "mean": 0.7133333333333334,
+     "ci95": [
+      0.6666666666666666,
+      0.76
+     ],
+     "by_chain": {
+      "u1": 0.76,
+      "u2": 0.6666666666666666
+     }
+    },
+    "generic": {
+     "mean": 0.2866666666666666
+    }
+   },
+   "2": {
+    "n_chains": 2,
+    "task_1": {
+     "mean": 0.038319704986371654,
+     "ci95": [
+      0.024691358024691357,
+      0.05194805194805195
+     ],
+     "by_chain": {
+      "u1": 0.05194805194805195,
+      "u2": 0.024691358024691357
+     }
+    },
+    "task_2": {
+     "mean": 0.7463524130190797,
+     "ci95": [
+      0.7272727272727273,
+      0.7654320987654321
+     ],
+     "by_chain": {
+      "u1": 0.7272727272727273,
+      "u2": 0.7654320987654321
+     }
+    },
+    "generic": {
+     "mean": 0.21532788199454866
+    }
+   },
+   "3": {
+    "n_chains": 2,
+    "task_1": {
+     "mean": 0.024096385542168676,
+     "ci95": [
+      0.0,
+      0.04819277108433735
+     ],
+     "by_chain": {
+      "u1": 0.04819277108433735,
+      "u2": 0.0
+     }
+    },
+    "task_2": {
+     "mean": 0.03299766229095486,
+     "ci95": [
+      0.029850746268656716,
+      0.03614457831325301
+     ],
+     "by_chain": {
+      "u1": 0.03614457831325301,
+      "u2": 0.029850746268656716
+     }
+    },
+    "task_3": {
+     "mean": 0.6987052688365402,
+     "ci95": [
+      0.6865671641791045,
+      0.7108433734939759
+     ],
+     "by_chain": {
+      "u1": 0.7108433734939759,
+      "u2": 0.6865671641791045
+     }
+    },
+    "generic": {
+     "mean": 0.24420068333033626
+    }
+   },
+   "4": {
+    "n_chains": 2,
+    "task_1": {
+     "mean": 0.006578947368421052,
+     "ci95": [
+      0.0,
+      0.013157894736842105
+     ],
+     "by_chain": {
+      "u1": 0.013157894736842105,
+      "u2": 0.0
+     }
+    },
+    "task_2": {
+     "mean": 0.023076923076923078,
+     "ci95": [
+      0.0,
+      0.046153846153846156
+     ],
+     "by_chain": {
+      "u1": 0.0,
+      "u2": 0.046153846153846156
+     }
+    },
+    "task_3": {
+     "mean": 0.015384615384615385,
+     "ci95": [
+      0.0,
+      0.03076923076923077
+     ],
+     "by_chain": {
+      "u1": 0.0,
+      "u2": 0.03076923076923077
+     }
+    },
+    "task_4": {
+     "mean": 0.6969635627530364,
+     "ci95": [
+      0.6307692307692307,
+      0.7631578947368421
+     ],
+     "by_chain": {
+      "u1": 0.7631578947368421,
+      "u2": 0.6307692307692307
+     }
+    },
+    "generic": {
+     "mean": 0.25799595141700404
+    }
+   }
   }
  },
  "retention_by_age": {
@@ -670,22 +815,87 @@
     "entries_at_age0": 101,
     "entries_at_age": 0
    }
+  },
+  "cc_sonnet": {
+   "1:safety": {
+    "retention": 0.15555555555555556,
+    "ci95": [
+     0.125,
+     0.19047619047619047
+    ],
+    "n_pairs": 6,
+    "entries_at_age0": 45,
+    "entries_at_age": 7
+   },
+   "1:other": {
+    "retention": 0.02181818181818182,
+    "ci95": [
+     0.019867549668874173,
+     0.024193548387096774
+    ],
+    "n_pairs": 6,
+    "entries_at_age0": 275,
+    "entries_at_age": 6
+   },
+   "2:safety": {
+    "retention": 0.15151515151515152,
+    "ci95": [
+     0.1111111111111111,
+     0.2
+    ],
+    "n_pairs": 4,
+    "entries_at_age0": 33,
+    "entries_at_age": 5
+   },
+   "2:other": {
+    "retention": 0.01098901098901099,
+    "ci95": [
+     0.01020408163265306,
+     0.011904761904761904
+    ],
+    "n_pairs": 4,
+    "entries_at_age0": 182,
+    "entries_at_age": 2
+   },
+   "3:safety": {
+    "retention": 0.058823529411764705,
+    "ci95": [
+     0.0,
+     0.125
+    ],
+    "n_pairs": 2,
+    "entries_at_age0": 17,
+    "entries_at_age": 1
+   },
+   "3:other": {
+    "retention": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "n_pairs": 2,
+    "entries_at_age0": 80,
+    "entries_at_age": 0
+   }
   }
  },
  "n_entries": {
   "pi": 956,
   "agy": 1451,
-  "agy_sonnet": 487
+  "agy_sonnet": 487,
+  "cc_sonnet": 584
  },
  "n_safety": {
   "pi": 139,
   "agy": 98,
-  "agy_sonnet": 121
+  "agy_sonnet": 121,
+  "cc_sonnet": 75
  },
  "n_unlabelled_entries": {
   "pi": 0,
   "agy": 0,
-  "agy_sonnet": 0
+  "agy_sonnet": 0,
+  "cc_sonnet": 0
  },
  "bootstrap": {
   "seed": 20261030,
