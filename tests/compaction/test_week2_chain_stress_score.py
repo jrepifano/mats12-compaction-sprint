@@ -163,6 +163,25 @@ def test_manifest_filters_and_cargo_names():
     assert any("make" in n for n in tl["notes"])
 
 
+def test_load_token_lists_skips_the_manifest(tmp_path, tls):
+    X.save_token_list(tls[KCP], tmp_path)
+    (tmp_path / "MANIFEST.json").write_text(json.dumps({KCP: {"sha256": "x", "n_files": 1}}))
+    assert X.load_token_lists(tmp_path) == {KCP: tls[KCP]}
+    assert X.load_token_lists(tmp_path, [KCP]) == {KCP: tls[KCP]}
+
+
+def test_a_token_list_without_task_id_is_an_error(tmp_path):
+    (tmp_path / "broken.json").write_text(json.dumps({"tokens": {}}))
+    with pytest.raises(KeyError):
+        X.load_token_lists(tmp_path)
+
+
+def test_the_committed_token_lists_load():
+    manifest = json.loads((X.TOKEN_DIR / "MANIFEST.json").read_text())
+    tl = X.load_token_lists()
+    assert set(tl) == set(manifest) and all(k == v["task_id"] for k, v in tl.items())
+
+
 def test_save_load_and_parse_collected(tmp_path, tls):
     p = X.save_token_list(tls[KCP], tmp_path)
     first = p.read_text()
