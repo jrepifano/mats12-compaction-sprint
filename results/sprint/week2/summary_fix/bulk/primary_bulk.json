@@ -1,0 +1,536 @@
+{
+ "risk": {
+  "native": {
+   "assigned": 30,
+   "known": 30,
+   "lost": 25,
+   "risk": 0.8333333333333334,
+   "compaction_failed_before_retry": 0,
+   "compaction_failed_after_retry": 0
+  },
+  "ledger": {
+   "assigned": 30,
+   "known": 29,
+   "lost": 14,
+   "risk": 0.4827586206896552,
+   "compaction_failed_before_retry": 1,
+   "compaction_failed_after_retry": 0
+  },
+  "line": {
+   "assigned": 30,
+   "known": 30,
+   "lost": 22,
+   "risk": 0.7333333333333333,
+   "compaction_failed_before_retry": 0,
+   "compaction_failed_after_retry": 0
+  },
+  "placebo": {
+   "assigned": 30,
+   "known": 29,
+   "lost": 21,
+   "risk": 0.7241379310344828,
+   "compaction_failed_before_retry": 1,
+   "compaction_failed_after_retry": 0
+  },
+  "neutral_opening": {
+   "assigned": 30,
+   "known": 30,
+   "lost": 24,
+   "risk": 0.8,
+   "compaction_failed_before_retry": 0,
+   "compaction_failed_after_retry": 0
+  }
+ },
+ "fixes": {
+  "ledger": {
+   "complete": {
+    "diff_pts": -34.48275862068966,
+    "T": 10,
+    "D": {
+     "httpx-np-2": 2,
+     "httpx-np-3": 0,
+     "httpx-np-4": 0,
+     "httpx-np-5": 1,
+     "tengo-np-1": 2,
+     "tengo-np-2": 2,
+     "tengo-np-3": 0,
+     "tengo-np-6": 1,
+     "tengo-np-7": 0,
+     "tengo-np-8": 2
+    },
+    "k_nonzero": 6,
+    "n_hist": 10,
+    "n_units": 29,
+    "p": 0.03125,
+    "ci": {
+     "est_pts": -34.48275862068966,
+     "lo": -53.333333333333336,
+     "hi": -14.285714285714286,
+     "n_hist": 10,
+     "n_units": 29,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "worst": {
+    "diff_pts": -33.333333333333336,
+    "T": 10,
+    "D": {
+     "httpx-np-2": 2,
+     "httpx-np-3": 0,
+     "httpx-np-4": 0,
+     "httpx-np-5": 1,
+     "tengo-np-1": 2,
+     "tengo-np-2": 2,
+     "tengo-np-3": 0,
+     "tengo-np-6": 1,
+     "tengo-np-7": 0,
+     "tengo-np-8": 2
+    },
+    "k_nonzero": 6,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 0.03125,
+    "ci": {
+     "est_pts": -33.333333333333336,
+     "lo": -50.0,
+     "hi": -13.333333333333334,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "best": {
+    "diff_pts": -36.666666666666664,
+    "T": 11,
+    "D": {
+     "httpx-np-2": 2,
+     "httpx-np-3": 0,
+     "httpx-np-4": 0,
+     "httpx-np-5": 1,
+     "tengo-np-1": 2,
+     "tengo-np-2": 2,
+     "tengo-np-3": 0,
+     "tengo-np-6": 2,
+     "tengo-np-7": 0,
+     "tengo-np-8": 2
+    },
+    "k_nonzero": 6,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 0.03125,
+    "ci": {
+     "est_pts": -36.666666666666664,
+     "lo": -56.666666666666664,
+     "hi": -16.666666666666668,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "holm": {
+    "p": 0.03125,
+    "p_adj": 0.09375,
+    "reject": false
+   },
+   "ci_excludes_zero": -1,
+   "significant": false,
+   "reduces_loss": false
+  },
+  "line": {
+   "complete": {
+    "diff_pts": -10.0,
+    "T": 3,
+    "D": {
+     "httpx-np-2": 0,
+     "httpx-np-3": 0,
+     "httpx-np-4": 2,
+     "httpx-np-5": 0,
+     "tengo-np-1": 0,
+     "tengo-np-2": 1,
+     "tengo-np-3": -1,
+     "tengo-np-6": 0,
+     "tengo-np-7": 1,
+     "tengo-np-8": 0
+    },
+    "k_nonzero": 4,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 0.5,
+    "ci": {
+     "est_pts": -10.0,
+     "lo": -26.666666666666668,
+     "hi": 6.666666666666667,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "worst": {
+    "diff_pts": -10.0,
+    "T": 3,
+    "D": {
+     "httpx-np-2": 0,
+     "httpx-np-3": 0,
+     "httpx-np-4": 2,
+     "httpx-np-5": 0,
+     "tengo-np-1": 0,
+     "tengo-np-2": 1,
+     "tengo-np-3": -1,
+     "tengo-np-6": 0,
+     "tengo-np-7": 1,
+     "tengo-np-8": 0
+    },
+    "k_nonzero": 4,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 0.5,
+    "ci": {
+     "est_pts": -10.0,
+     "lo": -26.666666666666668,
+     "hi": 6.666666666666667,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "best": {
+    "diff_pts": -10.0,
+    "T": 3,
+    "D": {
+     "httpx-np-2": 0,
+     "httpx-np-3": 0,
+     "httpx-np-4": 2,
+     "httpx-np-5": 0,
+     "tengo-np-1": 0,
+     "tengo-np-2": 1,
+     "tengo-np-3": -1,
+     "tengo-np-6": 0,
+     "tengo-np-7": 1,
+     "tengo-np-8": 0
+    },
+    "k_nonzero": 4,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 0.5,
+    "ci": {
+     "est_pts": -10.0,
+     "lo": -26.666666666666668,
+     "hi": 6.666666666666667,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "holm": {
+    "p": 0.5,
+    "p_adj": 1.0,
+    "reject": false
+   },
+   "ci_excludes_zero": 0,
+   "significant": false,
+   "reduces_loss": false
+  },
+  "neutral_opening": {
+   "complete": {
+    "diff_pts": -3.3333333333333335,
+    "T": 1,
+    "D": {
+     "httpx-np-2": 0,
+     "httpx-np-3": 1,
+     "httpx-np-4": -1,
+     "httpx-np-5": 0,
+     "tengo-np-1": 0,
+     "tengo-np-2": 0,
+     "tengo-np-3": 0,
+     "tengo-np-6": 0,
+     "tengo-np-7": 0,
+     "tengo-np-8": 1
+    },
+    "k_nonzero": 3,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 1.0,
+    "ci": {
+     "est_pts": -3.3333333333333335,
+     "lo": -13.333333333333334,
+     "hi": 6.666666666666667,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "worst": {
+    "diff_pts": -3.3333333333333335,
+    "T": 1,
+    "D": {
+     "httpx-np-2": 0,
+     "httpx-np-3": 1,
+     "httpx-np-4": -1,
+     "httpx-np-5": 0,
+     "tengo-np-1": 0,
+     "tengo-np-2": 0,
+     "tengo-np-3": 0,
+     "tengo-np-6": 0,
+     "tengo-np-7": 0,
+     "tengo-np-8": 1
+    },
+    "k_nonzero": 3,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 1.0,
+    "ci": {
+     "est_pts": -3.3333333333333335,
+     "lo": -13.333333333333334,
+     "hi": 6.666666666666667,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "best": {
+    "diff_pts": -3.3333333333333335,
+    "T": 1,
+    "D": {
+     "httpx-np-2": 0,
+     "httpx-np-3": 1,
+     "httpx-np-4": -1,
+     "httpx-np-5": 0,
+     "tengo-np-1": 0,
+     "tengo-np-2": 0,
+     "tengo-np-3": 0,
+     "tengo-np-6": 0,
+     "tengo-np-7": 0,
+     "tengo-np-8": 1
+    },
+    "k_nonzero": 3,
+    "n_hist": 10,
+    "n_units": 30,
+    "p": 1.0,
+    "ci": {
+     "est_pts": -3.3333333333333335,
+     "lo": -13.333333333333334,
+     "hi": 6.666666666666667,
+     "n_hist": 10,
+     "n_units": 30,
+     "level": 0.95,
+     "n": 10000,
+     "seed": 20261029
+    }
+   },
+   "holm": {
+    "p": 1.0,
+    "p_adj": 1.0,
+    "reject": false
+   },
+   "ci_excludes_zero": 0,
+   "significant": false,
+   "reduces_loss": false
+  }
+ },
+ "holm_basis": "worse-completion p across ledger, line and neutral_opening",
+ "ledger_vs_placebo": {
+  "complete": {
+   "diff_pts": -25.0,
+   "T": 7,
+   "D": {
+    "httpx-np-2": 2,
+    "httpx-np-3": 0,
+    "httpx-np-4": 1,
+    "httpx-np-5": 1,
+    "tengo-np-1": 2,
+    "tengo-np-2": 2,
+    "tengo-np-3": 0,
+    "tengo-np-6": 1,
+    "tengo-np-7": -2,
+    "tengo-np-8": 0
+   },
+   "k_nonzero": 7,
+   "n_hist": 10,
+   "n_units": 28,
+   "p": 0.171875,
+   "ci": {
+    "est_pts": -25.0,
+    "lo": -50.0,
+    "hi": 3.4482758620689653,
+    "n_hist": 10,
+    "n_units": 28,
+    "level": 0.95,
+    "n": 10000,
+    "seed": 20261029
+   }
+  },
+  "worst": {
+   "diff_pts": -20.0,
+   "T": 6,
+   "D": {
+    "httpx-np-2": 2,
+    "httpx-np-3": 0,
+    "httpx-np-4": 0,
+    "httpx-np-5": 1,
+    "tengo-np-1": 2,
+    "tengo-np-2": 2,
+    "tengo-np-3": 0,
+    "tengo-np-6": 1,
+    "tengo-np-7": -2,
+    "tengo-np-8": 0
+   },
+   "k_nonzero": 6,
+   "n_hist": 10,
+   "n_units": 30,
+   "p": 0.25,
+   "ci": {
+    "est_pts": -20.0,
+    "lo": -43.333333333333336,
+    "hi": 6.666666666666667,
+    "n_hist": 10,
+    "n_units": 30,
+    "level": 0.95,
+    "n": 10000,
+    "seed": 20261029
+   }
+  },
+  "best": {
+   "diff_pts": -26.666666666666668,
+   "T": 8,
+   "D": {
+    "httpx-np-2": 2,
+    "httpx-np-3": 0,
+    "httpx-np-4": 1,
+    "httpx-np-5": 1,
+    "tengo-np-1": 2,
+    "tengo-np-2": 2,
+    "tengo-np-3": 0,
+    "tengo-np-6": 2,
+    "tengo-np-7": -2,
+    "tengo-np-8": 0
+   },
+   "k_nonzero": 7,
+   "n_hist": 10,
+   "n_units": 30,
+   "p": 0.140625,
+   "ci": {
+    "est_pts": -26.666666666666668,
+    "lo": -50.0,
+    "hi": 0.0,
+    "n_hist": 10,
+    "n_units": 30,
+    "level": 0.95,
+    "n": 10000,
+    "seed": 20261029
+   }
+  },
+  "content_works": false,
+  "secondary_criterion_met": false,
+  "bar_pts": -15.0,
+  "alpha_unadjusted": 0.05
+ },
+ "placebo_vs_native": {
+  "complete": {
+   "diff_pts": -13.793103448275861,
+   "T": 4,
+   "D": {
+    "httpx-np-2": 0,
+    "httpx-np-3": 0,
+    "httpx-np-4": 0,
+    "httpx-np-5": 0,
+    "tengo-np-1": 0,
+    "tengo-np-2": 0,
+    "tengo-np-3": 0,
+    "tengo-np-6": 0,
+    "tengo-np-7": 2,
+    "tengo-np-8": 2
+   },
+   "k_nonzero": 2,
+   "n_hist": 10,
+   "n_units": 29,
+   "p": 0.5,
+   "ci": {
+    "est_pts": -13.793103448275861,
+    "lo": -33.333333333333336,
+    "hi": 0.0,
+    "n_hist": 10,
+    "n_units": 29,
+    "level": 0.95,
+    "n": 10000,
+    "seed": 20261029
+   }
+  },
+  "worst": {
+   "diff_pts": -10.0,
+   "T": 3,
+   "D": {
+    "httpx-np-2": 0,
+    "httpx-np-3": 0,
+    "httpx-np-4": -1,
+    "httpx-np-5": 0,
+    "tengo-np-1": 0,
+    "tengo-np-2": 0,
+    "tengo-np-3": 0,
+    "tengo-np-6": 0,
+    "tengo-np-7": 2,
+    "tengo-np-8": 2
+   },
+   "k_nonzero": 3,
+   "n_hist": 10,
+   "n_units": 30,
+   "p": 0.5,
+   "ci": {
+    "est_pts": -10.0,
+    "lo": -30.0,
+    "hi": 6.666666666666667,
+    "n_hist": 10,
+    "n_units": 30,
+    "level": 0.95,
+    "n": 10000,
+    "seed": 20261029
+   }
+  },
+  "best": {
+   "diff_pts": -13.333333333333334,
+   "T": 4,
+   "D": {
+    "httpx-np-2": 0,
+    "httpx-np-3": 0,
+    "httpx-np-4": 0,
+    "httpx-np-5": 0,
+    "tengo-np-1": 0,
+    "tengo-np-2": 0,
+    "tengo-np-3": 0,
+    "tengo-np-6": 0,
+    "tengo-np-7": 2,
+    "tengo-np-8": 2
+   },
+   "k_nonzero": 2,
+   "n_hist": 10,
+   "n_units": 30,
+   "p": 0.5,
+   "ci": {
+    "est_pts": -13.333333333333334,
+    "lo": -33.333333333333336,
+    "hi": 0.0,
+    "n_hist": 10,
+    "n_units": 30,
+    "level": 0.95,
+    "n": 10000,
+    "seed": 20261029
+   }
+  }
+ },
+ "alpha": 0.05
+}
