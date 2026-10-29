@@ -123,10 +123,9 @@ def readme_section(name: str, lines: list[str]) -> None:
 # ------------------------------------------------------------------------------------------
 
 
-def cmd_by_task(args) -> None:
-    sh = json.loads(SHARES.read_text())
-    per = [p for p in sh["per_summary"] if p["arm"] == ARM and p["kind"] == "boundary"]
-    chains = sorted({p["chain"] for p in per})
+def task_cells(per: list[dict]) -> dict:
+    """Per boundary k: each task j's share of the summary (chain mean, bootstrap over chains)
+    and the no-one-task share, from per-summary `shares` (summary_rot's categories)."""
     cells = {}
     for k in range(1, K + 1):
         ps = [p for p in per if p["boundary"] == k and p["shares"]["earlier"] is not None]
@@ -140,26 +139,15 @@ def cmd_by_task(args) -> None:
         g = [p["shares"]["generic"] for p in ps]
         cell["generic"] = {"mean": sum(g) / len(g)}
         cells[str(k)] = cell
-    rows = unrelated_rows()
-    kept = defaultdict(list)
-    for r in rows:
-        if r["boundary"] == K and r["final_label"] == "task_1":
-            kept[r["chain"]].append(r)
-    out = {"source": [SRS.rel(SHARES), SRS.rel(ATTR)], "arm": ARM, "chains": chains,
-           "bootstrap": {"seed": SEED, "n": BOOT, "unit": "chain"}, "cells": cells,
-           "task1_at_boundary4": {c: len(kept.get(c, [])) for c in chains}}
-    SRS._dump(OUT / "by_task.json", out)
-    t1 = [100 * cells[str(k)]["task_1"]["mean"] for k in range(1, K + 1)]
-    title = ("Task 1 fades from the summary: " + " → ".join(f"{v:.0f}%" for v in t1)
-             + f" of entries after tasks 1–{K}")
-    plt, deep = _style()
-    from matplotlib.lines import Line2D
-    from matplotlib.patches import Patch
+    return cells
 
-    FIG.mkdir(parents=True, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(10, 6.2))
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.2)
-    colors = {f"task_{j}": deep[j - 1] for j in range(1, K + 1)} | {"generic": deep[7]}
+
+def task_colors(deep: list[str]) -> dict[str, str]:
+    return {f"task_{j}": deep[j - 1] for j in range(1, K + 1)} | {"generic": deep[7]}
+
+
+def by_task_panel(ax, cells: dict, colors: dict) -> list[str]:
+    """Stacked bars of task_cells, one per boundary, task 1's interval beside; numbers plotted."""
     nums = []
     for i, k in enumerate(range(1, K + 1)):
         c, bottom = cells[str(k)], 0.0
@@ -181,6 +169,35 @@ def cmd_by_task(args) -> None:
     ax.set_xticks(range(K))
     ax.set_xticklabels([f"After task {k}" for k in range(1, K + 1)])
     ax.set_ylim(0, 100)
+    return nums
+
+
+def cmd_by_task(args) -> None:
+    sh = json.loads(SHARES.read_text())
+    per = [p for p in sh["per_summary"] if p["arm"] == ARM and p["kind"] == "boundary"]
+    chains = sorted({p["chain"] for p in per})
+    cells = task_cells(per)
+    rows = unrelated_rows()
+    kept = defaultdict(list)
+    for r in rows:
+        if r["boundary"] == K and r["final_label"] == "task_1":
+            kept[r["chain"]].append(r)
+    out = {"source": [SRS.rel(SHARES), SRS.rel(ATTR)], "arm": ARM, "chains": chains,
+           "bootstrap": {"seed": SEED, "n": BOOT, "unit": "chain"}, "cells": cells,
+           "task1_at_boundary4": {c: len(kept.get(c, [])) for c in chains}}
+    SRS._dump(OUT / "by_task.json", out)
+    t1 = [100 * cells[str(k)]["task_1"]["mean"] for k in range(1, K + 1)]
+    title = ("Task 1 fades from the summary: " + " → ".join(f"{v:.0f}%" for v in t1)
+             + f" of entries after tasks 1–{K}")
+    plt, deep = _style()
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+
+    FIG.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(10, 6.2))
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.2)
+    colors = task_colors(deep)
+    nums = by_task_panel(ax, cells, colors)
     ax.set_ylabel("Share of summary entries (%)")
     ax.set_title(f"Five unrelated projects, compacted between tasks ({len(chains)} chains)",
                  loc="left")
@@ -299,8 +316,70 @@ def cmd_safety(args) -> None:
                "disagreements": [{"id": r["id"], "rule": r["safe"], "opus": opus[r["id"]],
                                   "text": r["text"].strip()[:300]}
                                  for r in sample if r["safe"] != opus[r["id"]]]}
-    # retention by age d = k - j: entries about task j at boundary j + d over those at boundary
-    # j, per class, pooled over (chain, task) pairs; bootstrap over chains
+    ret = retention_by_age(rows)
+    chains = sorted({r["chain"] for r in rows})
+    share = {str(k): sum(r["safe"] for r in rows if r["boundary"] == k)
+             / sum(r["boundary"] == k for r in rows) for k in range(1, K + 1)}
+    out = {"source": SRS.rel(ATTR), "arm": ARM, "rule": SAFE.pattern,
+           "n_entries": len(rows), "n_rule_safety": len(pos), "safety_share_by_boundary": share,
+           "rule_check_vs_opus": chk, "retention_by_age": ret,
+           "bootstrap": {"seed": SEED, "n": BOOT, "unit": "chain"},
+           "definition": RETENTION_DEF}
+    SRS._dump(OUT / "safety.json", out)
+    plt, deep = _style()
+    from matplotlib.patches import Patch
+
+    FIG.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(10, 6.2))
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.2)
+    nums = []
+    for d in range(1, K):
+        for off, safe, col in ((-0.18, True, deep[3]), (0.18, False, deep[0])):
+            c = ret[f"{d}:{'safety' if safe else 'other'}"]
+            v, (lo, hi) = 100 * c["retention"], c["ci95"]
+            ax.bar(d + off, v, 0.34, color=col)
+            ax.errorbar(d + off, v, yerr=[[v - 100 * lo], [100 * hi - v]], fmt="none",
+                        ecolor="black")
+            ax.text(d + off, 100 * hi + 1.5, f"{v:.0f}%", ha="center", va="bottom")
+            nums.append(retention_line(d, safe, c))
+    ax.set_xticks(range(1, K))
+    ax.set_xticklabels([f"{d} task{'s' if d > 1 else ''} later" for d in range(1, K)])
+    ax.set_ylabel("Entry-count retention (% of the count right after the task)")
+    ax.set_ylim(0, 10 * (int(max(100 * c["ci95"][1] for c in ret.values()) / 10) + 2))
+    ax.set_title(f"Unrelated chains ({len(chains)}), exploratory", loc="left")
+    s2, o2 = ret["2:safety"]["retention"], ret["2:other"]["retention"]
+    title = (f"Safety-relevant entries fade slower: {100 * s2:.0f}% vs {100 * o2:.0f}% "
+             "entry-count retention two tasks later")
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
+    fig.legend(handles=[Patch(color=deep[3], label="Safety-relevant (keyword rule)"),
+                        Patch(color=deep[0], label="Other")], loc="lower center", ncol=2,
+               bbox_to_anchor=(0.5, 0.0))
+    for ext in ("png", "svg"):
+        fig.savefig(FIG / f"safety_retention.{ext}", dpi=200 if ext == "png" else None)
+    plt.close(fig)
+    _safety_readme(title, out, chk, pos, rows, nums)
+    print(title)
+    for n in nums:
+        print(n)
+    if chk:
+        print({k: v for k, v in chk.items() if k != "disagreements"})
+
+
+RETENTION_DEF = ("retention at age d: entries about task j in the summary written d tasks after "
+                 "task j finished, over the entries about task j in the summary written right "
+                 "after it, summed over chains and tasks j with j + d <= 4; per class")
+
+
+def retention_line(d: int, safe: bool, c: dict) -> str:
+    v, (lo, hi) = 100 * c["retention"], c["ci95"]
+    return (f"{d} task{'s' if d > 1 else ''} later, {'safety-relevant' if safe else 'other'}: "
+            f"{v:.1f}% [{100 * lo:.1f}, {100 * hi:.1f}] ({c['entries_at_age']} of "
+            f"{c['entries_at_age0']} entries; {c['n_pairs']} chain-task pairs)")
+
+
+def retention_by_age(rows: list[dict]) -> dict:
+    """Retention by age d = k - j: entries about task j at boundary j + d over those at boundary
+    j, per class (`safe`), pooled over (chain, task) pairs; bootstrap over chains."""
     cnt = Counter()
     for r in rows:
         j = task_of(r["final_label"])
@@ -327,51 +406,11 @@ def cmd_safety(args) -> None:
                                        for j in range(1, K + 1 - d)),
                 "entries_at_age": sum(cnt[(c, j, d, safe)] for c in chains
                                       for j in range(1, K + 1 - d))}
-    share = {str(k): sum(r["safe"] for r in rows if r["boundary"] == k)
-             / sum(r["boundary"] == k for r in rows) for k in range(1, K + 1)}
-    out = {"source": SRS.rel(ATTR), "arm": ARM, "rule": SAFE.pattern,
-           "n_entries": len(rows), "n_rule_safety": len(pos), "safety_share_by_boundary": share,
-           "rule_check_vs_opus": chk, "retention_by_age": ret,
-           "bootstrap": {"seed": SEED, "n": BOOT, "unit": "chain"},
-           "definition": ("retention at age d: entries about task j in the summary written d "
-                          "tasks after task j finished, over the entries about task j in the "
-                          "summary written right after it, summed over chains and tasks j with "
-                          "j + d <= 4; per class")}
-    SRS._dump(OUT / "safety.json", out)
-    plt, deep = _style()
-    from matplotlib.patches import Patch
+    return ret
 
-    FIG.mkdir(parents=True, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(10, 6.2))
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.2)
-    nums = []
-    for d in range(1, K):
-        for off, safe, col in ((-0.18, True, deep[3]), (0.18, False, deep[0])):
-            c = ret[f"{d}:{'safety' if safe else 'other'}"]
-            v, (lo, hi) = 100 * c["retention"], c["ci95"]
-            ax.bar(d + off, v, 0.34, color=col)
-            ax.errorbar(d + off, v, yerr=[[v - 100 * lo], [100 * hi - v]], fmt="none",
-                        ecolor="black")
-            ax.text(d + off, 100 * hi + 1.5, f"{v:.0f}%", ha="center", va="bottom")
-            nums.append(f"{d} task{'s' if d > 1 else ''} later, "
-                        f"{'safety-relevant' if safe else 'other'}: {v:.1f}% "
-                        f"[{100 * lo:.1f}, {100 * hi:.1f}] ({c['entries_at_age']} of "
-                        f"{c['entries_at_age0']} entries; {c['n_pairs']} chain-task pairs)")
-    ax.set_xticks(range(1, K))
-    ax.set_xticklabels([f"{d} task{'s' if d > 1 else ''} later" for d in range(1, K)])
-    ax.set_ylabel("Entry-count retention (% of the count right after the task)")
-    ax.set_ylim(0, 10 * (int(max(100 * c["ci95"][1] for c in ret.values()) / 10) + 2))
-    ax.set_title(f"Unrelated chains ({len(chains)}), exploratory", loc="left")
-    s2, o2 = ret["2:safety"]["retention"], ret["2:other"]["retention"]
-    title = (f"Safety-relevant entries fade slower: {100 * s2:.0f}% vs {100 * o2:.0f}% "
-             "entry-count retention two tasks later")
-    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
-    fig.legend(handles=[Patch(color=deep[3], label="Safety-relevant (keyword rule)"),
-                        Patch(color=deep[0], label="Other")], loc="lower center", ncol=2,
-               bbox_to_anchor=(0.5, 0.0))
-    for ext in ("png", "svg"):
-        fig.savefig(FIG / f"safety_retention.{ext}", dpi=200 if ext == "png" else None)
-    plt.close(fig)
+
+def _safety_readme(title: str, out: dict, chk: dict | None, pos: list, rows: list,
+                   nums: list[str]) -> None:
     ck = ([("**Rule against Claude Opus 5.5** (seeded sample of "
            f"{SAMPLE_PER_CLASS} rule-positive and {SAMPLE_PER_CLASS} rule-negative entries, "
            f"seed {SAMPLE_SEED}): rule-positive {chk['rule_pos']['opus_safe']} safety / "
@@ -403,11 +442,6 @@ def cmd_safety(args) -> None:
              "pushed\", branch and commit), so this may reflect the summary keeping a finished "
              "task's status line rather than its rules; `retained_task1.md` shows the task-1 "
              "survivors."), ""])
-    print(title)
-    for n in nums:
-        print(n)
-    if chk:
-        print({k: v for k, v in chk.items() if k != "disagreements"})
 
 
 def main(argv=None) -> None:
