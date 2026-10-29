@@ -1,10 +1,11 @@
 """Experiment 5 (summary fix), PROVISIONAL deck chart: teammate's commit lost in task 2, by arm.
 
-Reads the interim readout copied from sprint/week2-build-b 60aa252a
-(results/sprint/week2/summary_fix/interim_readout.md) into
-docs/sprint/figs/week2/data/summary_fix/interim_readout.md, whose sha256 is checked below.
+Reads the main readout copied from sprint/week2-build-b 2975e960
+(results/sprint/week2/summary_fix/main_readout.md) into
+docs/sprint/figs/week2/data/summary_fix/main_readout.md, whose sha256 is checked below.
+Provisional until the final readout after the compaction-retry pass (two slots unknown).
 Plain seaborn defaults and no captions in the image (AGENTS.md "Figures"); caveats go in the
-README section this script writes. Run: uv run python scripts/sprint_fig_exp5_interim.py
+README section this script writes. Run: uv run python scripts/sprint_fig_exp5.py
 """
 
 import hashlib
@@ -22,11 +23,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from sprint_figs_week2 import wilson
 
-SRC = ROOT / "docs/sprint/figs/week2/data/summary_fix/interim_readout.md"
-SRC_SHA = "81a05fb623fedcedd806afe19850e6eb75c6e5c4cb21a8927d8acff758920c12"
-SRC_REF = "sprint/week2-build-b 60aa252a, results/sprint/week2/summary_fix/interim_readout.md"
+SRC = ROOT / "docs/sprint/figs/week2/data/summary_fix/main_readout.md"
+SRC_SHA = "81fa8a2ccf3f0ccf06101b88ad6fb69107b8fe68d1f4bc6947c94b2fe750ab04"
+SRC_REF = "sprint/week2-build-b 2975e960, results/sprint/week2/summary_fix/main_readout.md"
 OUT = ROOT / "docs/sprint/figs/week2"
-NAME = "08_summary_fix_interim"
+NAME = "08_summary_fix_main"
 ARMS = {  # readout key -> label on the chart, in plotting order (native first)
     "native": "pi's native\nsummary",
     "neutral_opening": "Neutral\nopening",
@@ -55,20 +56,22 @@ def table(text, heading):
 
 def load():
     raw = SRC.read_bytes()
-    assert hashlib.sha256(raw).hexdigest() == SRC_SHA, "interim readout changed; re-copy and re-hash"
+    assert hashlib.sha256(raw).hexdigest() == SRC_SHA, "main readout changed; re-copy and re-hash"
     text = raw.decode()
-    m = re.search(r"Slots: (\d+); compaction failed (\d+), done (\d+)", text)
-    slots, done = int(m.group(1)), int(m.group(3))
-    lost = {r["arm"]: (int(r["teammate lost"]), int(r["done"]))
-            for r in table(text, "## Teammate lost, per arm")}
-    ends = {r["arm"]: r for r in table(text, "## How the finished slots ended")}
-    paired = {r["arm"]: r for r in table(text, "## Paired with native")}
-    assert set(lost) == set(ARMS) and sum(n for _, n in lost.values()) == done
-    return slots, done, lost, ends, paired
+    per_arm = table(text, "## Teammate's commit lost, per arm")
+    lost = {r["arm"]: (int(r["lost"]), int(r["known"])) for r in per_arm}
+    slots = sum(int(r["assigned"]) for r in per_arm)
+    done = sum(n for _, n in lost.values())
+    ends = {r["arm"]: r for r in table(text, "## How the runs ended")}
+    paired = {r["arm"]: r for r in table(text, "## Paired with native: where the outcomes differ")}
+    assert set(lost) == set(ARMS)
+    contrasts = [r for h in ("## Each fix against native", "## Ledger against placebo")
+                 for r in table(text, h) if r["unknowns"] == "known runs only"]
+    return slots, done, lost, ends, paired, contrasts
 
 
 def main():
-    slots, done, lost, ends, paired = load()
+    slots, done, lost, ends, paired, contrasts = load()
     sns.set_theme(style="whitegrid")
     pal = sns.color_palette()
     fig, ax = plt.subplots(figsize=(9, 5.4))
@@ -95,8 +98,9 @@ def main():
 
     lines = [f"## {NAME}: {title}", "", f"![{NAME}]({NAME}.png)", "",
              (f"**Source:** `{SRC.relative_to(ROOT)}`, copied from {SRC_REF} "
-              f"(sha256 {SRC_SHA[:12]}…); tables 'Teammate lost, per arm', 'How the finished "
-              "slots ended' and 'Paired with native'."), "",
+              f"(sha256 {SRC_SHA[:12]}…); tables 'Teammate's commit lost, per arm', 'How the runs "
+              "ended', 'Paired with native: where the outcomes differ', 'Each fix against native' and "
+              "'Ledger against placebo'."), "",
              "**Numbers plotted** (lost/done, Wilson 95%):"]
     for key, lab in ARMS.items():
         k, n = lost[key]
@@ -104,9 +108,10 @@ def main():
         lines.append(f"- {lab.replace(chr(10), ' ')}: {k}/{n} = {100 * k / n:.1f}% "
                      f"[{100 * lo:.0f}, {100 * hi:.0f}]")
     lines += ["", "**Not on the chart (slide notes):**",
-              (f"- Provisional: {done} of {slots} slots, a nonrandom subset shaped by launch "
-               "order, runtime and failures; no statistical test yet."),
-              "- No capped run lost the commit in this interim sample (a capped run may not have pushed "
+              (f"- Provisional: {done} of {slots} runs have a known outcome; the other "
+               f"{slots - done} had a failed compaction and are being retried. The tests are in "
+               "the readout's 'Each fix against native' section."),
+              "- No capped run lost the commit in this sample (a capped run may not have pushed "
                "at all), so 'not lost' doesn't establish a decision to keep it. Submitted runs only: "
               + "; ".join(f"{ARMS[a].replace(chr(10), ' ')} {ends[a]['lost, of submitted']}/"
                           f"{ends[a]['submitted']} ({ends[a]['ended at a cap']} capped)"
@@ -116,10 +121,16 @@ def main():
               + "; ".join(f"{ARMS[a].replace(chr(10), ' ')} {paired[a]['lost in arm only']} vs "
                           f"{paired[a]['lost in native only']} of {paired[a]['pairs']} pairs"
                           for a in ARMS if a != "native")
-              + ".", ""]
+              + ".",
+              "- Contrasts, known runs only (points; history-cluster bootstrap 95%; exact sign-flip "
+              "p, unadjusted): "
+              + "; ".join(f"{r.get('fix') or r.get('contrast')} {r['difference (pts)']} "
+                          f"{r['95% CI']}, {r['histories nonzero']} histories differ, p {r['p']}"
+                          for r in contrasts)
+              + ". The readout's Holm step does not reject any fix at 0.05.", ""]
     readme = OUT / "README_summary_fix.md"
-    readme.write_text("# Experiment 5 (summary fix): provisional chart\n\nGenerated by "
-                      "`scripts/sprint_fig_exp5_interim.py`.\n\n" + "\n".join(lines))
+    readme.write_text("# Experiment 5 (summary fix): provisional chart, main readout\n\nGenerated by "
+                      "`scripts/sprint_fig_exp5.py`.\n\n" + "\n".join(lines))
     print("\n".join(lines))
 
 
