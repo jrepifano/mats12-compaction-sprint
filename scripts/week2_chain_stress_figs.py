@@ -35,10 +35,10 @@ NAME = "chain_stress_backup"
 SEED = 20261029
 BOOT = 10_000
 ARM_WORDS = {"unrelated": "Unrelated", "within_task": "Unrelated + in-task"}
-OUTCOME = {"recovered on retry": ("Recovered on one retry", 2),
-           "phase redone, ok": ("Task redone from its start, then ok", 0),
-           "failed again": ("Final: failed again on the retry", 3),
-           "terminal": ("Final: failed again on the retry", 3)}
+OUTCOME = {"recovered on retry": ("Between tasks: recovered on one retry", 2),
+           "phase redone, ok": ("Inside a task: task redone from its start, then ok", 0),
+           "failed again": ("Between tasks: failed again on the retry (final)", 3),
+           "terminal": ("Between tasks: failed again on the retry (final)", 3)}
 
 
 def rel(p: Path) -> str:
@@ -98,15 +98,14 @@ def panel_force_push(ax, deep, d: dict) -> dict:
     ax.set_ylim(0, 100)
     ax.set_ylabel("Runs that rewrote the shared branch (%)")
     ax.tick_params(axis="both", length=0)
-    ax.text(2, 97, f"Position in a chain of five unrelated tasks ({cells[0]['n']} chains)",
-            ha="center", va="top")
+    ax.set_xlabel(f"Position in a chain of five unrelated tasks ({cells[0]['n']} chains)")
     t = R.p5_minus_p2(d["rows"])
     dp = round(100 * t["diff"])
     dps = "0" if dp == 0 else f"{dp:+d}"
     caution = (f"Task 5 minus task 2: {dps} points, 95% chain-bootstrap "
                f"[{100 * t['ci'][0]:+.0f}, {100 * t['ci'][1]:+.0f}];\na large rise is not "
                "ruled out.")
-    ax.text(2, 90, caution, ha="center", va="top")
+    # no captions inside the image (Jacob, 29 Oct): the caution and notes go to the README
     per_chain = {ch: [c["position"] for c in cells if ch in c["chains"]]
                  for ch in sorted({ch for c in cells for ch in c["chains"]})}
     multi = sorted((p for p in per_chain.values() if len(p) > 1), key=lambda p: (-len(p), p))
@@ -116,10 +115,7 @@ def panel_force_push(ax, deep, d: dict) -> dict:
         parts.append(f"{len(once)} once each (task " + ", task ".join(map(str, once)) + ")")
     note = (f"{len(per_chain)} chains made all {sum(c['k'] for c in cells)} rewrites:\n"
             + ", ".join(parts) + ".")
-    ax.set_title("Force-push that lost a teammate's commit", loc="left",
-                 pad=58)
-    ax.text(0, 1.015, note, transform=ax.transAxes, ha="left",
-            va="bottom")
+    ax.set_title("Force-push that lost a teammate's commit", loc="left")
     nums = [f"Task {c['position']}: {c['k']} of {c['n']} chains ({100 * c['rate']:.1f}%), 95% "
             f"[{100 * c['ci95'][0]:.1f}, {100 * c['ci95'][1]:.1f}]; chains {', '.join(c['chains'])}"
             for c in cells]
@@ -161,11 +157,8 @@ def panel_failures(ax, deep, d: dict) -> dict:
     ax.tick_params(axis="both", length=0)
     n_rec = sum(o in ("recovered on retry", "phase redone, ok") for o in final.values())
     n_term = sum(o == "terminal" for o in final.values())
-    ax.set_title(f"Empty summaries: {len(comps)} compactions failed, {n_rec} recovered", loc="left", pad=58)
-    ax.text(0, 1.015, f"{len(fails)} failed attempts in {len(chains)} of {len(d['chains'])} "
-            f"chains; {n_term} failed again on the retry.\nOne mark per failed attempt, "
-            "coloured by the compaction's final outcome.\nCircle: between tasks (after the "
-            "task); square: inside a task.", transform=ax.transAxes, ha="left", va="bottom")
+    ax.set_title(f"Empty summaries: {len(comps)} compactions failed, {n_rec} recovered",
+                 loc="left")
     return {"n_fails": len(fails), "n_comps": len(comps), "n_chains": len(chains),
             "n_rec": n_rec, "n_term": n_term, "nums": nums}
 
@@ -177,7 +170,7 @@ def main() -> None:
     plt, deep = _style()
     FIG.mkdir(parents=True, exist_ok=True)
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(16, 7), width_ratios=[1.05, 1])
-    fig.subplots_adjust(left=0.055, right=0.985, top=0.70, bottom=0.22, wspace=0.42)
+    fig.subplots_adjust(left=0.055, right=0.985, top=0.86, bottom=0.2, wspace=0.42)
     fp = panel_force_push(a1, deep, d)
     fl = panel_failures(a2, deep, d)
     c0, fr = fp["cells"][0], fp["fresh"]
@@ -188,18 +181,17 @@ def main() -> None:
                 f"{c0['n']} chains per chain position")
              + f" (fresh runs {fr['k']} of {fr['n']})")
     fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
-    handles = [Line2D([], [], marker="s" if lab.startswith("Task redone") else "o", ls="",
+    handles = [Line2D([], [], marker="s" if lab.startswith("Inside a task") else "o", ls="",
                       color=deep[ci], label=lab)
                for lab, ci in dict.fromkeys(OUTCOME.values())]
     fig.legend(handles=handles, loc="lower right", ncol=3,
-               bbox_to_anchor=(0.985, 0.095))
-    fig.text(0.02, 0.012,
-             "Left: black whiskers are 95% bootstrap intervals over chains (fresh: over runs), "
-             f"{BOOT:,} resamples, seeded. Right: each failure was an empty summary after the "
-             "summarising model hit its output-length limit three times. Failed compactions "
-             "between tasks were retried once; a task whose in-task compaction failed was "
-             f"restarted from its start. {fl['n_term']} between-task compactions failed again "
-             "and were final.", ha="left", va="bottom", wrap=True)
+               bbox_to_anchor=(0.985, 0.0))
+    foot = ("Left: black whiskers are 95% bootstrap intervals over chains (fresh: over runs), "
+            f"{BOOT:,} resamples, seeded. Right: each failure was an empty summary after the "
+            "summarising model hit its output-length limit three times; one mark per failed "
+            "attempt, coloured by the compaction's final outcome. Failed compactions between "
+            "tasks were retried once; a task whose in-task compaction failed was restarted from "
+            f"its start. {fl['n_term']} between-task compactions failed again and were final.")
     for ext in ("png", "svg"):
         fig.savefig(FIG / f"{NAME}.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)
@@ -216,8 +208,9 @@ def main() -> None:
         (f"**Source:** `{rel(SRC)}`, field `rows[]` (arm `unrelated` by `position`, arm `fresh`; "
          "`rewrite` yes/no). Same counts as the per-arm table in `code_measures.md`. Rewrite: "
          "the agent force-pushed and the teammate's commit on the shared branch was lost."), "",
-        f"**Panel note:** {fp['note']}", "",
-        (f"**On-figure caution:** {fp['caution']} (paired over the {fp['trend']['n_chains']} "
+        f"**Panel note (not on the figure):** {fp['note']}", "",
+        f"**Footnote (not on the figure):** {foot}", "",
+        (f"**Caution (slide notes, not on the figure):** {fp['caution']} (paired over the {fp['trend']['n_chains']} "
          f"chains, seed {fp['trend']['seed']}; `scripts/week2_chain_stress_readout.py` "
          "`p5_minus_p2`, the same number as `code_measures.md`)."), "",
         "**Numbers plotted:**"] + [
