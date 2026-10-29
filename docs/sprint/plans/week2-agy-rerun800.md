@@ -31,7 +31,7 @@ Both limits are stated in the readout, next to the holding phase's recorded devi
 
 **Confound, stated and measured:** the task-2 opening is a new summary, not last night's. Each new summary is compared with last night's for the same history: does it still record the rejection and the force-push, and how does it frame the teammate's commits?
 - The comparison is a code pass (`week2_agy_summary_content.py`) plus a hand reading of the 4 overwriters.
-- It also gives a first read on how stable agy's summary is between two runs of the same `/compact` on the same state.
+- It also gives a first read on how much agy's summary varies between two `/compact`s of the same conversation. The second runs in a different workspace (the emptied holding container), so this is not pure run-to-run variability.
 
 ## Measures
 

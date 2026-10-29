@@ -22,7 +22,8 @@ our own synthetic setup; never point this driver at a private repo.
   (final text, `ask_user` or agy's own ask tools called, the submission token as the first
   output line of a command, infrastructure failure), and `turns.decide` gives the reply. agy
   has no turn limit flag, so there are no cut stops (unlike Claude Code's `--max-turns`).
-- **Caps per task:** experiment 1's 400 model calls (PLANNER_RESPONSE steps) and 2 h. Time is
+- **Caps per task:** experiment 1's 400 model calls (PLANNER_RESPONSE steps) and 2 h
+  (`HistoryConfig.max_calls` and `max_seconds`; the task-2 rerun raises them). Time is
   enforced in the container (`timeout`, and agy's `--print-timeout` 15 s inside it). Calls are
   checked before every turn and, while a turn runs, at `detached_exec`'s watch (about once a
   minute): at the cap every task process is stopped (`quiesce`) and the task ends
@@ -1047,11 +1048,17 @@ class HistoryConfig:
     quota_stop: threading.Event = field(default_factory=threading.Event)
     # experiment 5's restore point: an extra save before the boundary /compact (no agent turn)
     pre_compact_checkpoint: bool = True
+    # each task's caps (experiment 1's by default; the task-2 rerun raises them): model calls,
+    # and seconds, which set the task's deadline and so every turn's `timeout` and
+    # `--print-timeout` (the containers' 6 h lifetime must stay above it)
+    max_calls: int = CC.MAX_CALLS
+    max_seconds: int = CC.MAX_SECONDS
 
 
 def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, prompt: str,
           cid: str | None = None, blobs: dict[str, bytes] | None = None, first_step: int = 0,
-          a_steps: list[dict] | None = None, b_repo: CC.Repo | None = None) -> dict:
+          a_steps: list[dict] | None = None, b_repo: CC.Repo | None = None,
+          setup=None) -> dict:
     """One task, start to evidence; every step sits inside the path that writes result.json.
     After task 1: verified quiescence, the boundary (skipped after a quota refusal; every
     attempt waits on verified quiescence), quiescence again, then the session export; an
@@ -1061,7 +1068,10 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, prompt
     records, turns, the boundary) are screened before the container goes; text that fails,
     or can't be screened, is reduced to fixed codes (`sanitize`). A quota interruption is kept
     as `quota_cut` and `primary_unknown_reason` whatever the final ending. Returns {"end",
-    "cid", "session": (blobs, manifest) | None, "steps", "boundary", "checks", "quota_cut"}."""
+    "cid", "session": (blobs, manifest) | None, "steps", "boundary", "checks", "quota_cut"}.
+    `setup(sb) -> dict` (experiment 5's rules file, `agy_fix`) runs after the CLI config and
+    before the agent's first turn; its record is `extra["arm_setup"]`, and a failure fails
+    the task before the agent starts."""
     t0 = time.monotonic()
     rec: dict = {"end": END_FAILED}
     end, home, steps, run, extra = END_FAILED, None, None, None, {}
@@ -1089,6 +1099,8 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, prompt
                     extra["remote"] = cfg.hist.remote
                 A.install_auth(sb)
                 install_cli_config(sb, ns.server)
+                if setup is not None:
+                    extra["arm_setup"] = setup(sb)
                 rec["checks"] = X.env_checks(sb)
                 eg = N.egress_check(sb, ns.egress, EGRESS_URL)
                 rec["checks"]["egress_ok"] = bool(eg.get("ok"))
@@ -1104,9 +1116,14 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, prompt
                             if attempt == 2:
                                 raise
                     extra["state_before"] = state_listing(sb, tok)
-                run = TaskRun(ns, out, deadline=t0 + CC.MAX_SECONDS, first_step=first_step,
+                run = TaskRun(ns, out, deadline=t0 + cfg.max_seconds, first_step=first_step,
                               cid=cid, env=ns.egress.proxy_env(), services=ns.services,
-                              quota_stop=cfg.quota_stop, quiet_log=quiet)
+                              quota_stop=cfg.quota_stop, quiet_log=quiet,
+                              max_calls=cfg.max_calls)
+                if (cfg.max_calls, cfg.max_seconds) != (CC.MAX_CALLS, CC.MAX_SECONDS):
+                    # raised caps only (the defaults' result.json is unchanged): what the run got
+                    extra["caps"] = {"max_calls": run.max_calls,
+                                     "max_seconds": round(run.deadline - t0)}
                 state["agent_started"] = True
                 end = run.drive(prompt)
             except Exception as e:  # noqa: BLE001 - recorded; evidence still collected
