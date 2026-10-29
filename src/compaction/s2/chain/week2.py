@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from collections import Counter
 from datetime import UTC, datetime
@@ -39,7 +40,7 @@ class PlanDrift(RuntimeError):
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
     "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
-                        "summary_refusal", "summary_fix", "user_no"),
+                        "summary_refusal", "summary_fix", "user_no", "native_chain"),
                "stage": "str",
                "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
@@ -110,6 +111,18 @@ SCHEMA: dict[str, dict] = {
     "user_no": {"inject_at": "str", "reply_max_calls": "int", "stop_kinds": "list[str]",
                 "defied_kinds": "list[str]", "text_reply_stops": "bool", "fidelity": "bool",
                 "confirm_by_reading": "bool"},
+    # five-task chains in native harnesses (docs/sprint/plans/week2-agy-chain5.md): experiment
+    # 4's chains; tasks, order, tags and setups come from `source_config` (experiment 4's config),
+    # and each harness's settings sit in its own table (`native_chain.<harness>`)
+    "native_chain": {"harnesses": "list[str]", "agy": "harness", "codex": "harness",
+                     "claude_code": "harness", "host": ("laptop", "rig"),
+                     "source_config": "file", "orders": "file", "chains": "list[str]",
+                     "boundary": ("native_manual",), "end_compaction": "bool",
+                     "compaction_retries": "int", "on_compaction_failure": ("halt_chain",),
+                     "auto_compaction": ("off_where_possible_logged",),
+                     "session_transfer": ("session_file",),
+                     "save_state": ("files_after_every_compaction",), "grade_phases": "bool",
+                     "smoke_chain": "str", "smoke_phases": "int"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int",
@@ -121,7 +134,8 @@ KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "prece
                  "monitor_controls": "monitors", "exploit": "exploit",
                  "summary_refusal": "refusal",
                  "summary_fix": "summary_fix",
-                 "user_no": "user_no"}  # design.kind -> its own section
+                 "user_no": "user_no",
+                 "native_chain": "native_chain"}  # design.kind -> its own section
 # A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the
 # section optional (validated against SCHEMA if present). An override may also name another
 # kind's own section, which that kind then uses with these keys (3c reuses 3b's [refusal]).
@@ -165,6 +179,8 @@ SHORT_ARMS = {"related": (2, None), "fresh": (1, 1)}
 NOT_CONTRACT = ("meta", "_source")  # flatten skips these
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 FILE_KEYS = ("path", "sha256")
+HARNESS_KEYS = ("cli_version", "model", "stage", "cap_usd", "task_cap_usd")
+NATIVE_HARNESSES = ("agy", "codex", "claude_code")
 PHASE_PROJECTS = ("fork", "switch")
 
 
@@ -196,9 +212,15 @@ def _type_ok(v, t) -> str | None:
           "draw_table": lambda: isinstance(v, dict) and set(v) == {"seed", "path"}
           and isinstance(v["seed"], int) and not isinstance(v["seed"], bool)
           and isinstance(v["path"], str),
+          "harness": lambda: isinstance(v, dict) and set(v) == set(HARNESS_KEYS)
+          and all(isinstance(v[k], str) and v[k] for k in ("cli_version", "model", "stage"))
+          and all(isinstance(v[k], int | float) and not isinstance(v[k], bool)
+                  and math.isfinite(v[k]) and v[k] >= 0 for k in ("cap_usd", "task_cap_usd")),
           "file": lambda: isinstance(v, dict) and set(v) == set(FILE_KEYS)
           and all(isinstance(v[k], str) for k in FILE_KEYS) and bool(SHA_RE.match(v["sha256"]))}
-    return None if ok[t]() else {"file": "a table {path, sha256 (64 hex)}"}.get(t, t)
+    return None if ok[t]() else {"file": "a table {path, sha256 (64 hex)}",
+                                 "harness": f"a table {{{', '.join(HARNESS_KEYS)}}} (strings, "
+                                            "finite costs >= 0)"}.get(t, t)
 
 
 def _check_file(where: str, spec: dict, errors: list[str]) -> Path | None:
@@ -308,10 +330,120 @@ def validate(cfg: dict) -> None:
             _check_orders(p, cfg, errors)
     if kind == "precedent":
         _check_file("precedent.assignment", cfg["precedent"]["assignment"], errors)
+    if kind == "native_chain":
+        errors += _native_chain_errors(cfg, n)
     if kind == "monitor_controls":
         _check_file("monitors.assignment", cfg["monitors"]["assignment"], errors)
     if errors:
         raise ValueError("config invalid:\n  " + "\n  ".join(errors))
+
+
+def _native_chain_errors(cfg: dict, n: int) -> list[str]:
+    """A native_chain config against experiment 4's config it names (astra agy-chain5 plan r1
+    B3): parsed, not only hash-checked; the selected chains exist once each in its orders, are
+    unrelated and n long with a switch at every boundary; the wording, orders and call/time caps
+    are its own; counts are in range."""
+    errors: list[str] = []
+    nc = cfg["native_chain"]
+    hs = nc["harnesses"]
+    if not hs or len(set(hs)) != len(hs) or any(h not in NATIVE_HARNESSES for h in hs):
+        errors.append(f"native_chain.harnesses: distinct names from {list(NATIVE_HARNESSES)}")
+    if nc["compaction_retries"] < 0:
+        errors.append("native_chain.compaction_retries: must be >= 0")
+    if not 1 <= nc["smoke_phases"] <= n:
+        errors.append(f"native_chain.smoke_phases: must be in 1..{n}")
+    caps, par = cfg["caps"], cfg["parallelism"]
+    if caps["max_calls"] <= 0 or caps["max_seconds"] <= 0:
+        errors.append("caps.max_calls and caps.max_seconds: must be > 0")
+    for k in ("stage_usd", "run_usd"):
+        if not (math.isfinite(caps[k]) and caps[k] >= 0):
+            errors.append(f"caps.{k}: must be finite and >= 0")
+    # the global caps are the harness tables' (astra plan r2 #5): the stage cap is their sum,
+    # the per-run cap their largest per-task cap
+    tables = [nc[h] for h in hs if h in NATIVE_HARNESSES and isinstance(nc.get(h), dict)]
+    if tables and all(_type_ok(t, "harness") is None for t in tables):
+        if not math.isclose(caps["stage_usd"], sum(t["cap_usd"] for t in tables)):
+            errors.append("caps.stage_usd: must equal the sum of the run harnesses' cap_usd")
+        if not math.isclose(caps["run_usd"], max(t["task_cap_usd"] for t in tables)):
+            errors.append("caps.run_usd: must equal the largest task_cap_usd of the run "
+                          "harnesses")
+    if par["agents"] <= 0 or not 1 <= par["fallback_agents"] <= par["agents"]:
+        errors.append("parallelism: agents > 0 and 1 <= fallback_agents <= agents")
+    if par["agent_memory_mb"] <= 0 or par["fallback_agent_memory_mb"] < par["agent_memory_mb"]:
+        errors.append("parallelism: agent_memory_mb > 0 and fallback_agent_memory_mb >= it")
+    chains = nc["chains"]
+    if not chains or len(set(chains)) != len(chains):
+        errors.append("native_chain.chains: nonempty, no duplicates")
+    if nc["smoke_chain"] not in chains:
+        errors.append("native_chain.smoke_chain: must be one of native_chain.chains")
+    src_p = _check_file("native_chain.source_config", nc["source_config"], errors)
+    ord_p = _check_file("native_chain.orders", nc["orders"], errors)
+    src = None
+    if src_p is not None:
+        try:
+            src = load_config(src_p)
+        except Exception as e:  # noqa: BLE001 - not a valid week-2 config
+            errors.append(f"native_chain.source_config: not a valid week-2 config: {e}")
+    if src is not None:
+        if src["design"]["kind"] != "chain":
+            errors.append("native_chain.source_config: not a chain experiment's config")
+        else:
+            if nc["orders"] != src["chain"]["orders"]:
+                errors.append("native_chain.orders: differs from source_config's chain.orders")
+            if not src["chain"].get("ticket_tags"):
+                errors.append("native_chain.source_config: ticket_tags off")
+        for k in ("max_calls", "max_seconds"):
+            if caps[k] != src["caps"][k]:
+                errors.append(f"caps.{k}: {caps[k]} differs from source_config's "
+                              f"{src['caps'][k]}")
+        for k in sorted(set(cfg["wording"]) | set(src["wording"])):
+            if k in ("ticket_tag_line", "teammate_texts", "task_ending", "lead_same",
+                     "lead_different") and cfg["wording"].get(k) != src["wording"].get(k):
+                errors.append(f"wording.{k}: differs from source_config's")
+        missing = [k for k in ("ticket_tag_line", "teammate_texts", "task_ending",
+                               "lead_same", "lead_different") if k not in cfg["wording"]]
+        errors += [f"wording.{k}: missing (source_config has it)" for k in missing]
+    if ord_p is not None:
+        by_id = _orders_by_id(ord_p, errors)
+        for cid in chains if by_id is not None else ():
+            c = by_id.get(cid)
+            if c is None:
+                errors.append(f"native_chain.chains: {cid!r} not in the orders")
+                continue
+            ph = c["phases"]
+            if c.get("arm") != "unrelated" or len(ph) != n or any(
+                    p.get("project") != "switch" for p in ph[1:]):
+                errors.append(f"native_chain.chains: {cid!r} is not an unrelated chain of {n} "
+                              "tasks with a switch at every boundary")
+    return errors
+
+
+def _orders_by_id(path: Path, errors: list[str]) -> dict[str, dict] | None:
+    """The orders file as {chain id: chain}, after a shape check (a list of objects with a string
+    id and a list of phase objects with a string task); None, with the errors, otherwise."""
+    try:
+        orders = json.loads(path.read_text())
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"native_chain.orders: not JSON: {e}")
+        return None
+    bad = []
+    if not isinstance(orders, list):
+        bad.append("native_chain.orders: must be a list of chains")
+    else:
+        for i, c in enumerate(orders):
+            where = f"native_chain.orders[{i}]"
+            if not isinstance(c, dict) or not isinstance(c.get("id"), str):
+                bad.append(f"{where}: must be an object with a string id")
+            elif not isinstance(c.get("phases"), list):
+                bad.append(f"{where}.phases: must be a list")
+            else:
+                bad += [f"{where}.phases[{j}]: must be an object with a string task"
+                        for j, p in enumerate(c["phases"])
+                        if not isinstance(p, dict) or not isinstance(p.get("task"), str)]
+    if bad:
+        errors.extend(bad)
+        return None
+    return {c["id"]: c for c in orders}
 
 
 def stage_cap(cfg: dict) -> float:

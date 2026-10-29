@@ -1,0 +1,55 @@
+# Week-2 config of the five-task native-harness chains: docs/sprint/plans/week2-agy-chain5.md. Every key
+# except [meta] must match the proposal's "Build contract" table (scripts/week2_plan_check.py).
+# Tasks, order, tags, teammate setups, task text and lead-ins are experiment 4's: the runner reads
+# them from source_config and refuses wording or orders that differ from it.
+
+[meta]
+exp = "agy_chain5"
+proposal = "docs/sprint/plans/week2-agy-chain5.md"
+built_against = "90fa32e73c472654f2d59334f6d50079d6c2be3ff8dd582300510f0c32c948a7"
+
+[design]
+kind = "native_chain"
+stage = "SPRINT-S2-AGY-CHAIN"
+seed = 20261027
+n_phases = 5
+log_reasoning = false  # agy records no reasoning
+
+[native_chain]
+harnesses = ["agy", "codex", "claude_code"]  # in run order: agy first, then phase 2
+agy = { cli_version = "1.4.7", model = "gemini-3.8-flash-low", stage = "SPRINT-S2-AGY-CHAIN", cap_usd = 0.0, task_cap_usd = 0.0 }
+codex = { cli_version = "0.162.1", model = "gpt-6-luna", stage = "SPRINT-S2-CX-CHAIN", cap_usd = 0.0, task_cap_usd = 0.0 }
+claude_code = { cli_version = "2.1.310", model = "claude-haiku-5-5[1m]", stage = "SPRINT-S2-CC-CHAIN", cap_usd = 20.0, task_cap_usd = 6.0 }
+host = "laptop"  # agy's auth volume and the other harnesses' credentials are there
+source_config = { path = "configs/week2/chain_stress.toml", sha256 = "e7ecd5aa330c948d7d4f316e53b383880dd44f2c9870865a1a9139097a530102" }
+orders = { path = "configs/week2/orders/chain_stress.json", sha256 = "c73fcc4318809fdefce4508b320ee6fe98037d3cb6938b40886deb7592fe7a00" }
+chains = ["u1", "u2", "u3", "u4"]
+boundary = "native_manual"  # agy /compact, Codex thread/compact/start, Claude Code /compact
+end_compaction = true  # one more compaction after the last task (experiment 4's chain end)
+compaction_retries = 1
+on_compaction_failure = "halt_chain"
+auto_compaction = "off_where_possible_logged"  # agy's can't be turned off: logged
+session_transfer = "session_file"
+save_state = "files_after_every_compaction"  # no kept docker images
+grade_phases = true
+smoke_chain = "u1"
+smoke_phases = 2
+
+[caps]
+stage_usd = 20.0  # Claude Code's; agy and Codex run on their plans ($0)
+run_usd = 6.0  # Claude Code's per-task cost cap
+max_calls = 400
+max_seconds = 7200
+
+[parallelism]
+agents = 4
+fallback_agents = 2
+agent_memory_mb = 1280
+fallback_agent_memory_mb = 3072
+
+[wording]
+ticket_tag_line = { path = "configs/week2/wording/chain_stress/ticket_tag_line.txt", sha256 = "0ac0df8bc345e5baf80d08bd83151d014e82e921727d3a18fdbcd739e493a01e" }
+teammate_texts = { path = "configs/week2/wording/chain_stress/teammate_texts.json", sha256 = "860ee332f31f70293ac640ea2eb2098c2765641edf7e16387c546e1cf21e1715" }
+task_ending = { path = "configs/week2/wording/task_chaining/task_ending.txt", sha256 = "69a5e1ae691059f82d63fc68dfadf50236deefd3dd4138f2fcec1244253b6b34" }
+lead_same = { path = "configs/week2/wording/task_chaining/lead_same.txt", sha256 = "8edf08f8bfa3b8caa691366c77bfb844afd93037c381a9c1bac08eaf78d457df" }
+lead_different = { path = "configs/week2/wording/task_chaining/lead_different.txt", sha256 = "f3e771faca721f959383d3d26eb1138375f6b9c49b550db7468219078dd7c910" }
