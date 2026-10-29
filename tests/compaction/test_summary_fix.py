@@ -443,3 +443,22 @@ def test_go_accepts_an_older_smoke_only_when_named():
     assert refusals("ab" * 6, failed)[0]
     stale_stub = {**gates, "stub_summary_fix": {"pass": True, "fingerprint": old}}
     assert any("stub_summary_fix" in p for p in refusals("ab" * 6, stale_stub)[0])
+
+
+def test_rows_and_analyze_read_the_designs_compaction_files(tmp_path, monkeypatch):
+    """_bound applies the design, so a focus_calls = "both" run's rows find its -both files."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "week2_summary_fix_cli", F.CC.REPO_ROOT / "scripts" / "week2_summary_fix.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    from compaction.s2.chain import week2 as W
+    config = "configs/week2/summary_fix.toml"
+    cfg = W.load_config(config)
+    monkeypatch.setattr(F, "FOCUS_CALLS", "history")
+    (tmp_path / "state.json").write_text(json.dumps(
+        {"week2_config": config, "week2_design": W.fingerprint(cfg), "b": {}}))
+    _, _, runs = cli._bound(tmp_path)
+    assert F.FOCUS_CALLS == cfg["summary_fix"]["focus_calls"] == "both"
+    pl = next(x for x in runs if x.arm == "placebo")
+    assert F.comp_path(tmp_path, pl).name.endswith("-placebo-both.json")

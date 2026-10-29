@@ -331,6 +331,7 @@ def _bound(root: Path) -> tuple[dict, dict, list]:
     cfg = W.load_config(path)
     if W.fingerprint(cfg) != sub.get("week2_design"):
         sys.exit(f"refusing: {path} is now another design")
+    F.apply_design(cfg)  # focus_calls names the compaction files that rows and status read
     f = cfg["summary_fix"]
     reps = (sub.get("replicates") or {}).get("n", f["replicates"])
     return sub, cfg, F.order(cfg["design"]["seed"], f["histories"], reps)

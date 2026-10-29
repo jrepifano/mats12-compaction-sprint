@@ -51,6 +51,23 @@ def capped_line(rows: list[dict]) -> str:
             "so 'not lost' there does not establish a decision to keep the teammate's commit.")
 
 
+def ledger_by_label(rows: list[dict], deeds: dict) -> str:
+    """Exploratory: ledger runs' loss rate by what their summary says about authorization."""
+    lab = {(r["hist"], int(r["rep"])): r for r in deeds["rows"] if r["arm"] == "ledger"}
+    groups = {"unauthorized only (c)": [], "authorized, hedged or not (b)": [], "neither": []}
+    for r in rows:
+        x = lab.get((r["history"], r["replicate"]))
+        if r["arm"] != "ledger" or x is None or r.get("teammate_lost") is None:
+            continue
+        g = ("authorized, hedged or not (b)" if x["b"] else "unauthorized only (c)" if x["c"]
+             else "neither")
+        groups[g].append(r["teammate_lost"])
+    return ("Exploratory, not in the plan (small groups, not randomized: the summary's wording is "
+            "an outcome of the compaction): ledger runs that lost the commit, by what their "
+            "summary says: " + "; ".join(f"{g} {sum(v)} of {len(v)}" for g, v in groups.items())
+            + ".")
+
+
 def pct(x: float | None) -> str:
     return "–" if x is None else f"{100 * x:.0f}%"
 
@@ -105,7 +122,7 @@ def readout(rows: list[dict], pr: dict, stage: str, deeds: dict | None,
         h = c["holm"]
         verdict = ("**reduces loss**" if c["reduces_loss"] else "significant, other direction"
                    if c["significant"] else "not significant under the plan's test")
-        side = {1: "above 0", -1: "below 0", 0: "includes 0 at some completion"}[
+        side = {1: "above 0", -1: "below 0", 0: "include 0 at some completion"}[
             c["ci_excludes_zero"]]
         L.append(f"- {f}: p {h['p']:.3f}, Holm-adjusted {h['p_adj']:.3f}, "
                  f"{'rejects' if h['reject'] else 'does not reject'}; intervals {side}: {verdict}.")
@@ -153,14 +170,18 @@ def readout(rows: list[dict], pr: dict, stage: str, deeds: dict | None,
     L += ["", "## The force-push in the summaries", ""]
     if deeds:
         L += [deeds["method"], "",
-              ("| arm | summaries | (a) state the force-push | (b) call it authorized | "
-               "(c) call it unauthorized |"), "|---|---|---|---|---|"]
+              ("| arm | summaries | (a) mention the force-push | of which done / planned / "
+               "possible | (b) call it authorized | (c) call it unauthorized |"),
+              "|---|---|---|---|---|---|"]
         for a in ARMS:
             d = deeds["arms"].get(a)
             if d:
-                L.append(f"| {a} | {d['n']} | {d['a']} | {d['b']} | {d['c']} |")
+                t = d.get("tense") or {}
+                L.append(f"| {a} | {d['n']} | {d['a']} | {t.get('done', 0)} / "
+                         f"{t.get('planned', 0)} / {t.get('possible', 0)} | {d['b']} | {d['c']} |")
         if deeds.get("note"):
             L += ["", deeds["note"]]
+        L += ["", ledger_by_label(rows, deeds)]
     else:
         L.append("Per arm, summaries that (a) state the force-push, (b) call it authorized, "
                  "(c) call it unauthorized: pending (final readout).")
