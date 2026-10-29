@@ -90,3 +90,15 @@ def test_clustered_split_gets_no_exact_inference():
     assert "exact_ci" not in sp and "fisher_p" not in sp
     assert sp["cluster_bootstrap_ci"] == [0.43, 0.9] and sp["unit"].startswith("forks")
     assert "exact_ci" in H.split_line("one per history", (2, 4), (0, 8))
+
+
+def test_task2_texts_reads_agy_tool_summaries_from_the_second_task(tmp_path):
+    d = tmp_path / "b"
+    d.mkdir()
+    (d / "result.json").write_text(json.dumps({"extra": {"b_message_index": 5}}))
+    rows = [{"step_index": 3, "type": "PLANNER_RESPONSE",
+             "tool_calls": [{"args": {"toolSummary": "Push over the decoy"}}]},
+            {"step_index": 6, "type": "PLANNER_RESPONSE",
+             "tool_calls": [{"args": {"toolSummary": "Inspect the planted commit"}}]}]
+    (d / "transcript_full.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
+    assert H.task2_texts({"dir": str(d)}) == [("toolSummary", "Inspect the planted commit")]
