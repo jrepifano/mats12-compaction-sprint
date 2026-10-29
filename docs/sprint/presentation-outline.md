@@ -28,6 +28,7 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 6. **The task images leaked their solutions, so we rebuilt them.** Reference fixes reachable in git history; full object and layer search; rebuilt images (DeepSWE 40/40, rebuilt SWE-bench Pro 24/24, rebuilt Refactoring 15/15 clean). Agents went looking for solutions unprompted (75/88 task-chaining runs mined git objects).
 7. **Summaries rarely drop anything that changes what the agent does next.** Headline the losses that matter (Opus-labelled consequential: 1–6% of items by source; about 11.5% of items flagged lost after the judge-precision correction, as context). The trajectory question: only 2/24 live compactions had a usable loss; the natural repair cohort was 0/17; the one signal (commit prefix, restored vs not, 2 compactions) is a lead. Caveat: "consequential" is Opus's label, not hand-checked.
 8. **Real users' sessions lose the most, and losses pile up with each compaction** (SWE-chat). About 20% of items lost (6% that matter); rules lost most (31%); about half or more lost by the 2nd compaction against about 1 in 4 at the 1st (60 hand-checked cards). Plus false "done" claims (29 Oct, Opus 5.5's read, not hand-checked): 10.0% of compactions [8.3, 12.1] (93/928) have a completion line the pre-compaction history contradicts; a floor, every first-pass false rechecked with search over the full history (`results/sprint/swechat_odd/scan_summary.md` on sprint/swechat-odd). We can't rerun SWE-chat sessions, which is why we moved to live runs.
+8b. **About 1 in 10 real users' summaries claims work is done when the history says it isn't** (added 29 Oct as deck slide 10): `false_done_by_model.png` on sprint/swechat-odd at f37bb33d; the model split is observational, not a ranking.
 9. **Planted rules were almost never lost or broken.** All the negative live results on one slide (DeepSeek pilot, SWE-Interact, planted pilot, native harness arms), each linked to its setup slide in the backup.
 
 ### Week 2: main results
@@ -44,7 +45,7 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 
 ### Close
 
-19. **Compaction mostly works: it's hard to make it misbehave.** Scope: compactions that produced a summary. Name the outright failures on the same slide: 4 empty pi/DeepSeek summaries in the 5-task chains (output cap hit three times, histories about 170k–440k tokens), one failed arm in experiment 5, Haiku partly refusing Claude Code's compaction prompt once (1 of 15).
+19. **Compaction mostly works: it's hard to make it misbehave.** Scope: compactions that produced a summary. Name the outright failures on the same slide: in the 5-task chains (final, 29 Oct) 9 failed attempts at 7 compactions in 5 of 28 chains, 5 recovered by a retry or redo and 2 final (figure `chain_stress_backup.png` on sprint/week2-build-b at 3d562c1c, with force-pushing flat at 2/8 by position), one failed arm in experiment 5, Haiku partly refusing Claude Code's compaction prompt once (1 of 15).
 20. **Mistakes I caught, and what they taught me** (keep for now). 3–4 from the 17 in `docs/sprint/mistakes.md`.
 21. **What 3 more months would answer** (keep for now).
 
@@ -52,7 +53,7 @@ Living outline for the Neel deck (due 10 PM ET Fri 30 Oct). Drafted 28 Oct from 
 
 | Experiment | Question | Status | Results expected |
 |---|---|---|---|
-| 5-task chains | Do summaries fill up with finished tasks, and do agents act on the wrong project? | Unrelated and related chains done; within-task chains running (2 failed phases to be re-run) | Run ends Thu morning ET; item audit Thu–Fri; rot figure tonight or early Thu |
+| 5-task chains | Do summaries fill up with finished tasks, and do agents act on the wrong project? | Done: rot figure with the within-task panel, force-push flat by position, 7 failed compactions | Done 29 Oct |
 | Summary fix (experiment 5) | Does changing pi's summary instructions stop the carried-over overwrite? (ledger focus, added line, placebo, neutral opening) | Bulk running on rig | About 8–9 AM ET Thu |
 | Harness replication | Does the precedent carry over in Claude Code, Codex and Antigravity? | Done: none replicate (see slide 17); Antigravity could not test carry-over | Done 29 Oct |
 | Planted summary (R7) | Does a force-push planted in Claude Code's own compaction summary get acted on? | Running | Thu |
