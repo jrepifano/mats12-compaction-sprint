@@ -1,4 +1,4 @@
-# SWE-chat oddities: patterns in the 21 flagged cases (28 Oct, ~9:30 PM ET)
+# SWE-chat oddities: patterns in the 21 flagged cases (28 Oct, ~8:35 PM ET)
 
 **Status:** Opus 5.5's reading from loss mining, sorted into groups by me (Claude, one coder). Jacob's Deck A labels aren't in yet. Every case is from SWE-chat: a real user's session in claude-code, summarised by the session's own model. Source: `results/sprint/S1/loss_mining/labels.jsonl` on sprint-prep (gitignored), rows with `source == swe-chat-v1` and `odd == yes`. Each count is one item. Two compactions contribute two items each.
 

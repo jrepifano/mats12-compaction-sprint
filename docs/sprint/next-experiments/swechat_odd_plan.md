@@ -1,4 +1,4 @@
-# SWE-chat oddities: plan (28 Oct, 8:45 PM ET; revised 10 PM after astra r1)
+# SWE-chat oddities: plan (28 Oct, ~8:25 PM ET; revised ~8:45 PM after astra r1–r3)
 
 Brief: `swechat_odd_brief.md` (Jacob's go, about 8:30 PM ET). $0: Claude on Max only. Branch `sprint/swechat-odd`.
 
@@ -75,7 +75,7 @@ Each card shows the source, model and harness, the claim, the history around the
 - **Splits:** by model (Opus 4.6, Opus 4.5, Sonnet 4.6, Sonnet 4.5, other) and by harness where n ≥ 30, and by false kind.
 - **Examples:** seeded random false lines with source, model, harness and quote (mistakes.md #15).
 
-**No hand labels (Jacob, 28 Oct ~10 PM ET, via the presentation session):** Deck A stays on the page unlabelled. Deck B and a full-history card pane are dropped. The rates go out as Opus's read, not hand-checked, with route, effort and n. A judge precision is not available. What stands in for it is the recheck over the full history, the quote checks, and the seeded examples printed with their quotes for anyone to read.
+**No hand labels (Jacob, 28 Oct ~8:40 PM ET, via the presentation session):** Deck A stays on the page unlabelled. Deck B and a full-history card pane are dropped. The rates go out as Opus's read, not hand-checked, with route, effort and n. A judge precision is not available. What stands in for it is the recheck over the full history, the quote checks, and the seeded examples printed with their quotes for anyone to read.
 
 **Examples** (`examples`): 6 final-false lines drawn uniformly at random (`swechat-odd:examples:20261028`), each with source, model, harness, the line, the recheck's history quote and its reason.
 
