@@ -1,6 +1,6 @@
 # Five-task chains: harnesses compared, paired by chain
 
-Each row: a measure's per-chain proportion in side a minus in side b, averaged over the eligible chains (at least one known cell on both sides; others dropped and counted), with a chain bootstrap (10,000 resamples, seed 20261029, percentile 95%; coarse with 4 chains). Verdict, first match wins: fewer than 3 eligible chains or fewer than 8 known cells on a side → too few observations; the interval excludes 0 → differs; else no difference detected. Sign counts sit beside the verdict and never override it. Aggregate differences describe each harness on its own observed histories. No significance claims. Sides read: agy, codex, agy_sonnet, claude_code_sonnet, pi.
+Each row: a measure's per-chain proportion in side a minus in side b, averaged over the eligible chains (at least one known cell on both sides; others dropped and counted), with a chain bootstrap (10,000 resamples, seed 20261029, percentile 95%; coarse with 4 chains). Verdict, first match wins: fewer than 3 eligible chains or fewer than 8 known cells on a side → too few observations; the interval excludes 0 → differs; else no difference detected. Sign counts sit beside the verdict and never override it. Aggregate differences describe each harness on its own observed histories. No significance claims. Sides read: agy, codex, claude_code, agy_sonnet, claude_code_sonnet, pi.
 
 Unobservable for codex: facts_summary_fresh_push_attempted, facts_summary_fresh_push_rejected, facts_summary_fresh_all, facts_summary_later_push_attempted, facts_summary_later_push_rejected, facts_summary_later_all, expired_summary, rot_earlier_b*.
 
@@ -17,13 +17,16 @@ Unobservable for codex: facts_summary_fresh_push_attempted, facts_summary_fresh_
 | 6 | agy | agy's earlier-task share at boundary 4 is below pi's u1–u4 share | **held** | 0.0% over 4 chains with labelled entries (possible range 0.0–0.0%) vs pi 23.5%; unlabelled at boundary 4: 0 |
 | 7 | agy | agy's pass rate over its graded tasks is below pi's u1–u4 rate | **held** | 9/20 graded passed, 0 ungraded; pi 75% |
 | 8 | agy_sonnet | agy_sonnet succeeds at all of its compactions | **held** | 10 succeeded, 0 failed, 0 unknown, of 10 planned |
+| 8 | claude_code | claude_code succeeds at all of its compactions | **not held** | 17 succeeded, 1 failed, 2 unknown, of 20 planned |
 | 8 | claude_code_sonnet | claude_code_sonnet succeeds at all of its compactions | **held** | 10 succeeded, 0 failed, 0 unknown, of 10 planned |
 | 8 | codex | codex succeeds at all of its compactions | **held** | 20 succeeded, 0 failed, 0 unknown, of 20 planned |
 | 9 | agy_sonnet | agy_sonnet caps at most 2 of its 10 tasks | **held** | 0 capped of 10 planned; 0 unknown |
+| 9 | claude_code | claude_code caps at most 2 of its 20 tasks | **unresolved** | 1 capped of 20 planned; 2 unknown |
 | 9 | claude_code_sonnet | claude_code_sonnet caps at most 2 of its 10 tasks | **held** | 0 capped of 10 planned; 0 unknown |
 | 9 | codex | codex caps at most 2 of its 20 tasks | **held** | 0 capped of 20 planned; 0 unknown |
-| 10 | claude_code vs agy | historical facts at b >= j + 2 (full readable context): Claude Code minus agy is not "differs, agy higher" | **unresolved** | agy and Claude Code later-age measures not both present |
+| 10 | claude_code vs agy | historical facts at b >= j + 2 (full readable context): Claude Code minus agy is not "differs, agy higher" | **held** | Claude Code vs agy: +23 [+8, +37], 4 chains (0 dropped), cells 29/21: differs, claude_code higher; signs 3+ / 0− / 1=; with the unknown cells at their extremes: differs, claude_code higher / differs, claude_code higher |
 | 11 | agy_sonnet | in agy_sonnet, an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran | **held** | 0 of 8 later tasks; 0 unknown |
+| 11 | claude_code | in claude_code, an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran | **held** | 0 of 15 later tasks; 1 unknown |
 | 11 | claude_code_sonnet | in claude_code_sonnet, an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran | **held** | 0 of 8 later tasks; 0 unknown |
 | 11 | codex | in codex, an earlier task's tag appears in a later commit in at most 1 of the later tasks that ran | **held** | 0 of 16 later tasks; 0 unknown |
 
@@ -49,6 +52,41 @@ Unobservable for codex: facts_summary_fresh_push_attempted, facts_summary_fresh_
 | facts_full_later_push_rejected_candidates | agy | codex | 3 (1) | +0 [+0, +0] | 10 / 18 | no difference detected | 0 / 0 / 3 |
 | pass | agy | codex | 4 (0) | +10 [-25, +35] | 20 / 20 | no difference detected | 3 / 1 / 0 |
 | rewrite | agy | codex | 4 (0) | +0 [+0, +0] | 20 / 20 | no difference detected | 0 / 0 / 4 |
+| capped_calls | agy | claude_code | 4 (0) | +39 [+21, +55] | 20 / 18 | differs, agy higher | 4 / 0 / 0 |
+| compaction_success | agy | claude_code | 4 (0) | +6 [+0, +19] | 20 / 18 | no difference detected | 1 / 0 / 3 |
+| earlier_tag_commit | agy | claude_code | 4 (0) | +0 [+0, +0] | 16 / 14 | no difference detected | 0 / 0 / 4 |
+| expired_full | agy | claude_code | 4 (0) | -22 [-55, +10] | 60 / 46 | no difference detected | 1 / 2 / 1 |
+| expired_summary | agy | claude_code | 4 (0) | -22 [-55, +10] | 60 / 46 | no difference detected | 1 / 2 / 1 |
+| facts_full_fresh_all | agy | claude_code | 4 (0) | +0 [+0, +0] | 19 / 24 | no difference detected | 0 / 0 / 4 |
+| facts_full_fresh_all_candidates | agy | claude_code | 4 (0) | -4 [-12, +0] | 19 / 24 | no difference detected | 0 / 1 / 3 |
+| facts_full_fresh_push_attempted | agy | claude_code | 4 (0) | +0 [+0, +0] | 11 / 16 | no difference detected | 0 / 0 / 4 |
+| facts_full_fresh_push_attempted_candidates | agy | claude_code | 4 (0) | +0 [+0, +0] | 11 / 16 | no difference detected | 0 / 0 / 4 |
+| facts_full_fresh_push_rejected | agy | claude_code | 3 (1) | +0 [+0, +0] | 8 / 6 | too few observations | 0 / 0 / 3 |
+| facts_full_fresh_push_rejected_candidates | agy | claude_code | 3 (1) | -11 [-33, +0] | 8 / 6 | too few observations | 0 / 1 / 2 |
+| facts_full_later_all | agy | claude_code | 4 (0) | -23 [-37, -8] | 21 / 29 | differs, claude_code higher | 0 / 3 / 1 |
+| facts_full_later_all_candidates | agy | claude_code | 4 (0) | -81 [-88, -76] | 21 / 29 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_later_push_attempted | agy | claude_code | 4 (0) | -21 [-33, -8] | 11 / 16 | differs, claude_code higher | 0 / 3 / 1 |
+| facts_full_later_push_attempted_candidates | agy | claude_code | 4 (0) | -74 [-92, -57] | 11 / 16 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_later_push_rejected | agy | claude_code | 3 (1) | -28 [-50, +0] | 10 / 9 | no difference detected | 0 / 2 / 1 |
+| facts_full_later_push_rejected_candidates | agy | claude_code | 3 (1) | -83 [-100, -50] | 10 / 9 | differs, claude_code higher | 0 / 3 / 0 |
+| facts_summary_fresh_all | agy | claude_code | 4 (0) | +0 [+0, +0] | 19 / 24 | no difference detected | 0 / 0 / 4 |
+| facts_summary_fresh_all_candidates | agy | claude_code | 4 (0) | +96 [+88, +100] | 19 / 24 | differs, agy higher | 4 / 0 / 0 |
+| facts_summary_fresh_push_attempted | agy | claude_code | 4 (0) | +0 [+0, +0] | 11 / 16 | no difference detected | 0 / 0 / 4 |
+| facts_summary_fresh_push_attempted_candidates | agy | claude_code | 4 (0) | +100 [+100, +100] | 11 / 16 | differs, agy higher | 4 / 0 / 0 |
+| facts_summary_fresh_push_rejected | agy | claude_code | 3 (1) | +0 [+0, +0] | 8 / 6 | too few observations | 0 / 0 / 3 |
+| facts_summary_fresh_push_rejected_candidates | agy | claude_code | 3 (1) | +89 [+67, +100] | 8 / 6 | too few observations | 3 / 0 / 0 |
+| facts_summary_later_all | agy | claude_code | 4 (0) | -23 [-37, -8] | 21 / 29 | differs, claude_code higher | 0 / 3 / 1 |
+| facts_summary_later_all_candidates | agy | claude_code | 4 (0) | +0 [+0, +0] | 21 / 29 | no difference detected | 0 / 0 / 4 |
+| facts_summary_later_push_attempted | agy | claude_code | 4 (0) | -21 [-33, -8] | 11 / 16 | differs, claude_code higher | 0 / 3 / 1 |
+| facts_summary_later_push_attempted_candidates | agy | claude_code | 4 (0) | +0 [+0, +0] | 11 / 16 | no difference detected | 0 / 0 / 4 |
+| facts_summary_later_push_rejected | agy | claude_code | 3 (1) | -28 [-50, +0] | 10 / 9 | no difference detected | 0 / 2 / 1 |
+| facts_summary_later_push_rejected_candidates | agy | claude_code | 3 (1) | +0 [+0, +0] | 10 / 9 | no difference detected | 0 / 0 / 3 |
+| pass | agy | claude_code | 4 (0) | -28 [-60, +5] | 20 / 18 | no difference detected | 1 / 3 / 0 |
+| rewrite | agy | claude_code | 4 (0) | +0 [+0, +0] | 20 / 18 | no difference detected | 0 / 0 / 4 |
+| rot_earlier_b1 | agy | claude_code | 4 (0) | +0 [+0, +0] | 300 / 288 | no difference detected | 0 / 0 / 4 |
+| rot_earlier_b2 | agy | claude_code | 4 (0) | -10 [-13, -6] | 524 / 342 | differs, claude_code higher | 0 / 4 / 0 |
+| rot_earlier_b3 | agy | claude_code | 4 (0) | -6 [-7, -5] | 367 / 333 | differs, claude_code higher | 0 / 4 / 0 |
+| rot_earlier_b4 | agy | claude_code | 3 (1) | -6 [-12, -3] | 180 / 223 | differs, claude_code higher | 0 / 3 / 0 |
 | capped_calls | agy | agy_sonnet | 2 (2) | +50 [+40, +60] | 10 / 10 | too few observations | 2 / 0 / 0 |
 | compaction_success | agy | agy_sonnet | 2 (2) | +0 [+0, +0] | 10 / 10 | too few observations | 0 / 0 / 2 |
 | earlier_tag_commit | agy | agy_sonnet | 2 (2) | +0 [+0, +0] | 8 / 8 | too few observations | 0 / 0 / 2 |
@@ -127,6 +165,24 @@ Unobservable for codex: facts_summary_fresh_push_attempted, facts_summary_fresh_
 | rot_earlier_b2 | agy | pi | 4 (0) | -12 [-18, -7] | 524 / 256 | differs, pi higher | 0 / 4 / 0 |
 | rot_earlier_b3 | agy | pi | 4 (0) | -34 [-45, -24] | 367 / 273 | differs, pi higher | 0 / 4 / 0 |
 | rot_earlier_b4 | agy | pi | 4 (0) | -24 [-34, -14] | 260 / 229 | differs, pi higher | 0 / 4 / 0 |
+| capped_calls | codex | claude_code | 4 (0) | -6 [-19, +0] | 20 / 18 | no difference detected | 0 / 1 / 3 |
+| compaction_success | codex | claude_code | 4 (0) | +6 [+0, +19] | 20 / 18 | no difference detected | 1 / 0 / 3 |
+| earlier_tag_commit | codex | claude_code | 4 (0) | +0 [+0, +0] | 16 / 14 | no difference detected | 0 / 0 / 4 |
+| expired_full | codex | claude_code | 4 (0) | -18 [-52, +17] | 60 / 46 | no difference detected | 1 / 2 / 1 |
+| facts_full_fresh_all | codex | claude_code | 4 (0) | -100 [-100, -100] | 39 / 24 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_fresh_all_candidates | codex | claude_code | 4 (0) | -49 [-50, -46] | 39 / 24 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_fresh_push_attempted | codex | claude_code | 4 (0) | -100 [-100, -100] | 20 / 16 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_fresh_push_attempted_candidates | codex | claude_code | 4 (0) | +0 [+0, +0] | 20 / 16 | no difference detected | 0 / 0 / 4 |
+| facts_full_fresh_push_rejected | codex | claude_code | 4 (0) | -100 [-100, -100] | 19 / 8 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_fresh_push_rejected_candidates | codex | claude_code | 4 (0) | -100 [-100, -100] | 19 / 8 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_later_all | codex | claude_code | 4 (0) | -23 [-37, -8] | 48 / 29 | differs, claude_code higher | 0 / 3 / 1 |
+| facts_full_later_all_candidates | codex | claude_code | 4 (0) | -40 [-50, -30] | 48 / 29 | differs, claude_code higher | 0 / 4 / 0 |
+| facts_full_later_push_attempted | codex | claude_code | 4 (0) | -21 [-33, -8] | 24 / 16 | differs, claude_code higher | 0 / 3 / 1 |
+| facts_full_later_push_attempted_candidates | codex | claude_code | 4 (0) | +8 [+0, +25] | 24 / 16 | no difference detected | 1 / 0 / 3 |
+| facts_full_later_push_rejected | codex | claude_code | 4 (0) | -27 [-44, -8] | 24 / 13 | differs, claude_code higher | 0 / 3 / 1 |
+| facts_full_later_push_rejected_candidates | codex | claude_code | 4 (0) | -88 [-100, -62] | 24 / 13 | differs, claude_code higher | 0 / 4 / 0 |
+| pass | codex | claude_code | 4 (0) | -38 [-65, -10] | 20 / 18 | differs, claude_code higher | 0 / 3 / 1 |
+| rewrite | codex | claude_code | 4 (0) | +0 [+0, +0] | 20 / 18 | no difference detected | 0 / 0 / 4 |
 | capped_calls | codex | agy_sonnet | 2 (2) | +0 [+0, +0] | 10 / 10 | too few observations | 0 / 0 / 2 |
 | compaction_success | codex | agy_sonnet | 2 (2) | +0 [+0, +0] | 10 / 10 | too few observations | 0 / 0 / 2 |
 | earlier_tag_commit | codex | agy_sonnet | 2 (2) | +0 [+0, +0] | 8 / 8 | too few observations | 0 / 0 / 2 |
@@ -167,6 +223,84 @@ Unobservable for codex: facts_summary_fresh_push_attempted, facts_summary_fresh_
 | earlier_tag_commit | codex | pi | 4 (0) | +0 [+0, +0] | 16 / 16 | no difference detected | 0 / 0 / 4 |
 | pass | codex | pi | 4 (0) | -40 [-70, -10] | 20 / 20 | differs, pi higher | 0 / 3 / 1 |
 | rewrite | codex | pi | 4 (0) | -10 [-20, +0] | 20 / 20 | no difference detected | 0 / 2 / 2 |
+| capped_calls | claude_code | agy_sonnet | 2 (2) | +12 [+0, +25] | 8 / 10 | too few observations | 1 / 0 / 1 |
+| compaction_success | claude_code | agy_sonnet | 2 (2) | -12 [-25, +0] | 8 / 10 | too few observations | 0 / 1 / 1 |
+| earlier_tag_commit | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 6 / 8 | too few observations | 0 / 0 / 2 |
+| expired_full | claude_code | agy_sonnet | 2 (2) | -32 [-100, +37] | 16 / 30 | too few observations | 1 / 1 / 0 |
+| expired_summary | claude_code | agy_sonnet | 2 (2) | -32 [-100, +37] | 16 / 30 | too few observations | 1 / 1 / 0 |
+| facts_full_fresh_all | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 9 / 14 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_all_candidates | claude_code | agy_sonnet | 2 (2) | +6 [+0, +12] | 9 / 14 | too few observations | 1 / 0 / 1 |
+| facts_full_fresh_push_attempted | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 7 / 10 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_push_attempted_candidates | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 7 / 10 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_push_rejected | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 2 / 4 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_push_rejected_candidates | claude_code | agy_sonnet | 2 (2) | +17 [+0, +33] | 2 / 4 | too few observations | 1 / 0 / 1 |
+| facts_full_later_all | claude_code | agy_sonnet | 2 (2) | -41 [-100, +18] | 7 / 18 | too few observations | 1 / 1 / 0 |
+| facts_full_later_all_candidates | claude_code | agy_sonnet | 2 (2) | -10 [-20, +0] | 7 / 18 | too few observations | 0 / 1 / 1 |
+| facts_full_later_push_attempted | claude_code | agy_sonnet | 2 (2) | -42 [-100, +17] | 4 / 12 | too few observations | 1 / 1 / 0 |
+| facts_full_later_push_attempted_candidates | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 4 / 12 | too few observations | 0 / 0 / 2 |
+| facts_full_later_push_rejected | claude_code | agy_sonnet | 2 (2) | -42 [-100, +17] | 3 / 6 | too few observations | 1 / 1 / 0 |
+| facts_full_later_push_rejected_candidates | claude_code | agy_sonnet | 2 (2) | -25 [-50, +0] | 3 / 6 | too few observations | 0 / 1 / 1 |
+| facts_summary_fresh_all | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 9 / 14 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_all_candidates | claude_code | agy_sonnet | 2 (2) | -94 [-100, -88] | 9 / 14 | too few observations | 0 / 2 / 0 |
+| facts_summary_fresh_push_attempted | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 7 / 10 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_push_attempted_candidates | claude_code | agy_sonnet | 2 (2) | -100 [-100, -100] | 7 / 10 | too few observations | 0 / 2 / 0 |
+| facts_summary_fresh_push_rejected | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 2 / 4 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_push_rejected_candidates | claude_code | agy_sonnet | 2 (2) | -83 [-100, -67] | 2 / 4 | too few observations | 0 / 2 / 0 |
+| facts_summary_later_all | claude_code | agy_sonnet | 2 (2) | -41 [-100, +18] | 7 / 18 | too few observations | 1 / 1 / 0 |
+| facts_summary_later_all_candidates | claude_code | agy_sonnet | 2 (2) | -100 [-100, -100] | 7 / 18 | too few observations | 0 / 2 / 0 |
+| facts_summary_later_push_attempted | claude_code | agy_sonnet | 2 (2) | -42 [-100, +17] | 4 / 12 | too few observations | 1 / 1 / 0 |
+| facts_summary_later_push_attempted_candidates | claude_code | agy_sonnet | 2 (2) | -100 [-100, -100] | 4 / 12 | too few observations | 0 / 2 / 0 |
+| facts_summary_later_push_rejected | claude_code | agy_sonnet | 2 (2) | -42 [-100, +17] | 3 / 6 | too few observations | 1 / 1 / 0 |
+| facts_summary_later_push_rejected_candidates | claude_code | agy_sonnet | 2 (2) | -100 [-100, -100] | 3 / 6 | too few observations | 0 / 2 / 0 |
+| pass | claude_code | agy_sonnet | 2 (2) | +5 [-10, +20] | 8 / 10 | too few observations | 1 / 1 / 0 |
+| rewrite | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 8 / 10 | too few observations | 0 / 0 / 2 |
+| rot_earlier_b1 | claude_code | agy_sonnet | 2 (2) | +0 [+0, +0] | 137 / 140 | too few observations | 0 / 0 / 2 |
+| rot_earlier_b2 | claude_code | agy_sonnet | 2 (2) | +3 [-7, +12] | 186 / 117 | too few observations | 1 / 1 / 0 |
+| rot_earlier_b3 | claude_code | agy_sonnet | 2 (2) | +1 [-1, +3] | 121 / 132 | too few observations | 1 / 1 / 0 |
+| rot_earlier_b4 | claude_code | agy_sonnet | 1 (3) | +1 [+1, +1] | 72 / 58 | too few observations | 1 / 0 / 0 |
+| capped_calls | claude_code | claude_code_sonnet | 2 (2) | +12 [+0, +25] | 8 / 10 | too few observations | 1 / 0 / 1 |
+| compaction_success | claude_code | claude_code_sonnet | 2 (2) | -12 [-25, +0] | 8 / 10 | too few observations | 0 / 1 / 1 |
+| earlier_tag_commit | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 6 / 8 | too few observations | 0 / 0 / 2 |
+| expired_full | claude_code | claude_code_sonnet | 2 (2) | +32 [-7, +70] | 16 / 30 | too few observations | 1 / 1 / 0 |
+| expired_summary | claude_code | claude_code_sonnet | 2 (2) | +32 [-7, +70] | 16 / 30 | too few observations | 1 / 1 / 0 |
+| facts_full_fresh_all | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 9 / 12 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_all_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 9 / 12 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_push_attempted | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 7 / 10 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_push_attempted_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 7 / 10 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_push_rejected | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 2 / 2 | too few observations | 0 / 0 / 2 |
+| facts_full_fresh_push_rejected_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 2 / 2 | too few observations | 0 / 0 / 2 |
+| facts_full_later_all | claude_code | claude_code_sonnet | 2 (2) | -42 [-100, +15] | 7 / 14 | too few observations | 1 / 1 / 0 |
+| facts_full_later_all_candidates | claude_code | claude_code_sonnet | 2 (2) | +15 [+0, +30] | 7 / 14 | too few observations | 1 / 0 / 1 |
+| facts_full_later_push_attempted | claude_code | claude_code_sonnet | 2 (2) | -50 [-100, +0] | 4 / 12 | too few observations | 0 / 1 / 1 |
+| facts_full_later_push_attempted_candidates | claude_code | claude_code_sonnet | 2 (2) | +25 [+0, +50] | 4 / 12 | too few observations | 1 / 0 / 1 |
+| facts_full_later_push_rejected | claude_code | claude_code_sonnet | 1 (3) | +50 [+50, +50] | 2 / 2 | too few observations | 1 / 0 / 0 |
+| facts_full_later_push_rejected_candidates | claude_code | claude_code_sonnet | 1 (3) | +0 [+0, +0] | 2 / 2 | too few observations | 0 / 0 / 1 |
+| facts_summary_fresh_all | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 9 / 12 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_all_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 9 / 12 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_push_attempted | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 7 / 10 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_push_attempted_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 7 / 10 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_push_rejected | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 2 / 2 | too few observations | 0 / 0 / 2 |
+| facts_summary_fresh_push_rejected_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 2 / 2 | too few observations | 0 / 0 / 2 |
+| facts_summary_later_all | claude_code | claude_code_sonnet | 2 (2) | -42 [-100, +15] | 7 / 14 | too few observations | 1 / 1 / 0 |
+| facts_summary_later_all_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 7 / 14 | too few observations | 0 / 0 / 2 |
+| facts_summary_later_push_attempted | claude_code | claude_code_sonnet | 2 (2) | -50 [-100, +0] | 4 / 12 | too few observations | 0 / 1 / 1 |
+| facts_summary_later_push_attempted_candidates | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 4 / 12 | too few observations | 0 / 0 / 2 |
+| facts_summary_later_push_rejected | claude_code | claude_code_sonnet | 1 (3) | +50 [+50, +50] | 2 / 2 | too few observations | 1 / 0 / 0 |
+| facts_summary_later_push_rejected_candidates | claude_code | claude_code_sonnet | 1 (3) | +0 [+0, +0] | 2 / 2 | too few observations | 0 / 0 / 1 |
+| pass | claude_code | claude_code_sonnet | 2 (2) | +5 [-10, +20] | 8 / 10 | too few observations | 1 / 1 / 0 |
+| rewrite | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 8 / 10 | too few observations | 0 / 0 / 2 |
+| rot_earlier_b1 | claude_code | claude_code_sonnet | 2 (2) | +0 [+0, +0] | 137 / 135 | too few observations | 0 / 0 / 2 |
+| rot_earlier_b2 | claude_code | claude_code_sonnet | 2 (2) | +6 [+2, +9] | 186 / 158 | too few observations | 2 / 0 / 0 |
+| rot_earlier_b3 | claude_code | claude_code_sonnet | 2 (2) | -1 [-4, +2] | 121 / 150 | too few observations | 1 / 1 / 0 |
+| rot_earlier_b4 | claude_code | claude_code_sonnet | 1 (3) | +1 [+1, +1] | 72 / 76 | too few observations | 1 / 0 / 0 |
+| capped_calls | claude_code | pi | 4 (0) | +6 [+0, +19] | 18 / 20 | no difference detected | 1 / 0 / 3 |
+| earlier_tag_commit | claude_code | pi | 4 (0) | +0 [+0, +0] | 14 / 16 | no difference detected | 0 / 0 / 4 |
+| pass | claude_code | pi | 4 (0) | -3 [-25, +20] | 18 / 20 | no difference detected | 2 / 2 / 0 |
+| rewrite | claude_code | pi | 4 (0) | -10 [-20, +0] | 18 / 20 | no difference detected | 0 / 2 / 2 |
+| rot_earlier_b1 | claude_code | pi | 4 (0) | +0 [+0, +0] | 288 / 198 | no difference detected | 0 / 0 / 4 |
+| rot_earlier_b2 | claude_code | pi | 4 (0) | -2 [-6, +3] | 342 / 256 | no difference detected | 1 / 3 / 0 |
+| rot_earlier_b3 | claude_code | pi | 4 (0) | -29 [-40, -17] | 333 / 273 | differs, pi higher | 0 / 4 / 0 |
+| rot_earlier_b4 | claude_code | pi | 3 (1) | -18 [-33, -8] | 223 / 178 | differs, pi higher | 0 / 3 / 0 |
 | capped_calls | agy_sonnet | claude_code_sonnet | 2 (0) | +0 [+0, +0] | 10 / 10 | too few observations | 0 / 0 / 2 |
 | compaction_success | agy_sonnet | claude_code_sonnet | 2 (0) | +0 [+0, +0] | 10 / 10 | too few observations | 0 / 0 / 2 |
 | earlier_tag_commit | agy_sonnet | claude_code_sonnet | 2 (0) | +0 [+0, +0] | 8 / 8 | too few observations | 0 / 0 / 2 |
@@ -227,6 +361,10 @@ Slots (chain, task j, category, age) where both harnesses have a known event and
 |---|---|---|---|---|---|---|---|---|
 | agy | codex | full | b = j | 19 (19) | 0 (11) | 19 (7) | 0 (0) | 0 (1) |
 | agy | codex | full | b >= j + 2 | 21 (21) | 0 (3) | 0 (0) | 0 (8) | 21 (10) |
+| agy | claude_code | full | b = j | 12 (12) | 12 (12) | 0 (0) | 0 (0) | 0 (0) |
+| agy | claude_code | full | b >= j + 2 | 13 (13) | 0 (2) | 0 (0) | 4 (11) | 9 (0) |
+| agy | claude_code | summary | b = j | 12 (12) | 12 (0) | 0 (12) | 0 (0) | 0 (0) |
+| agy | claude_code | summary | b >= j + 2 | 13 (13) | 0 (0) | 0 (0) | 4 (0) | 9 (13) |
 | agy | agy_sonnet | full | b = j | 7 (7) | 7 (7) | 0 (0) | 0 (0) | 0 (0) |
 | agy | agy_sonnet | full | b >= j + 2 | 9 (9) | 0 (2) | 0 (0) | 9 (7) | 0 (0) |
 | agy | agy_sonnet | summary | b = j | 7 (7) | 7 (7) | 0 (0) | 0 (0) | 0 (0) |
@@ -235,10 +373,20 @@ Slots (chain, task j, category, age) where both harnesses have a known event and
 | agy | claude_code_sonnet | full | b >= j + 2 | 5 (5) | 0 (2) | 0 (0) | 4 (2) | 1 (1) |
 | agy | claude_code_sonnet | summary | b = j | 5 (5) | 5 (0) | 0 (5) | 0 (0) | 0 (0) |
 | agy | claude_code_sonnet | summary | b >= j + 2 | 5 (5) | 0 (0) | 0 (0) | 4 (0) | 1 (5) |
+| codex | claude_code | full | b = j | 24 (24) | 0 (16) | 0 (0) | 24 (8) | 0 (0) |
+| codex | claude_code | full | b >= j + 2 | 29 (29) | 0 (14) | 0 (2) | 8 (12) | 21 (1) |
 | codex | agy_sonnet | full | b = j | 14 (14) | 0 (10) | 0 (0) | 14 (3) | 0 (1) |
 | codex | agy_sonnet | full | b >= j + 2 | 18 (18) | 0 (12) | 0 (0) | 11 (6) | 7 (0) |
 | codex | claude_code_sonnet | full | b = j | 12 (12) | 0 (10) | 0 (0) | 12 (2) | 0 (0) |
 | codex | claude_code_sonnet | full | b >= j + 2 | 14 (14) | 0 (9) | 0 (3) | 8 (1) | 6 (1) |
+| claude_code | agy_sonnet | full | b = j | 8 (8) | 8 (8) | 0 (0) | 0 (0) | 0 (0) |
+| claude_code | agy_sonnet | full | b >= j + 2 | 5 (5) | 0 (5) | 1 (0) | 2 (0) | 2 (0) |
+| claude_code | agy_sonnet | summary | b = j | 8 (8) | 8 (0) | 0 (0) | 0 (8) | 0 (0) |
+| claude_code | agy_sonnet | summary | b >= j + 2 | 5 (5) | 0 (0) | 1 (0) | 2 (5) | 2 (0) |
+| claude_code | claude_code_sonnet | full | b = j | 7 (7) | 7 (7) | 0 (0) | 0 (0) | 0 (0) |
+| claude_code | claude_code_sonnet | full | b >= j + 2 | 4 (4) | 1 (4) | 0 (0) | 2 (0) | 1 (0) |
+| claude_code | claude_code_sonnet | summary | b = j | 7 (7) | 7 (0) | 0 (0) | 0 (0) | 0 (7) |
+| claude_code | claude_code_sonnet | summary | b >= j + 2 | 4 (4) | 1 (0) | 0 (0) | 2 (0) | 1 (4) |
 | agy_sonnet | claude_code_sonnet | full | b = j | 11 (11) | 11 (11) | 0 (0) | 0 (0) | 0 (0) |
 | agy_sonnet | claude_code_sonnet | full | b >= j + 2 | 14 (14) | 6 (10) | 1 (4) | 2 (0) | 5 (0) |
 | agy_sonnet | claude_code_sonnet | summary | b = j | 11 (11) | 11 (0) | 0 (11) | 0 (0) | 0 (0) |

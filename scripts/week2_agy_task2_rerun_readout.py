@@ -299,8 +299,10 @@ def summarize(hs: list[dict]) -> dict:
     return out
 
 
-def readout(root: Path = RERUN, orig: Path = ORIG, out_dir: Path = OUT,
-            old_rows: Path = OLD_ROWS) -> dict:
+def readout(root: Path | None = None, orig: Path = ORIG, out_dir: Path | None = None,
+            old_rows: Path = OLD_ROWS, status: str | None = None) -> dict:
+    root = root or RERUN.with_name(f"agy_rerun{CAP}")  # the cap's paths, after use_cap
+    out_dir = out_dir or OUT.with_name(f"agy_rerun{CAP}")
     hr = harness_readout(root)
     sc = _load("week2_agy_summary_content")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -313,7 +315,7 @@ def readout(root: Path = RERUN, orig: Path = ORIG, out_dir: Path = OUT,
     cnt = {arm: {"assigned": sum(r["hist"] == arm for r in rows),
                  "observed": sum(f.outcome is not None for f in forks if f.arm == arm),
                  "lost": sum(f.outcome == 1 for f in forks if f.arm == arm)} for arm in R.CORE}
-    res: dict = {"label": LABEL, "counts": cnt, "first_stage": fs1,
+    res: dict = {"label": LABEL, "status": status, "counts": cnt, "first_stage": fs1,
                  "source": {"rows": str(rp), "rows_sha256": hashlib.sha256(
                      rp.read_bytes()).hexdigest(), "root": str(root), "orig": str(orig)}}
     if all(cnt[a]["observed"] for a in R.CORE):
@@ -378,6 +380,7 @@ def render(res: dict) -> str:
            "Descriptive except the primary test; n = 12 + 12. Code: "
            "`scripts/week2_agy_task2_rerun.py`, this readout "
            "`scripts/week2_agy_task2_rerun_readout.py`."), "",
+          *([f"**Status:** {res['status']}", ""] if res.get("status") else []),
           ("**What this design can't isolate** (plan note v0.2): besides the caps, two things "
            "differ from last night. The fresh `/compact` ran in a holding container (task 1's "
            "image with `/app` emptied, no remote) rather than in the live task-1 container, and "
@@ -483,13 +486,14 @@ def render(res: dict) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    ap.add_argument("--root", type=Path, default=RERUN)
-    ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--root", type=Path, help="default: the cap's raw root (agy_rerun<cap>)")
+    ap.add_argument("--out", type=Path, help="default: the cap's results dir")
     ap.add_argument("--max-calls", type=int, default=CAP, help="the rerun's task-2 call cap")
+    ap.add_argument("--status", help="a line on the run's state, shown under the title")
     a = ap.parse_args()
     if a.max_calls != CAP:
         use_cap(a.max_calls)
-    res = readout(a.root, ORIG, a.out)
+    res = readout(a.root, ORIG, a.out, status=a.status)
     print(render(res)[:6000])
     return 0
 

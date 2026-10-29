@@ -2,6 +2,8 @@
 
 Task 2 of last night's 24 agy histories rerun with the call cap at 1600 (was 400) and the time cap at 4 h (was 2 h), after a fresh `/compact` from each history's pre-compaction export (the original post-compaction session wasn't saved). Descriptive except the primary test; n = 12 + 12. Code: `scripts/week2_agy_task2_rerun.py`, this readout `scripts/week2_agy_task2_rerun_readout.py`.
 
+**Status:** final. agy's plan quota (shared across models; weekly quota at 99% with a 2-day refresh, 29 Oct ~23:25Z) stopped the run at 22:10Z, so the rerun ends here, short of the planned 24: 12 tengo-first + 1 httpx-first complete; 4 httpx-first cut by the quota mid-task 2 (unknown, never counted as kept); 7 httpx-first not launched. The shortfall is the plan quota, not the design; no relaunch (Jacob, 29 Oct ~7:25 PM ET).
+
 **What this design can't isolate** (plan note v0.2): besides the caps, two things differ from last night. The fresh `/compact` ran in a holding container (task 1's image with `/app` emptied, no remote) rather than in the live task-1 container, and task 2 opens from a new summary. A summary difference is therefore variability of `/compact` on the same conversation in a different workspace, not pure run-to-run variability, and a task-2 difference can't be attributed to the cap alone. Holding-phase deviations are listed with the compactions below.
 
 ## Teammate lost in task 2

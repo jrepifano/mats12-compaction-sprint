@@ -230,12 +230,13 @@ So the gate got suggestive, not identifying, evidence. The pair is reported as n
   - The Haiku arm cost about $1.3 per task against the ~$0.5 estimate, so it reached its $20 cap with chains u1, u3 and u4 cut by the cap.
   - The Sonnet arm cost about $3 per chain against the ~$17 estimate.
 - **Rerun:** u3 and u4 run again from scratch in a fresh attempt root, 2 live chains. The cut originals stay on disk and are reported as quota-cut.
-- **Readout:** u1 and u2 from the first root; u3 and u4 from the rerun.
+- **Readout:** u1 and u2 from the first root; u3 and u4 from the rerun. `scripts/week2_chain5_combine_roots.py` builds one readout root that names each chain once with its source root (symlinks; provenance per chain), so the cut originals of u3 and u4 are not counted.
+- **Sonnet caps file:** the persisted $50 file (written before the amendment) is archived as `cc_sonnet_chain5_budget_caps.v0.4_cap50.toml`; any later Sonnet launch writes $35. The Sonnet arm's paid generation and compaction had finished before the amendment (last charge 20:37:38Z, $6.01 in all; grading ran on to 20:44:45Z), so no paid call ran under the old file after it.
 - **Kept as they are:** u2's boundary-4 /compact failure ("no new compact_boundary row", twice, before the cap) is a compaction failure in the readout, not a quota cut. u1's task 5 is quota-cut (unknown).
 
 ## Build contract
 
-The plan check (`scripts/week2_plan_check.py`) parses this table and compares it, key by key, with `configs/week2/agy_chain5.toml`. Per-harness settings sit in `native_chain.<harness>`. `caps.stage_usd` is the sum of the harnesses' `cap_usd` (Claude Code Haiku $20 + Claude Code Sonnet $50; agy and Codex are $0), and `caps.run_usd` is the largest per-task cap ($6).
+The plan check (`scripts/week2_plan_check.py`) parses this table and compares it, key by key, with `configs/week2/agy_chain5.toml`. Per-harness settings sit in `native_chain.<harness>`. `caps.stage_usd` is the sum of the harnesses' `cap_usd` (Claude Code Haiku $35 + Claude Code Sonnet $35 since v0.4.1; agy and Codex are $0), and `caps.run_usd` is the largest per-task cap ($6).
 
 | parameter | value |
 |---|---|
