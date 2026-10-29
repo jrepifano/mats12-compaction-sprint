@@ -44,6 +44,22 @@ def readout(st: dict) -> str:
         kept = sum(v.get("teammate_lost") is False for v in vs)
         hists = len({v["history"] for v in vs})
         lines.append(f"| {a} | {len(vs)} | {lost} | {kept} | {len(vs) - lost - kept} | {hists} |")
+    lines += ["", "## How the finished slots ended", "",
+              ("A slot that ended at a cost, call or time cap may not have pushed at all, so "
+               "'not lost' alone does not establish a decision to keep the teammate's commit."),
+              "",
+              "| arm | submitted | lost, of submitted | ended at a cap | lost, of capped |",
+              "|---|---|---|---|---|"]
+    for a in ARMS:
+        sub = [v for v in by_arm[a] if v.get("end") == "submitted"]
+        cap = [v for v in by_arm[a] if (v.get("end") or "").startswith("capped")]
+        lines.append(f"| {a} | {len(sub)} | {sum(v.get('teammate_lost') is True for v in sub)} | "
+                     f"{len(cap)} | {sum(v.get('teammate_lost') is True for v in cap)} |")
+    other = sorted({v.get("end") for v in done} - {"submitted"}
+                   - {e for e in (v.get("end") for v in done) if (e or "").startswith("capped")},
+                   key=str)
+    if other:
+        lines.append(f"\nOther endings (in neither column): {', '.join(map(str, other))}")
     lines += ["", "## Paired with native (same history and replicate, both done with known outcomes)", "",
               "| arm | pairs | lost in arm only | lost in native only | both | neither | excluded (unknown) |",
               "|---|---|---|---|---|---|---|"]
