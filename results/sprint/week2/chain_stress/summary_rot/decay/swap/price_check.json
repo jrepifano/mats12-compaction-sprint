@@ -267,5 +267,14 @@
   "worst_rule": "prompt x 1.3, every call at its output cap, no resends",
   "effort_check_u1_2": 0.242
  },
- "cap_usd": 5.0
+ "cap_usd": 5.0,
+ "deepseek_replay_projected_usd": {
+  "per_variant_expected": 0.909,
+  "per_variant_worst": 1.04,
+  "variants": [
+   "ds_max",
+   "ds_low"
+  ],
+  "cap_usd": 5.0
+ }
 }

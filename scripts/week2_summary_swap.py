@@ -12,16 +12,23 @@ merge of the history and turn-prefix replies (`s1_replay.pi_merge`, as compactio
 checked by reproducing every recorded DeepSeek summary from its recorded replies.
 
 pi's DeepSeek summarizer ran at reasoning effort max; Flash runs at low, Antigravity+Flash's
-setting, so this is a model-plus-effort swap. `--effort high --only u1:2` is the effort check on
+setting, so this is a model-plus-effort swap. `--variant high --only u1:2` is the effort check on
 one boundary (its previous summary is the low run's).
+
+The matching control (Jacob, 30 Oct: "I thought we had to re run both this way?"): the same
+replay with DeepSeek V4.1 Flash itself (OpenRouter -> Together, experiment 4's fallback route) at
+effort max (pi's live setting, variant ds_max) and low (Flash's, ds_low), each chained on its own
+summaries, on our OpenRouter key under exp SPRINT-S2-SUMMARY-SWAP-DS ($5 cap).
 
     uv run python scripts/week2_summary_swap.py check            # $0: reproduction + price
     uv run python scripts/week2_summary_swap.py smoke --go-from-jacob   # one tiny call
-    uv run python scripts/week2_summary_swap.py run --go-from-jacob [--effort low|high] [--only u1:2]
-    uv run python scripts/week2_summary_swap.py attribute        # summary_rot's coder (Opus on Max)
+    uv run python scripts/week2_summary_swap.py run --go-from-jacob --variant low|high|ds_max|ds_low
+        [--only u1:2]
+    uv run python scripts/week2_summary_swap.py attribute --variant <v>  # summary_rot's coder
 
-Spend: OPENROUTER_API_KEY_J only (route `flash_j`), every call reserved at its bound against a
-$5 cap on this checkout's ledger (exp SPRINT-S2-SUMMARY-SWAP-J) before it is sent.
+Spend: each variant's account loads only its key (Flash: OPENROUTER_API_KEY_J; DeepSeek:
+OPENROUTER_API_KEY), and every call is reserved at its bound against the account's $5 cap on
+this checkout's ledger before it is sent.
 """
 
 from __future__ import annotations
@@ -58,15 +65,32 @@ KEY_ENV = "OPENROUTER_API_KEY_J"
 MODEL = "google/gemini-3.8-flash"
 PIN = "Google AI Studio"
 PRICES = {"input": 0.75, "output": 3.75, "cache_read": 0.075}  # $/M, OpenRouter list, 30 Oct
+DS_MODEL = "deepseek/deepseek-v4.1-flash"
+MODELS = {  # $/M, OpenRouter list, 30 Oct
+    "flash": {"model": MODEL, "pin": PIN, "prices": PRICES, "account": "j"},
+    "deepseek": {"model": DS_MODEL, "pin": "Together", "account": "ds",
+                 "prices": {"input": 0.30, "output": 1.20, "cache_read": 0.006}},
+}
+ACCOUNTS = {
+    "j": {"exp": EXP, "key_env": KEY_ENV, "spend_dir": None, "note": "an external OpenRouter key"},
+    "ds": {"exp": "SPRINT-S2-SUMMARY-SWAP-DS", "key_env": "OPENROUTER_API_KEY",
+           "spend_dir": "ds_spend", "note": "our OpenRouter key"},
+}
+# variant -> model, effort, the variant whose k-1 summary fills <previous-summary>
+VARIANTS = {"low": ("flash", "low", "low"), "high": ("flash", "high", "low"),
+            "ds_max": ("deepseek", "max", "ds_max"), "ds_low": ("deepseek", "low", "ds_low")}
 EMPTY_TRIES = 3  # as compaction.s2.compact.EMPTY_SUMMARY_TRIES
 TOKENIZER_MARGIN = 1.3  # Gemini's token count over DeepSeek's, worst case assumed
 TURN = "\n\n---\n\n**Turn Context (split turn):**\n\n"
 
 
-def route(effort: str) -> C.Route:
-    return C.Route(name="flash_j", model=MODEL, transport="openrouter", key_env=KEY_ENV,
-                   prices=PRICES, window=1_048_576, max_output=65_536, bytes_per_token=2.0,
-                   provider_pin=PIN, reasoning={"reasoning": {"effort": effort}}, summarizer="pi")
+def route(variant: str) -> C.Route:
+    mk, effort, _ = VARIANTS[variant]
+    m = MODELS[mk]
+    return C.Route(name=f"swap_{variant}", model=m["model"], transport="openrouter",
+                   key_env=ACCOUNTS[m["account"]]["key_env"], prices=m["prices"],
+                   window=943_718, max_output=65_536, bytes_per_token=2.0, provider_pin=m["pin"],
+                   reasoning={"reasoning": {"effort": effort}}, summarizer="pi")
 
 
 class CapSpend:
@@ -78,8 +102,10 @@ class CapSpend:
     after its charge is recorded; on start, any reservation left open by a crash is charged at
     its full bound (conservative: a crash between the charge and the close counts it twice)."""
 
-    def __init__(self, raw: Path | None = None) -> None:
+    def __init__(self, raw: Path | None = None, exp: str | None = None,
+                 cap: float | None = None, note: str = "an external OpenRouter key") -> None:
         raw = raw or RAW
+        self.exp, self.cap, self.note = exp or EXP, CAP_USD if cap is None else cap, note
         raw.mkdir(parents=True, exist_ok=True)
         self.res_path = raw / "reservations.jsonl"
         self._lockf = open(raw / "spend.lock", "w")  # noqa: SIM115 (held until exit)
@@ -103,16 +129,16 @@ class CapSpend:
         closed = {r["rid"] for r in rows if r["op"] != "reserve"}
         for r in rows:
             if r["op"] == "reserve" and r["rid"] not in closed:
-                spend.record("judge", f"flash_j:{MODEL}", 1, r["usd"], exp=EXP,
+                spend.record("judge", "summary_swap", 1, r["usd"], exp=self.exp,
                              note=f"{r['note']}: open after a crash, charged at its bound "
-                                  "(an external OpenRouter key)")
+                                  f"({self.note})")
                 self._append({"op": "recovered", "rid": r["rid"], "usd": r["usd"]})
 
     def reserve(self, usd: float, note: str) -> str:
         with self.lock:
-            have = spend.spent(exp=EXP) + sum(self.open.values())
-            if have + usd > CAP_USD:
-                raise M.ModelError(f"cap: ${have:.4f} spent or held + ${usd:.4f} > ${CAP_USD}")
+            have = spend.spent(exp=self.exp) + sum(self.open.values())
+            if have + usd > self.cap:
+                raise M.ModelError(f"cap: ${have:.4f} spent or held + ${usd:.4f} > ${self.cap}")
             rid = uuid.uuid4().hex
             self._append({"op": "reserve", "rid": rid, "usd": usd, "note": note})
             self.open[rid] = usd
@@ -120,7 +146,7 @@ class CapSpend:
 
     def settle(self, rid: str, usd: float, *, resource: str, units: float, note: str) -> None:
         with self.lock:
-            spend.record("judge", resource, 1, usd, note=f"{note} (an external OpenRouter key)", exp=EXP)
+            spend.record("judge", resource, 1, usd, note=f"{note} ({self.note})", exp=self.exp)
             self._append({"op": "settle", "rid": rid, "usd": usd})
             self.open.pop(rid)
 
@@ -130,14 +156,14 @@ class CapSpend:
             self.open.pop(rid, None)
 
 
-def load_env() -> None:
-    """Only KEY_ENV, from this checkout's .env or else the main checkout's (AGENTS.md: the keys
+def load_env(key_env: str = KEY_ENV) -> None:
+    """Only `key_env`, from this checkout's .env or else the main checkout's (AGENTS.md: the keys
     live there); never printed, nothing else is loaded."""
     for p in (ROOT / ".env", ROOT.parents[2] / ".env"):
         for line in p.read_text().splitlines() if p.exists() else []:
             k, _, v = line.strip().partition("=")
-            if k.strip() == KEY_ENV:
-                os.environ[KEY_ENV] = v.strip().strip("'\"")
+            if k.strip() == key_env:
+                os.environ[key_env] = v.strip().strip("'\"")
                 return
 
 
@@ -222,6 +248,10 @@ def cmd_check(a) -> None:
     p = PRICES
     expect = (tin * p["input"] + tout * p["output"]) / 1e6
     worst = (tin * TOKENIZER_MARGIN * p["input"] + wout * p["output"]) / 1e6
+    q = MODELS["deepseek"]["prices"]  # same tokenizer as the record: no margin
+    ds = {"per_variant_expected": round((tin * q["input"] + tout * q["output"]) / 1e6, 3),
+          "per_variant_worst": round((tin * q["input"] + wout * q["output"]) / 1e6, 3),
+          "variants": ["ds_max", "ds_low"], "cap_usd": CAP_USD}
     out = {"model": MODEL, "pin": PIN, "prices_per_m": p, "endpoints": endpoint_prices(),
            "boundaries": rows, "deepseek_prompt_tokens": tin, "deepseek_completion_tokens": tout,
            "max_output_tokens": wout,
@@ -229,7 +259,7 @@ def cmd_check(a) -> None:
                              "worst_rule": f"prompt x {TOKENIZER_MARGIN}, every call at its "
                                            "output cap, no resends",
                              "effort_check_u1_2": None},
-           "cap_usd": CAP_USD}
+           "cap_usd": CAP_USD, "deepseek_replay_projected_usd": ds}
     d = recorded("u1", 2)
     out["projected_usd"]["effort_check_u1_2"] = round(
         (sum(u["prompt_tokens"] for u in d["usage"][:2]) * TOKENIZER_MARGIN * p["input"]
@@ -237,7 +267,7 @@ def cmd_check(a) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "price_check.json").write_text(json.dumps(out, indent=1) + "\n")
     print(json.dumps({"reproduced": len(rows) - len(bad), "of": len(rows),
-                      **out["projected_usd"]}))
+                      **out["projected_usd"], "deepseek": ds}))
     if bad:
         sys.exit(f"merge does not reproduce: {[(r['chain'], r['k']) for r in bad]}")
 
@@ -247,15 +277,22 @@ def cmd_check(a) -> None:
 # ------------------------------------------------------------------------------------------
 
 
-def _model(effort: str, sp: CapSpend) -> M.OpenAICompatModel:
-    load_env()
-    return M.OpenAICompatModel(route(effort), sp)
+def _spend(variant: str) -> CapSpend:
+    acct = ACCOUNTS[MODELS[VARIANTS[variant][0]]["account"]]
+    raw = RAW / acct["spend_dir"] if acct["spend_dir"] else RAW
+    return CapSpend(raw, acct["exp"], CAP_USD, acct["note"])
+
+
+def _model(variant: str, sp: CapSpend) -> M.OpenAICompatModel:
+    r = route(variant)
+    load_env(r.key_env)
+    return M.OpenAICompatModel(r, sp)
 
 
 def cmd_smoke(a) -> None:
     if not a.go_from_jacob:
         sys.exit("paid: pass --go-from-jacob")
-    m = _model("low", CapSpend())
+    m = _model(a.variant, _spend(a.variant))
     r = m.complete([{"role": "user", "content": "Reply with the word OK."}], None, 256,
                    purpose="summary:smoke")
     print(json.dumps({"text": _text(r.message.get("content")), "model": r.model,
@@ -292,39 +329,41 @@ def summarize(m: M.OpenAICompatModel, c: str, k: int, prev: str | None) -> dict:
             usage += us
     summary = merge(d["info"], texts, prev)
     return {"chain": c, "arm": "unrelated", "kind": "boundary", "boundary": k, "after_phase": k,
-            "model": MODEL, "effort": m.route.reasoning["reasoning"]["effort"], "update": d["update"], "info": d["info"], "summary": summary,
+            "model": m.route.model, "effort": m.route.reasoning["reasoning"]["effort"],
+            "update": d["update"], "info": d["info"], "summary": summary,
             "summary_sha256": _sha(summary), "previous_summary_sha256": _sha(prev) if prev else None,
             "deepseek_summary_sha256": _sha(d["summary"]), "requests": reqs, "responses": texts,
             "usage": usage, "cost_usd": round(sum(u["cost_usd"] or 0 for u in usage), 6)}
 
 
-def out_dir(effort: str) -> Path:
-    return RAW / effort
+def out_dir(variant: str) -> Path:
+    return RAW / variant
 
 
-def saved(effort: str, c: str, k: int) -> dict | None:
-    p = out_dir(effort) / "chains" / c / f"p{k}" / "compaction.json"
+def saved(variant: str, c: str, k: int) -> dict | None:
+    p = out_dir(variant) / "chains" / c / f"p{k}" / "compaction.json"
     return json.loads(p.read_text()) if p.exists() else None
 
 
-def run_chain(m, effort: str, c: str, ks: list[int]) -> list[str]:
-    """Boundaries in order; the previous summary is always the low run's (high is only the
-    one-boundary check). A kept boundary is reused only if its model, effort and predecessor
-    match; otherwise the run stops rather than mix chains."""
+def run_chain(m, variant: str, c: str, ks: list[int]) -> list[str]:
+    """Boundaries in order; the previous summary is the chained-from variant's (its own, except
+    for the one-boundary high check, which takes low's). A kept boundary is reused only if its
+    model, effort and predecessor match; otherwise the run stops rather than mix chains."""
+    mk, effort, src = VARIANTS[variant]
     log = []
     for k in ks:
-        prev = (saved("low", c, k - 1) or {}).get("summary") if k > 1 else None
+        prev = (saved(src, c, k - 1) or {}).get("summary") if k > 1 else None
         if k > 1 and prev is None:
-            raise SystemExit(f"{c} p{k}: no low summary for p{k - 1}")
-        old = saved(effort, c, k)
+            raise SystemExit(f"{c} p{k}: no {src} summary for p{k - 1}")
+        old = saved(variant, c, k)
         if old:
-            want = (MODEL, effort, _sha(prev) if prev else None)
+            want = (MODELS[mk]["model"], effort, _sha(prev) if prev else None)
             if (old.get("model"), old.get("effort"), old["previous_summary_sha256"]) != want:
                 raise SystemExit(f"{c} p{k}: kept record does not match its predecessor/config")
             log.append(f"{c} p{k} kept")
             continue
         rec = summarize(m, c, k, prev)
-        _write(out_dir(effort) / "chains" / c / f"p{k}" / "compaction.json",
+        _write(out_dir(variant) / "chains" / c / f"p{k}" / "compaction.json",
                json.dumps(rec, indent=1))
         log.append(f"{c} p{k} ${rec['cost_usd']:.4f} {len(rec['summary'])} chars")
         print(log[-1], flush=True)
@@ -334,40 +373,42 @@ def run_chain(m, effort: str, c: str, ks: list[int]) -> list[str]:
 def cmd_run(a) -> None:
     if not a.go_from_jacob:
         sys.exit("paid: pass --go-from-jacob")
-    m = _model(a.effort, CapSpend())
+    sp = _spend(a.variant)
+    m = _model(a.variant, sp)
     plan = {c: list(range(1, K + 1)) for c in CHAINS}
-    if a.effort != "low" and not a.only:
-        sys.exit("--effort high is the one-boundary check: pass --only chain:k")
+    if a.variant == "high" and not a.only:
+        sys.exit("--variant high is the one-boundary check: pass --only chain:k")
     if a.only:
         c, k = a.only.split(":")
         plan = {c: [int(k)]}
     with ThreadPoolExecutor(len(plan)) as ex:
-        list(ex.map(lambda ck: run_chain(m, a.effort, *ck), plan.items()))
-    export(a.effort)
-    print(json.dumps({"spent_usd": spend.spent(exp=EXP), "cap_usd": CAP_USD}))
+        list(ex.map(lambda ck: run_chain(m, a.variant, *ck), plan.items()))
+    export(a.variant)
+    print(json.dumps({"exp": sp.exp, "spent_usd": spend.spent(exp=sp.exp), "cap_usd": sp.cap}))
 
 
-def export(effort: str) -> None:
+def export(variant: str) -> None:
     """The coder's view (state.json, compactions.jsonl) and the committed summaries."""
     rows = []
     for c in CHAINS:
         for k in range(1, K + 1):
-            r = saved(effort, c, k)
+            r = saved(variant, c, k)
             if r is None:
                 continue
             rows.append({x: r[x] for x in ("chain", "boundary", "update", "summary",
                                            "summary_sha256", "previous_summary_sha256",
                                            "deepseek_summary_sha256", "cost_usd")}
-                        | {"effort": effort, "usage": [{u: v for u, v in x.items()}
+                        | {"variant": variant, "model": r["model"], "effort": r["effort"],
+                           "usage": [{u: v for u, v in x.items()}
                                                        for x in r["usage"]]})
     for c in CHAINS:  # regenerated whole from the saved boundaries
-        _write(out_dir(effort) / "chains" / c / "compactions.jsonl", "".join(
+        _write(out_dir(variant) / "chains" / c / "compactions.jsonl", "".join(
             json.dumps({"chain": c, "arm": "unrelated", "kind": "boundary", "boundary": r["boundary"],
                         "after_phase": r["boundary"]}) + "\n" for r in rows if r["chain"] == c))
     st = json.loads((SRS.RAW / "state.json").read_text())
     st["chains"] = {c: st["chains"][c] for c in CHAINS}
-    _write(out_dir(effort) / "state.json", json.dumps(st, indent=1))
-    _write(OUT / f"summaries_{effort}.jsonl",
+    _write(out_dir(variant) / "state.json", json.dumps(st, indent=1))
+    _write(OUT / f"summaries_{variant}.jsonl",
            "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
 
 
@@ -377,8 +418,8 @@ def export(effort: str) -> None:
 
 
 def cmd_attribute(a) -> None:
-    view = out_dir(a.effort)
-    so = OUT / f"summary_rot_{a.effort}"
+    view = out_dir(a.variant)
+    so = OUT / f"summary_rot_{a.variant}"
     SRS.RAW, SRS.OPUS_DIR, SRS.OUT = view, view / "opus", so
     SRS.ATTR, SRS.META = so / "attributions.jsonl", so / "attribute_meta.json"
     SRS.cmd_attribute(argparse.Namespace(no_opus=a.no_opus, max_calls=a.max_calls,
@@ -391,12 +432,13 @@ def main() -> None:
     sub.add_parser("check")
     p = sub.add_parser("smoke")
     p.add_argument("--go-from-jacob", action="store_true")
+    p.add_argument("--variant", choices=tuple(VARIANTS), default="low")
     p = sub.add_parser("run")
     p.add_argument("--go-from-jacob", action="store_true")
-    p.add_argument("--effort", choices=("low", "high"), default="low")
+    p.add_argument("--variant", choices=tuple(VARIANTS), default="low")
     p.add_argument("--only", help="chain:boundary, e.g. u1:2")
     p = sub.add_parser("attribute")
-    p.add_argument("--effort", choices=("low", "high"), default="low")
+    p.add_argument("--variant", choices=tuple(VARIANTS), default="low")
     p.add_argument("--no-opus", action="store_true")
     p.add_argument("--max-calls", type=int, default=30)
     p.add_argument("--concurrency", type=int, default=3)
