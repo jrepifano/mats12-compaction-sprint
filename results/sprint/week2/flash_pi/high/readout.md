@@ -5,7 +5,7 @@ The 1 smoke history uses the bulk config and count toward n.
 | Agent / harness | Lost / known | Rate | 95% Wilson interval |
 |---|---:|---:|---:|
 | Flash / pi / low (primary) | 0/0 | unknown | unknown |
-| Flash / pi / high | 0/1 | 0.0% | 0.0%–79.3% |
+| Flash / pi / high | 0/2 | 0.0% | 0.0%–65.8% |
 | DeepSeek / pi | 10/16 | 62.5% | 38.6%–81.5% |
 | Flash / agy / low | 4/12 | 33.3% | 13.8%–60.9% |
 
@@ -22,7 +22,7 @@ Capped and cut outcomes are unknown.
 low: Capped: 0; cut: 0; unknown: 0 (including 0 not started).
 Exploratory two-sided Fisher exact (low vs Flash-agy low): p = None.
 
-high: Capped: 0; cut: 0; unknown: 1 (including 1 not started).
+high: Capped: 0; cut: 0; unknown: 0 (including 0 not started).
 Exploratory two-sided Fisher exact (high vs Flash-agy low): p = 1.0.
 
 Agy selection: histories[].arm == divergent; known histories[].task1_overwrote.
