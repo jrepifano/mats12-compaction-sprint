@@ -1,7 +1,7 @@
 [meta]
 exp = "flash_pi"
 proposal = "docs/sprint/plans/week2-flash-pi.md"
-built_against = "187176b86ff2b6f371de33455f3b3e7d000493a83373f348032ec823abf93944"
+built_against = "04fd6086c4918caa8509cf2f21ead6c998a3086e0c63edfd7d22083529d8d8a2"
 
 [design]
 kind = "flash_pi"
@@ -18,6 +18,8 @@ key_env = "OPENROUTER_API_KEY_J"
 reasoning_effort = "low"
 histories = ["httpx-np-1", "httpx-np-2", "httpx-np-3", "httpx-np-4", "httpx-np-5", "httpx-np-6", "httpx-np-7", "httpx-np-8", "tengo-np-1", "tengo-np-2", "tengo-np-3", "tengo-np-4", "tengo-np-5", "tengo-np-6", "tengo-np-7", "tengo-np-8"]
 smoke_n = 2
+bulk_httpx = 7
+bulk_tengo = 3
 launch_margin = 1.5
 output_root = "data/raw/sprint/s2/flash_pi"
 host = "rig"

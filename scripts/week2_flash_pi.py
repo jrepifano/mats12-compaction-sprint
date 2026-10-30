@@ -95,6 +95,66 @@ def require_gates(root, cfg, names):
             raise ValueError(f"missing/current-design gate: {name}")
 
 
+# Keys a design migration may change (plan v0.2, the Research Advisor's call after the smoke).
+MIGRATABLE = {("meta", "built_against"), ("flash_pi", "bulk_httpx"), ("flash_pi", "bulk_tengo")}
+
+
+def migrate_design(root, cfg, from_commit, reason):
+    """Rebind a run state from an earlier committed config to the current one, when they
+    differ only in MIGRATABLE keys and give the same smoke units. The smoke gate is
+    recomputed from the saved smoke runs and cleanup record (never hand-edited); the other
+    gates are dropped and must be re-run ($0)."""
+    import hashlib
+    import subprocess
+    import tomllib
+
+    rel = cfg["_source"]["path"]
+    rel = str(Path(rel).resolve().relative_to(CC.REPO_ROOT)) if Path(rel).is_absolute() else rel
+    raw = subprocess.run(["git", "-C", str(CC.REPO_ROOT), "show", f"{from_commit}:{rel}"],
+                         check=True, capture_output=True).stdout
+    old = tomllib.loads(raw.decode("utf-8"))
+    old_fp = {"exp": old["meta"]["exp"], "config_sha256": hashlib.sha256(raw).hexdigest(),
+              "proposal_sha256": old["meta"]["built_against"]}
+    st = D.load_state(root / "state.json")
+    if st.get("week2_design") != old_fp:
+        raise ValueError("state is not bound to the config at that commit")
+    new = {k: v for k, v in cfg.items() if k != "_source"}
+    changed = {(sec, k) for sec in set(old) | set(new)
+               for k in set(old.get(sec) or {}) | set(new.get(sec) or {})
+               if (old.get(sec) or {}).get(k) != (new.get(sec) or {}).get(k)}
+    if not changed <= MIGRATABLE:
+        raise ValueError(f"config changes beyond the migratable keys: {sorted(changed - MIGRATABLE)}")
+    smoke = F.order(cfg, smoke=True)
+    old_smoke = F.order({**old, "flash_pi": {**old["flash_pi"], "bulk_httpx": 0, "bulk_tengo": 0}},
+                        smoke=True)
+    if smoke != old_smoke:
+        raise ValueError("smoke units differ between the two configs")
+    sg = st["gates"].get("smoke") or {}
+    if sg.get("pass") is not True or sg.get("fingerprint") != old_fp:
+        raise ValueError("no passed smoke gate under the old config")
+    cleanup = json.loads((root / "cleanup.json").read_text())
+    if not smoke_pass(st, smoke, cleanup.get("left_images", [None])):
+        raise ValueError("saved smoke evidence does not pass")
+    new_fp = W.fingerprint(cfg)
+    st.setdefault("design_history", []).append(
+        {"utc": D.utc(), "from": old_fp, "to": new_fp, "from_commit": from_commit,
+         "changed": sorted(".".join(c) for c in changed), "reason": reason})
+    # The v0.1 stub's own state is bound to the old design: archive it (kept, not deleted)
+    # so the re-run stub starts fresh under v0.2.
+    archived = None
+    if (root / "local").exists():
+        archived = root / f"local.v01-{D.utc().replace(':', '')}"
+        (root / "local").rename(archived)
+    st["week2_design"] = new_fp
+    st["gates"] = {"smoke": {"pass": True, "fingerprint": new_fp, "utc": D.utc(),
+                             "result": {"migrated_from": sg, "reason": reason,
+                                        "smoke": [h.id for h in smoke]}}}
+    D.save_state(st)
+    return {"pass": True, "from": old_fp, "to": new_fp, "changed": sorted(".".join(c) for c in changed),
+            "smoke": [h.id for h in smoke], "dropped_gates": "check, replay_check, stub (re-run)",
+            "archived_stub": str(archived) if archived else None}
+
+
 def cap_file(root, cfg):
     p = root / "budget_caps.toml"
     cap = cfg["caps"]["stage_usd"]
@@ -547,6 +607,9 @@ def main(argv=None):
         sub.add_parser(name)
     p = sub.add_parser("stub")
     p.add_argument("--host", choices=("laptop", "rig"), default="rig")
+    p = sub.add_parser("migrate-design")
+    p.add_argument("--from-commit", required=True)
+    p.add_argument("--reason", required=True)
     for name in ("smoke", "go"):
         p = sub.add_parser(name)
         p.add_argument("--go-from-jacob", action="store_true")
@@ -581,6 +644,8 @@ def main(argv=None):
                 elif a.cmd == "replay-check":
                     result = F.replay_check(cfg, root)
                     gate(root, cfg, "replay_check", result)
+                elif a.cmd == "migrate-design":
+                    result = migrate_design(root, cfg, a.from_commit, a.reason)
                 elif a.cmd == "stub":
                     setup(cfg, root, a.host)
                     result = stub(cfg, root)

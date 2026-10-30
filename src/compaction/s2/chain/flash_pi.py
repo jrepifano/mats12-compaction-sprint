@@ -39,7 +39,7 @@ def validate(config: str | Path = CONFIG) -> dict:
     ) or p["reasoning_effort"] not in EFFORTS:
         raise ValueError("Flash route differs from the approved model/provider/key/effort")
     expected = [f"{r}-np-{i}" for r in ("httpx", "tengo") for i in range(1, 9)]
-    if p["histories"] != expected or p["smoke_n"] != 2:
+    if p["histories"] != expected or p["smoke_n"] != 2 or (p["bulk_httpx"], p["bulk_tengo"]) != (7, 3):
         raise ValueError("Flash must use the 16 divergent first tasks and two smoke units")
     if cfg["caps"] != {"stage_usd": 35, "run_usd": 6, "max_calls": 400, "max_seconds": 7200}:
         raise ValueError("Flash caps differ from the approved caps")
@@ -75,7 +75,13 @@ def order(cfg: dict, smoke: bool | None = None) -> list[CC.History]:
         rng.shuffle(group)
     units = [h for pair in zip(groups["httpx"], groups["tengo"], strict=True) for h in pair]
     n = cfg["flash_pi"]["smoke_n"]
-    return units if smoke is None else units[:n] if smoke else units[n:]
+    head = units[:n]
+    # Bulk (plan v0.2, the Research Advisor's call after the smoke): per project, the next
+    # bulk_<repo> units in seeded order; tengo first, since its runs are the long ones.
+    rest = units[n:]
+    bulk = [h for r in ("tengo", "httpx")
+            for h in [u for u in rest if u.repo == r][:cfg["flash_pi"][f"bulk_{r}"]]]
+    return head + bulk if smoke is None else head if smoke else bulk
 
 
 def launch_rule(cap: float, spent: float, open_usd: float, projected_live: list[float],
@@ -211,7 +217,26 @@ def analyze(cfg: dict, root: Path) -> dict:
         by_effort[effort] = {"flash_pi": flash,
                             "fisher_exact": {"pvalue": fisher, "alternative": "two-sided",
                                              "label": "exploratory", "table": table}}
+    # Per project (plan v0.2): each Flash rate beside DeepSeek's on the same histories, i.e.
+    # those with a known Flash outcome (experiment 1's a_gate rows; every one is known there).
+    gate_rows = _json(W.resolve(p["deepseek_gate"]["path"]), {})["rows"]
+    by_project = {}
+    for repo in ("httpx", "tengo"):
+        group = [r for r in rs if r["reasoning_effort"] == "low"
+                 and r["history"].startswith(repo + "-")]
+        known = [r for r in group if type(r["foreign_lost"]) is bool]
+        same = [gate_rows[r["history"]] for r in known]
+        if any(type(g.get("foreign_lost")) is not bool for g in same):
+            raise ValueError(f"{repo}: a DeepSeek row lacks a known outcome")
+        by_project[repo] = {
+            "flash_pi": proportion(sum(r["foreign_lost"] for r in known), len(known))
+            | {"run": sum(r["end"] is not None for r in group),
+               "unknown": sum(r["end"] is not None for r in group) - len(known)},
+            "deepseek_pi_same_histories": proportion(sum(g["foreign_lost"] for g in same),
+                                                     len(same)),
+            "histories": [r["history"] for r in known]}
     return {"flash_pi": by_effort["low"]["flash_pi"], "deepseek_pi": deepseek, "flash_agy": agy,
+            "by_project": by_project,
             "fisher_exact": by_effort["low"]["fisher_exact"], "by_effort": by_effort,
             "primary_effort": "low", "pooling": "Never pool different reasoning efforts.",
             "smoke_note": "The two smoke histories use the bulk config and count toward n.",
@@ -243,6 +268,13 @@ def write_readout(cfg: dict, root: Path, out: Path) -> dict:
         rate = f"{r['rate']:.1%}" if r["rate"] is not None else "unknown"
         interval = "–".join(f"{v:.1%}" for v in r["ci95"]) if r["ci95"] else "unknown"
         lines.append(f"| {label} | {r['k']}/{r['n']} | {rate} | {interval} |")
+    lines += ["", "## By project (low effort; DeepSeek on the same histories)", "",
+              "| Project | Flash / pi lost / known (run) | Wilson 95% | DeepSeek / pi, same histories |",
+              "|---|---:|---:|---:|"]
+    for repo, g in result["by_project"].items():
+        f, d = g["flash_pi"], g["deepseek_pi_same_histories"]
+        ci = "–".join(f"{v:.1%}" for v in f["ci95"]) if f["ci95"] else "unknown"
+        lines.append(f"| {repo} | {f['k']}/{f['n']} ({f['run']}) | {ci} | {d['k']}/{d['n']} |")
     lines += ["", "Low effort is the primary comparison. Different efforts are never pooled.",
               "Capped and cut outcomes are unknown."]
     for effort, group in result["by_effort"].items():

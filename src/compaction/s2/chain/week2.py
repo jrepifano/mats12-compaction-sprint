@@ -137,7 +137,8 @@ SCHEMA: dict[str, dict] = {
     "flash_pi": {"model": "str", "provider": "str", "transport": ("openrouter",),
                  "key_env": ("OPENROUTER_API_KEY_J",),
                  "reasoning_effort": ("low", "medium", "high"),
-                 "histories": "list[str]", "smoke_n": "int", "launch_margin": "float",
+                 "histories": "list[str]", "smoke_n": "int", "bulk_httpx": "int",
+                 "bulk_tengo": "int", "launch_margin": "float",
                  "output_root": "str", "host": ("rig",), "stop_at_utc": "str",
                  "precedent_config": "file", "deepseek_gate": "file", "agy_readout": "file"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
@@ -382,6 +383,10 @@ def validate(cfg: dict) -> None:
                           "(httpx-np-1..8, tengo-np-1..8)")
         if not 1 <= fp["smoke_n"] <= len(histories):
             errors.append("flash_pi.smoke_n: must be in 1..len(histories)")
+        n_proj = {r: sum(h.startswith(r + "-") for h in histories) for r in ("httpx", "tengo")}
+        for r in ("httpx", "tengo"):
+            if not 0 <= fp[f"bulk_{r}"] <= n_proj[r]:
+                errors.append(f"flash_pi.bulk_{r}: must be in 0..{n_proj[r]}")
         if not math.isfinite(fp["launch_margin"]) or fp["launch_margin"] < 1:
             errors.append("flash_pi.launch_margin: must be finite and >= 1")
         try:

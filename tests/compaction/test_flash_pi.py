@@ -8,7 +8,6 @@ import json
 import socket
 import threading
 from datetime import UTC, datetime, timedelta
-from itertools import pairwise
 
 import pytest
 
@@ -115,15 +114,22 @@ def test_local_replay_uses_real_client_and_restores_environment(cfg, tmp_path, m
     assert "fake-original-j-key" not in saved and "fake-wrong-key" not in saved
 
 
-def test_order_is_seeded_alternating_and_smoke_is_part_of_sixteen(cfg):
+def test_order_keeps_smoke_and_takes_bulk_per_project_in_seeded_order(cfg):
     runs = F.order(cfg)
     assert runs == F.order(cfg)
-    assert len(runs) == len({h.id for h in runs}) == 16
-    assert {h.id for h in runs} == set(cfg["flash_pi"]["histories"])
-    assert all(a.repo != b.repo for a, b in pairwise(runs))
-    assert F.order(cfg, smoke=True) == runs[:2]
-    assert F.order(cfg, smoke=False) == runs[2:]
-    assert {h.repo for h in runs[:2]} == {"httpx", "tengo"}
+    smoke, bulk = F.order(cfg, smoke=True), F.order(cfg, smoke=False)
+    assert runs == smoke + bulk
+    # v0.1's smoke units are unchanged by the v0.2 bulk rule
+    assert [h.id for h in smoke] == ["httpx-np-7", "tengo-np-2"]
+    assert len(runs) == len({h.id for h in runs}) == 12
+    assert [h.repo for h in bulk] == ["tengo"] * 3 + ["httpx"] * 7
+    assert {h.id for h in runs if h.repo == "httpx"} == {f"httpx-np-{i}" for i in range(1, 9)}
+    # within each project, the bulk keeps the seeded alternating order's sequence
+    rng_order = [h.id for h in F.order({**cfg, "flash_pi": {**cfg["flash_pi"],
+                                         "bulk_httpx": 7, "bulk_tengo": 7}})]
+    for repo in ("httpx", "tengo"):
+        mine = [h.id for h in runs if h.repo == repo]
+        assert mine == [i for i in rng_order if i.startswith(repo)][:len(mine)]
     assert all(P.arm_of(h) == "divergent" for h in runs)
     changed = copy.deepcopy(cfg)
     changed["design"]["seed"] += 1
@@ -979,3 +985,72 @@ def test_request_with_less_than_five_seconds_left_never_reserves(cfg, cli, monke
     with pytest.raises(L.Stopped):
         guarded.complete([{"role": "user", "content": "go"}], None, 10, purpose="A:test:1")
     assert spend.calls == 0 and spend.charged == 0 and not spend._open
+
+
+def _v01_bytes(cfg):
+    """The v0.1 config text: today's file minus the bulk keys, at the v0.1 plan hash."""
+    text = F.CONFIG.read_text()
+    text = text.replace("bulk_httpx = 7\n", "").replace("bulk_tengo = 3\n", "")
+    return text.replace(cfg["meta"]["built_against"], "187176b86ff2b6f371de33455f3b3e7d000493a83373f348032ec823abf93944").encode()
+
+
+def _bound_smoke_state(tmp_path, cfg, cli, old_bytes):
+    import hashlib
+    import tomllib
+
+    old = tomllib.loads(old_bytes.decode())
+    old_fp = {"exp": "flash_pi", "config_sha256": hashlib.sha256(old_bytes).hexdigest(),
+              "proposal_sha256": old["meta"]["built_against"]}
+    st = D.load_state(tmp_path / "state.json")
+    st["week2_design"] = old_fp
+    for h in F.order(cfg, smoke=True):
+        st["a"][h.id] = {"state": "done", "end": "submitted", "observed_foreign_lost": True,
+                         "cleanup_unconfirmed": []}
+    st["gates"] = {g: {"pass": True, "fingerprint": old_fp} for g in
+                   ("check", "replay_check", "stub", "smoke")}
+    D.save_state(st)
+    (tmp_path / "cleanup.json").write_text(json.dumps({"left_images": []}))
+    return old_fp
+
+
+def _git_show(monkeypatch, data):
+    import subprocess
+    from types import SimpleNamespace
+
+    real = subprocess.run
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: SimpleNamespace(stdout=data)
+                        if cmd[:2] == ["git", "-C"] else real(cmd, **kw))
+
+
+def test_migrate_design_rebinds_and_regates_smoke_only(tmp_path, cfg, cli, monkeypatch):
+    old_bytes = _v01_bytes(cfg)
+    old_fp = _bound_smoke_state(tmp_path, cfg, cli, old_bytes)
+    _git_show(monkeypatch, old_bytes)
+    (tmp_path / "local").mkdir()
+    (tmp_path / "local" / "state.json").write_text("{}")
+    res = cli.migrate_design(tmp_path, cfg, "9f35f1d7", "v0.2 bulk")
+    assert not (tmp_path / "local").exists()
+    assert (tmp_path / res["archived_stub"].split("/")[-1] / "state.json").exists()
+    assert res["changed"] == ["flash_pi.bulk_httpx", "flash_pi.bulk_tengo", "meta.built_against"]
+    st = D.load_state(tmp_path / "state.json")
+    assert st["week2_design"] == W.fingerprint(cfg)
+    assert set(st["gates"]) == {"smoke"}
+    assert st["gates"]["smoke"]["fingerprint"] == W.fingerprint(cfg)
+    assert st["design_history"][0]["from"] == old_fp
+    cli.require_gates(tmp_path, cfg, ["smoke"])
+    with pytest.raises(ValueError):
+        cli.require_gates(tmp_path, cfg, ["stub"])
+
+
+def test_migrate_design_refuses_other_changes_or_failed_smoke(tmp_path, cfg, cli, monkeypatch):
+    bad = _v01_bytes(cfg).replace(b"run_usd = 6.0", b"run_usd = 5.0")
+    _bound_smoke_state(tmp_path, cfg, cli, bad)
+    _git_show(monkeypatch, bad)
+    with pytest.raises(ValueError, match="beyond the migratable keys"):
+        cli.migrate_design(tmp_path, cfg, "x", "r")
+    good = _v01_bytes(cfg)
+    _bound_smoke_state(tmp_path, cfg, cli, good)
+    (tmp_path / "cleanup.json").write_text(json.dumps({"left_images": ["leftover"]}))
+    _git_show(monkeypatch, good)
+    with pytest.raises(ValueError, match="does not pass"):
+        cli.migrate_design(tmp_path, cfg, "x", "r")
