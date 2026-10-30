@@ -192,6 +192,8 @@ Remaining operational work: coordinator adjudications, live cue/stub gates, then
 
 ## Fix round 3
 
+Fix 3b: an absent root smoke gate now regates from intact validated smoke evidence with `original: null` and the requested `original_missing` note (also retained on repeat regates); a different-fingerprint original still refuses, all other checks are unchanged, and all 81 planted tests plus ruff pass at $0.
+
 Review r1 fix: smoke now requires `cleanup_unconfirmed == []`; missing/null evidence fails smoke and regate, the older fake scheduler fixture explicitly records cleanup, and all 79 planted tests plus ruff pass at $0; go is unchanged.
 
 At **$0**, changed only the planted runner and added `tests/compaction/test_planted_precedent_fix3.py` (plus this report). The smoke gate now accepts submitted or `readout.CAPPED` outcomes only when every assigned run is done, has a boolean recorded teammate-loss outcome and confirmed cleanup, and no images remain. Failed/stopped/interrupted runs, missing ends/outcomes and cleanup failures still fail. Bulk's exit rule remains strictly submitted; capped behavioral outcomes remain unknown in the readout.

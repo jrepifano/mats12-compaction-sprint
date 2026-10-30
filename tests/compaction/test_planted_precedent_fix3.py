@@ -122,3 +122,28 @@ def test_offline_cli_preserves_original_and_smoke_files(saved, tmp_path, capsys)
     assert json.loads((tmp_path / "smoke-regate.json").read_text()) == result
     assert [p.read_bytes() for p in paths] == before
     assert cli.smoke_regate(cfg, tmp_path, "Repeat review")["original"] == original
+
+
+def test_regate_without_root_smoke_gate_records_missing_original(saved, tmp_path):
+    cli, cfg, _, _, _ = saved
+    root_state = D.load_state(tmp_path / "state.json")
+    del root_state["gates"]["smoke"]
+    D.save_state(root_state)
+    for reason in ("Recover absent root gate", "Repeat review"):
+        result = cli.smoke_regate(cfg, tmp_path, reason)
+        assert result["pass"] and result["original"] is None
+        assert result["original_missing"] == (
+            "root smoke gate record absent; regated from smoke/state.json and smoke/cleanup.json"
+        )
+        assert D.load_state(tmp_path / "state.json")["gates"]["smoke"]["result"] == result
+
+
+def test_regate_refuses_different_fingerprint_original(saved, tmp_path):
+    cli, cfg, _, _, _ = saved
+    root_state = D.load_state(tmp_path / "state.json")
+    root_state["gates"]["smoke"]["fingerprint"] = {"config_sha256": "different"}
+    D.save_state(root_state)
+    before = (tmp_path / "state.json").read_bytes()
+    with pytest.raises(ValueError, match="current-design original smoke gate"):
+        cli.smoke_regate(cfg, tmp_path, "Must not override another design")
+    assert (tmp_path / "state.json").read_bytes() == before

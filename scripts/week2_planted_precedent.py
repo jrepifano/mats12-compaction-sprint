@@ -266,18 +266,25 @@ def smoke_regate(cfg: dict, root: Path, reason: str) -> dict:
     left = cleanup.get("left_images")
     if not isinstance(left, list):
         raise ValueError("missing smoke cleanup evidence")  # noqa: TRY004 - invalid saved artifact
-    saved = D.load_state(root / "state.json")["gates"].get("smoke") or {}
-    if saved.get("fingerprint") != W.fingerprint(cfg) or not isinstance(saved.get("result"), dict):
+    saved = D.load_state(root / "state.json")["gates"].get("smoke")
+    if saved is not None and (
+        saved.get("fingerprint") != W.fingerprint(cfg)
+        or not isinstance(saved.get("result"), dict)
+    ):
         raise ValueError("missing/current-design original smoke gate")
-    previous = saved["result"]
+    previous = saved["result"] if saved is not None else None
     result = {
         "pass": smoke_pass(st, runs, left),
         "states": {ident: st["b"][ident].get("state") for ident in ids},
         "left_images": left,
         "reason": reason.strip(),
         "regated": True,
-        "original": previous.get("original", previous),
+        "original": previous.get("original", previous) if previous is not None else None,
     }
+    if result["original"] is None:
+        result["original_missing"] = (
+            "root smoke gate record absent; regated from smoke/state.json and smoke/cleanup.json"
+        )
     gate(root, cfg, "smoke", result)
     return result
 
