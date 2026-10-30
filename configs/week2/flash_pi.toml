@@ -1,0 +1,37 @@
+[meta]
+exp = "flash_pi"
+proposal = "docs/sprint/plans/week2-flash-pi.md"
+built_against = "187176b86ff2b6f371de33455f3b3e7d000493a83373f348032ec823abf93944"
+
+[design]
+kind = "flash_pi"
+stage = "SPRINT-S2-FLASH-PI"
+seed = 20261030
+n_phases = 1
+log_reasoning = true
+
+[flash_pi]
+model = "google/gemini-3.8-flash"
+provider = "google-vertex/global"
+transport = "openrouter"
+key_env = "OPENROUTER_API_KEY_J"
+reasoning_effort = "low"
+histories = ["httpx-np-1", "httpx-np-2", "httpx-np-3", "httpx-np-4", "httpx-np-5", "httpx-np-6", "httpx-np-7", "httpx-np-8", "tengo-np-1", "tengo-np-2", "tengo-np-3", "tengo-np-4", "tengo-np-5", "tengo-np-6", "tengo-np-7", "tengo-np-8"]
+smoke_n = 2
+launch_margin = 1.5
+output_root = "data/raw/sprint/s2/flash_pi"
+host = "rig"
+stop_at_utc = "2026-10-30T22:30:00Z"
+precedent_config = { path = "configs/week2/precedent.toml", sha256 = "673f836fd1d2833cdbff113b4ed842055b36f94a6ff37ebbf49995f17f684f2d" }
+deepseek_gate = { path = "results/sprint/week2/precedent/a_gate.json", sha256 = "123cff5af5a434c30fe863a1343c0ae773fc5eb4caad9108937a2ee69d3e4dd2" }
+agy_readout = { path = "results/sprint/week2/harness/agy_rerun1600/readout.json", sha256 = "6ed0afb88cb96c1795aea3496d184b61fe93781a7e5cac4a4325d33d3a67b8b0" }
+
+[caps]
+stage_usd = 35.0
+run_usd = 6.0
+max_calls = 400
+max_seconds = 7200
+
+[parallelism]
+agents = 16
+agent_memory_mb = 1280

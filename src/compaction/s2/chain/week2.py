@@ -41,7 +41,7 @@ SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
     "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
                         "summary_refusal", "summary_fix", "user_no", "native_chain",
-                        "planted_precedent"),
+                        "planted_precedent", "flash_pi"),
                "stage": "str",
                "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
@@ -134,6 +134,12 @@ SCHEMA: dict[str, dict] = {
                          "project": ("different",), "start": ("compacted",),
                          "smoke_history": "str", "stop_at_utc": "str",
                          "bootstrap_reps": "int"},
+    "flash_pi": {"model": "str", "provider": "str", "transport": ("openrouter",),
+                 "key_env": ("OPENROUTER_API_KEY_J",),
+                 "reasoning_effort": ("low", "medium", "high"),
+                 "histories": "list[str]", "smoke_n": "int", "launch_margin": "float",
+                 "output_root": "str", "host": ("rig",), "stop_at_utc": "str",
+                 "precedent_config": "file", "deepseek_gate": "file", "agy_readout": "file"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int",
@@ -146,12 +152,16 @@ KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "prece
                  "summary_refusal": "refusal",
                  "summary_fix": "summary_fix",
                  "planted_precedent": "planted_precedent",
+                 "flash_pi": "flash_pi",
                  "user_no": "user_no",
                  "native_chain": "native_chain"}  # design.kind -> its own section
 # A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the
 # section optional (validated against SCHEMA if present). An override may also name another
 # kind's own section, which that kind then uses with these keys (3c reuses 3b's [refusal]).
 KIND_OVERRIDES: dict[str, dict] = {
+    # First tasks only; wording is supplied by the pinned experiment 1 config.
+    "flash_pi": {"wording": None,
+                 "parallelism": {"agents": "int", "agent_memory_mb": "int"}},
     "exploit": {"caps": {"exploit_usd": "float"}, "parallelism": None},
     # experiment 5: a second cap for the 2-replicate case (a pi start after late_after_et)
     "summary_fix": {"caps": {"stage_usd": "float", "stage_usd_late": "float", "run_usd": "float",
@@ -338,11 +348,13 @@ def validate(cfg: dict) -> None:
     if not SHA_RE.match(cfg["meta"]["built_against"]):
         errors.append("meta.built_against: must be a 64-hex sha256")
     n = cfg["design"].get("n_phases", 2)  # absent only where the kind has no phases
-    if n < 2:
+    if kind == "flash_pi" and n != 1:
+        errors.append(f"design.n_phases: must be 1 for flash_pi, got {n}")
+    if kind != "flash_pi" and n < 2:
         errors.append(f"design.n_phases: must be >= 2, got {n}")
     if kind in ("two_phase", "precedent", "monitor_controls") and n != 2:
         errors.append(f"design.n_phases: must be 2 for {kind}, got {n}")
-    for name, spec in cfg["wording"].items():
+    for name, spec in cfg.get("wording", {}).items():
         _check_file(f"wording.{name}", spec, errors)
     if kind == "chain":
         p = _check_file("chain.orders", cfg["chain"]["orders"], errors)
@@ -354,6 +366,39 @@ def validate(cfg: dict) -> None:
         errors += _native_chain_errors(cfg, n)
     if kind == "monitor_controls":
         _check_file("monitors.assignment", cfg["monitors"]["assignment"], errors)
+    if kind == "flash_pi":
+        fp = cfg["flash_pi"]
+        if not fp["output_root"].strip():
+            errors.append("flash_pi.output_root: must be nonempty")
+        elif fp["reasoning_effort"] != "low" and resolve(fp["output_root"]).resolve() == \
+                resolve("data/raw/sprint/s2/flash_pi").resolve():
+            errors.append("flash_pi.output_root: medium/high runs need a separate output root")
+        for key in ("precedent_config", "deepseek_gate", "agy_readout"):
+            _check_file(f"flash_pi.{key}", fp[key], errors)
+        histories = fp["histories"]
+        if not histories or len(set(histories)) != len(histories) or any(
+                not re.fullmatch(r"(?:httpx|tengo)-np-[1-8]", h) for h in histories):
+            errors.append("flash_pi.histories: distinct divergent first-task ids "
+                          "(httpx-np-1..8, tengo-np-1..8)")
+        if not 1 <= fp["smoke_n"] <= len(histories):
+            errors.append("flash_pi.smoke_n: must be in 1..len(histories)")
+        if not math.isfinite(fp["launch_margin"]) or fp["launch_margin"] < 1:
+            errors.append("flash_pi.launch_margin: must be finite and >= 1")
+        try:
+            stop = datetime.fromisoformat(fp["stop_at_utc"])
+            if stop.utcoffset() != UTC.utcoffset(stop):
+                raise ValueError("not UTC")
+        except ValueError:
+            errors.append("flash_pi.stop_at_utc: must be an ISO timestamp in UTC")
+        for key in ("stage_usd", "run_usd"):
+            value = cfg["caps"][key]
+            if not math.isfinite(value) or value <= 0:
+                errors.append(f"caps.{key}: must be finite and > 0")
+        for section, keys in (("caps", ("max_calls", "max_seconds")),
+                              ("parallelism", ("agents", "agent_memory_mb"))):
+            for key in keys:
+                if cfg[section][key] <= 0:
+                    errors.append(f"{section}.{key}: must be > 0")
     if errors:
         raise ValueError("config invalid:\n  " + "\n  ".join(errors))
 
@@ -666,6 +711,14 @@ def plan_check(proposal_path: str | Path, config_path: str | Path,
     flat = flatten(cfg)
     mismatches = [{"parameter": k, "contract": contract[k], "config": flat[k]}
                   for k in flat if k in contract and canon(contract[k]) != canon(flat[k])]
+    # Jacob's 30 Oct addendum authorizes separate effort follow-up configs. Only effort
+    # and output location may differ; the primary config and all hashes/caps stay pinned.
+    allowed_overrides = []
+    if cfg["design"]["kind"] == "flash_pi" and resolve(config_path).resolve() != \
+            resolve("configs/week2/flash_pi.toml").resolve():
+        allowed = {"flash_pi.reasoning_effort", "flash_pi.output_root"}
+        allowed_overrides = [m for m in mismatches if m["parameter"] in allowed]
+        mismatches = [m for m in mismatches if m["parameter"] not in allowed]
     missing_in_config = [k for k in contract if k not in flat]
     missing_in_contract = [k for k in flat if k not in contract]
     built = cfg["meta"]["built_against"]
@@ -674,6 +727,7 @@ def plan_check(proposal_path: str | Path, config_path: str | Path,
     ok = hash_ok and not (mismatches or missing_in_config or missing_in_contract)
     return {"ok": ok, "exp": cfg["meta"]["exp"], "proposal": str(proposal_path),
             "config": str(config_path), "mismatches": mismatches,
+            "allowed_overrides": allowed_overrides,
             "missing_in_config": missing_in_config, "missing_in_contract": missing_in_contract,
             "proposal_sha256": sha, "built_against": built, "hash_ok": hash_ok,
             "changed_sections": changed}
@@ -685,6 +739,9 @@ def report(check: dict) -> str:
             f"({check['proposal']} vs {check['config']})")]
     out += [f"  mismatch {m['parameter']}: contract {m['contract']!r}, config {m['config']!r}"
             for m in check["mismatches"]]
+    out += [f"  allowed follow-up override {m['parameter']}: contract {m['contract']!r}, "
+            f"config {m['config']!r} (Jacob, 30 Oct)"
+            for m in check.get("allowed_overrides", [])]
     out += [f"  in the contract, not in the config: {k}" for k in check["missing_in_config"]]
     out += [f"  in the config, not in the contract: {k}" for k in check["missing_in_contract"]]
     if not check["hash_ok"]:
