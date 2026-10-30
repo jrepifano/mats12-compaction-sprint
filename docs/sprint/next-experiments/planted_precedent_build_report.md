@@ -192,6 +192,8 @@ Remaining operational work: coordinator adjudications, live cue/stub gates, then
 
 ## Fix round 3
 
+Compact bulk readout fix (30 Oct, $0): full quote candidates, force-turn context and full scored rows now live in gitignored `<raw>/quote_candidates.json` with path/SHA256 in the report; JSON keeps per-run pattern counts and scalar assigned-row evidence, Markdown caps excerpts at two per pattern/300 characters and first-force issuing/previous-turn visible/reasoning context at 600 characters, adds field-known/assigned behaviour rates and the labelled boolean-endpoint-at-cap sensitivity while preserving primary/known-run analyses, and all 89 planted tests plus ruff pass (27,291,570-byte synthetic raw artifact produces 137,989-byte Markdown and 28,189-byte JSON, with enforced 300 KB/1 MB limits); production artifacts were not regenerated.
+
 Advisor readout addition (30 Oct, after wave 1; not preregistered): added the labelled known-new-run history-mean secondary with equal history weights, 95% whole-history bootstrap and exact sign-flip inference, per-history known/assigned counts, and separate capped/failed arm counts retaining their total; the complete-history primary and missing-outcome bounds are unchanged, all 85 planted tests and ruff pass at $0, and production readout artifacts were not regenerated.
 
 Fix 3b: an absent root smoke gate now regates from intact validated smoke evidence with `original: null` and the requested `original_missing` note (also retained on repeat regates); a different-fingerprint original still refuses, all other checks are unchanged, and all 81 planted tests plus ruff pass at $0.
