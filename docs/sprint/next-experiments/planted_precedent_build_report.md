@@ -189,3 +189,19 @@ git diff --check
 **Files changed this round:** `src/compaction/s2/chain/planted_precedent_checks.py`; `scripts/week2_planted_precedent.py`; `scripts/week2_planted_precedent_readout.py`; `tests/compaction/test_planted_precedent_fix1.py` (fake scheduler gate setup only); new `tests/compaction/test_planted_precedent_fix2.py`; `configs/week2/planted_precedent.toml` (plan hash); `docs/sprint/plans/week2-planted-precedent.md`; this report; `results/sprint/week2/planted_precedent/readout.json` and `readout.md`; new `fix2_checks.json` and `fix2_tests.txt` in that results directory. Gitignored preflight state, prepared manifest, replay-check, fluency score and before-fix archive under `data/raw/sprint/s2/cobalt/` also changed. Original experiment-1 raw data, replacement specs, prepared payload bytes, fluency prompts/key/answers and all shared modules are unchanged by this round.
 
 Remaining operational work: coordinator adjudications, live cue/stub gates, then the separately authorized smoke and bulk commands above. The build and offline acceptance checks are complete; no behavioral result is claimed.
+
+## Fix round 3
+
+Review r1 fix: smoke now requires `cleanup_unconfirmed == []`; missing/null evidence fails smoke and regate, the older fake scheduler fixture explicitly records cleanup, and all 79 planted tests plus ruff pass at $0; go is unchanged.
+
+At **$0**, changed only the planted runner and added `tests/compaction/test_planted_precedent_fix3.py` (plus this report). The smoke gate now accepts submitted or `readout.CAPPED` outcomes only when every assigned run is done, has a boolean recorded teammate-loss outcome and confirmed cleanup, and no images remain. Failed/stopped/interrupted runs, missing ends/outcomes and cleanup failures still fail. Bulk's exit rule remains strictly submitted; capped behavioral outcomes remain unknown in the readout.
+
+Added offline `smoke-regate --reason TEXT`: it checks the saved smoke config fingerprint, exact order/hash/run IDs and cleanup evidence, applies the same helper, and saves the result with `regated: true`, reason and the original gate result. It neither launches nor finalizes runs, preserves smoke state/cleanup bytes, and retains the original result across repeated regates. Missing state or mismatched config/order refuses without replacing the gate. The reported rig smoke was not rerun or regated by this worker.
+
+Validation: **114 tests pass** with `uv run pytest -q tests/compaction/test_planted_precedent*.py tests/compaction/test_summary_fix*.py`; ruff passes for the planted runner/modules/tests, and `git diff --check` passes. Tests cover all capped ends, failed/stopped/interrupted/missing-outcome cases, cleanup failures, fingerprint/order/run-ID mismatches and original-result preservation. No commits, rig commands, containers, provider calls or `.env` reads.
+
+Coordinator deployment command, after copying the runner fix:
+
+```bash
+uv run python scripts/week2_planted_precedent.py smoke-regate --reason "Expected capped-cost smoke outcome with recorded primary evidence and confirmed cleanup"
+```

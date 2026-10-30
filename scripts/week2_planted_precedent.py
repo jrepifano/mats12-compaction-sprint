@@ -1,5 +1,5 @@
 """Saved DeepSeek/pi record replay: check, prepare, replay-check, cue-audit, fluency-score, fluency-accept,
-stub, smoke, go, status, analyze. All but smoke/go use fakes or offline checks only.
+stub, smoke, smoke-regate, go, status, analyze. All but smoke/go use fakes or offline checks only.
 Never reads .env: a paid operator must supply the pinned route's key in the process environment.
 Ported scheduler structure from scripts/week2_summary_fix.py; unchanged summary_fix.run_all
 executes each prepared boundary through experiment 1's task-2 setup, scorer and admission.
@@ -28,6 +28,7 @@ from compaction.s2.chain import planted_precedent_checks as Q
 from compaction.s2.chain import session as SE
 from compaction.s2.chain import summary_fix as F
 from compaction.s2.chain import week2 as W
+from compaction.s2.chain.readout import CAPPED
 
 
 def setup(cfg: dict, root: Path, host: str | None = None):
@@ -233,6 +234,54 @@ def stub(cfg, source, root):
     }
 
 
+def smoke_pass(st: dict, runs: list, left_images: list) -> bool:
+    """A smoke may hit its cap, but must save primary evidence and clean up."""
+    return (
+        all(
+            (rec := st["b"].get(b.id, {})).get("state") == "done"
+            and rec.get("end") in (SE.END_SUBMIT, *CAPPED)
+            and type(rec.get("teammate_lost")) is bool
+            and rec.get("cleanup_unconfirmed") == []
+            for b in runs
+        )
+        and not left_images
+    )
+
+
+def smoke_regate(cfg: dict, root: Path, reason: str) -> dict:
+    """Re-evaluate saved smoke evidence only; never launch or finalize an attempt."""
+    if not reason.strip():
+        raise ValueError("smoke-regate requires a nonempty reason")
+    path = root / "smoke" / "state.json"
+    if not path.is_file():
+        raise ValueError("missing smoke state")
+    st = D.load_state(path)
+    runs = P.order(cfg, smoke=True)
+    ids = [b.id for b in runs]
+    if st.get("week2_design") != W.fingerprint(cfg):
+        raise ValueError("smoke config fingerprint changed")
+    if st.get("order") != {"ids": ids, "sha256": F.order_sha256(runs)} or set(st["b"]) != set(ids):
+        raise ValueError("smoke order/run ids differ")
+    cleanup = json.loads((root / "smoke" / "cleanup.json").read_text())
+    left = cleanup.get("left_images")
+    if not isinstance(left, list):
+        raise ValueError("missing smoke cleanup evidence")  # noqa: TRY004 - invalid saved artifact
+    saved = D.load_state(root / "state.json")["gates"].get("smoke") or {}
+    if saved.get("fingerprint") != W.fingerprint(cfg) or not isinstance(saved.get("result"), dict):
+        raise ValueError("missing/current-design original smoke gate")
+    previous = saved["result"]
+    result = {
+        "pass": smoke_pass(st, runs, left),
+        "states": {ident: st["b"][ident].get("state") for ident in ids},
+        "left_images": left,
+        "reason": reason.strip(),
+        "regated": True,
+        "original": previous.get("original", previous),
+    }
+    gate(root, cfg, "smoke", result)
+    return result
+
+
 def paid(a, cfg, root, source):
     from compaction.s2.chain import stubs
     from compaction.s2.config import Route
@@ -317,6 +366,8 @@ def paid(a, cfg, root, source):
         )
         and not left
     )
+    if a.cmd == "smoke":
+        ok = smoke_pass(st, runs, left)
     result = {
         "pass": ok,
         "states": states,
@@ -346,6 +397,8 @@ def main(argv=None):
     p = sub.add_parser("fluency-accept")
     p.add_argument("--item", required=True)
     p.add_argument("--honest-item", required=True)
+    p.add_argument("--reason", required=True)
+    p = sub.add_parser("smoke-regate")
     p.add_argument("--reason", required=True)
     for name in ["smoke", "go"]:
         p = sub.add_parser(name)
@@ -399,6 +452,8 @@ def main(argv=None):
                 gate(root, cfg, "fluency", result)
             elif a.cmd in ["smoke", "go"]:
                 return paid(a, cfg, root, source)
+            elif a.cmd == "smoke-regate":
+                result = smoke_regate(cfg, root, a.reason)
             elif a.cmd == "status":
                 st = D.load_state(root / "state.json")
                 result = {
