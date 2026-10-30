@@ -561,41 +561,61 @@ def test_scheduler_refuses_new_launch_after_unconfirmed_cleanup(cfg, cli, tmp_pa
     assert "cleanup" in result["launch_stop"].lower()
 
 
+HIGH = CC.REPO_ROOT / "configs/week2/flash_pi_high.toml"
+
+
 def effort_config(tmp_path, effort):
-    text = F.CONFIG.read_text().replace('reasoning_effort = "low"', f'reasoning_effort = "{effort}"')
-    text = text.replace('output_root = "data/raw/sprint/s2/flash_pi"',
-                        f'output_root = "{tmp_path / (effort + "-raw")}"')
+    """A copy of the low config (output root moved to tmp) or of the committed high pair."""
+    if effort == "high":
+        text = HIGH.read_text()
+    else:
+        text = F.CONFIG.read_text().replace('reasoning_effort = "low"',
+                                            f'reasoning_effort = "{effort}"')
+        text = text.replace('output_root = "data/raw/sprint/s2/flash_pi"',
+                            f'output_root = "{tmp_path / (effort + "-raw")}"')
     path = tmp_path / f"flash_{effort}.toml"
     path.write_text(text)
     return path
 
 
-@pytest.mark.parametrize("effort", ["low", "medium", "high"])
-def test_effort_variants_only_change_effort_and_output_with_shared_cap(cfg, cli, tmp_path, effort):
-    path = effort_config(tmp_path, effort)
+def test_low_variant_only_changes_output_root(cfg, cli, tmp_path):
+    path = effort_config(tmp_path, "low")
     check = W.plan_check(cfg["meta"]["proposal"], path)
     assert check["ok"] and check["hash_ok"]
-    allowed = {x["parameter"] for x in check["allowed_overrides"]}
-    assert allowed == {"flash_pi.output_root"} | (
-        {"flash_pi.reasoning_effort"} if effort != "low" else set())
+    assert {x["parameter"] for x in check["allowed_overrides"]} == {"flash_pi.output_root"}
     variant = F.validate(path)
-    assert F.route(variant).reasoning == {"reasoning": {"effort": effort}}
-    assert variant["design"]["stage"] == "SPRINT-S2-FLASH-PI"
-    assert variant["caps"]["stage_usd"] == 35
-    assert F.order(variant) == F.order(cfg)
+    assert F.order(variant) == F.order(cfg) and variant["caps"]["stage_usd"] == 35
+
+
+def test_high_pair_is_pinned_and_shares_the_stage(cfg, cli, tmp_path):
+    check = W.plan_check("docs/sprint/plans/week2-flash-pi-high.md", HIGH)
+    assert check["ok"] and check["hash_ok"] and not check["allowed_overrides"]
+    high = F.validate(HIGH)
+    assert F.route(high).reasoning == {"reasoning": {"effort": "high"}}
+    assert high["design"]["stage"] == F.STAGE and high["caps"]["stage_usd"] == 40
+    assert [h.id for h in F.order(high, smoke=True)] == ["httpx-np-7"]
+    assert [h.id for h in F.order(high, smoke=False)] == ["httpx-np-2"]
     st = D.load_state(tmp_path / "state.json")
-    cli.bind(st, variant)
-    assert st["reasoning_effort"] == effort
+    cli.bind(st, high)
+    assert st["reasoning_effort"] == "high"
 
 
-@pytest.mark.parametrize("old,new", [('stage_usd = 35.0', 'stage_usd = 36.0'),
+def test_medium_effort_is_refused(tmp_path):
+    with pytest.raises((ValueError, W.PlanDrift)):
+        F.validate(effort_config(tmp_path, "medium"))
+
+
+@pytest.mark.parametrize("old,new", [('stage_usd = 40.0', 'stage_usd = 41.0'),
+                                     ('bulk_httpx = 1', 'bulk_httpx = 2'),
+                                     ('output_root = "data/raw/sprint/s2/flash_pi_high"',
+                                      'output_root = "data/raw/sprint/s2/flash_pi_x"'),
                                      ('stage = "SPRINT-S2-FLASH-PI"', 'stage = "OTHER"'),
                                      ('seed = 20261030', 'seed = 20261031'),
                                      ('provider = "google-vertex/global"', 'provider = "other"')])
 def test_effort_variant_cannot_smuggle_other_contract_changes(cfg, tmp_path, old, new):
     path = effort_config(tmp_path, "high")
     path.write_text(path.read_text().replace(old, new))
-    with pytest.raises(W.PlanDrift):
+    with pytest.raises((W.PlanDrift, ValueError)):
         F.validate(path)
 
 
@@ -691,12 +711,13 @@ def test_effort_configs_share_stage_holds_and_spend_across_separate_caps_files(
     # of PilotSpend's tag guard. All bookkeeping is synthetic in this temporary checkout.
     low = PilotSpend(tags=("test-low",), caps={"test-low": 35}, stage=F.STAGE,
                      ledger=ledger, caps_file=low_caps)
-    high = PilotSpend(tags=("test-high",), caps={"test-high": 35}, stage=F.STAGE,
+    high = PilotSpend(tags=("test-high",), caps={"test-high": 40}, stage=F.STAGE,
                       ledger=ledger, caps_file=high_caps)
-    held = low.reserve(30, "offline synthetic hold")
+    # the high pair's caps file carries the raised $40 stage cap; low keeps $35
+    held = low.reserve(35, "offline synthetic hold")
     with pytest.raises(StageCapReached, match="stage refusal"):
         high.reserve(6, "must see other effort's hold")
-    assert budget.status(ledger=ledger, caps_file=high_caps)["stages"][F.STAGE]["open"] == 30
+    assert budget.status(ledger=ledger, caps_file=high_caps)["stages"][F.STAGE]["open"] == 35
     low.cancel(held, "offline test release")
     reserved = high.reserve(6, "offline synthetic settled cost")
     high.settle(reserved, 6, resource="offline-test", units=1, note="synthetic; no model call")

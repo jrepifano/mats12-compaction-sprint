@@ -39,9 +39,19 @@ def validate(config: str | Path = CONFIG) -> dict:
     ) or p["reasoning_effort"] not in EFFORTS:
         raise ValueError("Flash route differs from the approved model/provider/key/effort")
     expected = [f"{r}-np-{i}" for r in ("httpx", "tengo") for i in range(1, 9)]
-    if p["histories"] != expected or p["smoke_n"] != 2 or (p["bulk_httpx"], p["bulk_tengo"]) != (7, 3):
-        raise ValueError("Flash must use the 16 divergent first tasks and two smoke units")
-    if cfg["caps"] != {"stage_usd": 35, "run_usd": 6, "max_calls": 400, "max_seconds": 7200}:
+    # The primary (low) design, or the high-effort pair (Jacob, ~1:25 PM ET 30 Oct: "raise to
+    # $40, run the high pair"; docs/sprint/plans/week2-flash-pi-high.md): one smoke unit and
+    # one bulk unit, both httpx, at a $40 stage cap shared with the low runs.
+    high = p["reasoning_effort"] == "high"
+    units, stage_usd = ((1, 1, 0), 40) if high else ((2, 7, 3), 35)
+    if p["histories"] != expected or (p["smoke_n"], p["bulk_httpx"], p["bulk_tengo"]) != units:
+        raise ValueError("Flash must use the 16 divergent first tasks and the approved units")
+    if p["reasoning_effort"] == "medium" or high and (
+            cfg["meta"]["exp"] != "flash_pi_high"
+            or p["output_root"] != "data/raw/sprint/s2/flash_pi_high"):
+        raise ValueError("only the approved high-effort pair may change the effort")
+    if cfg["caps"] != {"stage_usd": stage_usd, "run_usd": 6, "max_calls": 400,
+                       "max_seconds": 7200}:
         raise ValueError("Flash caps differ from the approved caps")
     if not p["output_root"].strip() or p["host"] != "rig" or p["launch_margin"] != 1.5:
         raise ValueError("Flash output/host/launch margin differs")
@@ -239,7 +249,9 @@ def analyze(cfg: dict, root: Path) -> dict:
             "by_project": by_project,
             "fisher_exact": by_effort["low"]["fisher_exact"], "by_effort": by_effort,
             "primary_effort": "low", "pooling": "Never pool different reasoning efforts.",
-            "smoke_note": "The two smoke histories use the bulk config and count toward n.",
+            "smoke_note": (f"The {p['smoke_n']} smoke "
+                           f"histor{'y uses' if p['smoke_n'] == 1 else 'ies use'} the bulk config and "
+                           "count toward n."),
             "rows": rs}
 
 
