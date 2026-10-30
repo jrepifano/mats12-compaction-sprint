@@ -40,7 +40,8 @@ class PlanDrift(RuntimeError):
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
     "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
-                        "summary_refusal", "summary_fix", "user_no", "native_chain"),
+                        "summary_refusal", "summary_fix", "user_no", "native_chain",
+                        "planted_precedent"),
                "stage": "str",
                "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
@@ -124,6 +125,15 @@ SCHEMA: dict[str, dict] = {
                      "session_transfer": ("session_file",),
                      "save_state": ("files_after_every_compaction",), "grade_phases": "bool",
                      "smoke_chain": "str", "smoke_phases": "int"},
+    "planted_precedent": {"model": "str", "provider": "str", "transport": "str",
+                         "route": "file", "manifest": "file", "baseline": "file",
+                         "histories": "list[str]", "arms": "list[str]",
+                         "planted_reps": "int", "honest_reps": "int",
+                         "historical_honest_reps": "int", "source_root": "str",
+                         "output_root": "str", "host": ("rig",),
+                         "project": ("different",), "start": ("compacted",),
+                         "smoke_history": "str", "stop_at_utc": "str",
+                         "bootstrap_reps": "int"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int",
@@ -135,6 +145,7 @@ KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "prece
                  "monitor_controls": "monitors", "exploit": "exploit",
                  "summary_refusal": "refusal",
                  "summary_fix": "summary_fix",
+                 "planted_precedent": "planted_precedent",
                  "user_no": "user_no",
                  "native_chain": "native_chain"}  # design.kind -> its own section
 # A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the

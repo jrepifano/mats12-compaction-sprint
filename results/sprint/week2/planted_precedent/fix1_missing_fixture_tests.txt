@@ -1,0 +1,219 @@
+........................................................................ [ 31%]
+...................ss................................................... [ 62%]
+..............F...F..............F..................F................... [ 94%]
+.............                                                            [100%]
+=================================== FAILURES ===================================
+_____________ test_empty_summary_fails_the_boundary_with_its_cost ______________
+
+    def test_empty_summary_fails_the_boundary_with_its_cost():
+        class Empty(M.StubModel):
+            def complete(self, messages, tools, max_tokens, *, purpose):
+                rep = super().complete(messages, tools, max_tokens, purpose=purpose)
+                if tools is None:  # the summarizer call: all reasoning, no text (order 3)
+                    rep.message["content"] = ""
+                    rep.finish_reason = "length"
+                    rep.usage.cost_usd = rep.cost_total_usd = 0.13
+                return rep
+    
+        msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"},
+                {"role": "assistant", "content": "a"}]
+        for policy in ("cc_prompt", "pi", "codex_local"):
+            with pytest.raises(M.ModelError, match="empty summary") as ei:
+>               K.compact(policy, msgs, Empty([]), run_id="r", instruction_text=None)
+
+tests/compaction/test_s2.py:1922: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/compaction/s2/compact.py:275: in compact
+    req = (RP.ARM_BUILDERS[policy](rec) if previous_summary is None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/compaction/s1_replay.py:756: in build_cc_prompt
+    ps = prompts_for("cc_prompt")
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+src/compaction/s1_replay.py:629: in prompts_for
+    return _cc_prompts(str(CC_CAPTURE))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/compaction/s1_replay.py:378: in _cc_prompts
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/spike_inspect_swe/captures/cc-deepseek-compact1-request.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/spike_inspect_swe/captures/cc-deepseek-compact1-request.json'
+
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1013: FileNotFoundError
+________ test_an_empty_summary_call_is_resent_before_the_boundary_fails ________
+
+    def test_an_empty_summary_call_is_resent_before_the_boundary_fails():
+        class EmptyThen(M.StubModel):
+            empties: int = 0
+            sent: int = 0
+    
+            def complete(self, messages, tools, max_tokens, *, purpose):
+                rep = super().complete(messages, tools, max_tokens, purpose=purpose)
+                self.sent += 1
+                rep.usage.cost_usd = rep.cost_total_usd = 0.1
+                if self.sent <= self.empties:
+                    rep.message["content"] = ""
+                    rep.finish_reason = "length"
+                return rep
+    
+        msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"}]
+        m = EmptyThen([])
+        m.empties = K.EMPTY_SUMMARY_TRIES - 1
+>       c = K.compact("cc_prompt", msgs, m, run_id="r", instruction_text=None)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/compaction/test_s2.py:2014: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/compaction/s2/compact.py:275: in compact
+    req = (RP.ARM_BUILDERS[policy](rec) if previous_summary is None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/compaction/s1_replay.py:756: in build_cc_prompt
+    ps = prompts_for("cc_prompt")
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+src/compaction/s1_replay.py:629: in prompts_for
+    return _cc_prompts(str(CC_CAPTURE))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/compaction/s1_replay.py:378: in _cc_prompts
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/spike_inspect_swe/captures/cc-deepseek-compact1-request.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/spike_inspect_swe/captures/cc-deepseek-compact1-request.json'
+
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1013: FileNotFoundError
+______________________ test_base_arm_secondary_in_docker _______________________
+
+tmp_path = PosixPath('/private/var/folders/5r/1yt1fts52qggxnxz6bnqx0140000gn/T/pytest-of-jacob/pytest-2874/test_base_arm_secondary_in_doc0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c5e58e0>
+
+    @pytest.mark.skipif(not _image_present(), reason=f"needs docker and {IMAGE}")
+    def test_base_arm_secondary_in_docker(tmp_path, monkeypatch):
+        from compaction.deepswe import sandbox as SB
+        from compaction.deepswe.sandbox import Invocation
+    
+        orig = SB.Sandbox.snapshot
+        if "labels" not in orig.__code__.co_varnames:  # until unit A's additive kwarg lands
+            monkeypatch.setattr(SB.Sandbox, "snapshot", lambda self, tag, labels=None: orig(self, tag))
+        monkeypatch.setattr(C, "PLATFORM", "linux/amd64")
+        task = IR.InteractTask(
+>           "fake", IR.task_info("koota-composite-trait-aspects"), PERSONA,
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            {"01_plan": "Plan with the maintainer; save /tmp/plan.md.",
+             "02_implement": "Read /tmp/plan.md first; implement; ask for review."}, "spec", "sha")
+
+tests/compaction/test_s2_interact_run.py:422: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/compaction/s2/tasks.py:129: in task_info
+    t = load_task(tdir)
+        ^^^^^^^^^^^^^^^
+src/compaction/deepswe/tasks.py:18: in load_task
+    t = tomllib.loads((d / "task.toml").read_text())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/deepswe/repo/tasks/koota-composite-trait-aspects/task.toml')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/deepswe/repo/tasks/koota-composite-trait-aspects/task.toml'
+
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1013: FileNotFoundError
+______________ test_resume_base_continues_from_the_kept_boundary _______________
+
+tmp_path = PosixPath('/private/var/folders/5r/1yt1fts52qggxnxz6bnqx0140000gn/T/pytest-of-jacob/pytest-2874/test_resume_base_continues_fro0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10ce5f410>
+
+    @pytest.mark.skipif(not _image_present(), reason=f"needs docker and {IMAGE}")
+    def test_resume_base_continues_from_the_kept_boundary(tmp_path, monkeypatch):
+        from compaction.deepswe import sandbox as SB
+        from compaction.deepswe.sandbox import Invocation
+    
+        orig = SB.Sandbox.snapshot
+        if "labels" not in orig.__code__.co_varnames:
+            monkeypatch.setattr(SB.Sandbox, "snapshot", lambda self, tag, labels=None: orig(self, tag))
+        monkeypatch.setattr(C, "PLATFORM", "linux/amd64")
+        task = IR.InteractTask(
+>           "fake", IR.task_info("koota-composite-trait-aspects"), PERSONA,
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            {"01_plan": "Plan with the maintainer; save /tmp/plan.md.",
+             "02_implement": "Read /tmp/plan.md first; implement; ask for review."}, "spec", "sha")
+
+tests/compaction/test_s2_interact_run.py:819: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/compaction/s2/tasks.py:129: in task_info
+    t = load_task(tdir)
+        ^^^^^^^^^^^^^^^
+src/compaction/deepswe/tasks.py:18: in load_task
+    t = tomllib.loads((d / "task.toml").read_text())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/deepswe/repo/tasks/koota-composite-trait-aspects/task.toml')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/deepswe/repo/tasks/koota-composite-trait-aspects/task.toml'
+
+/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py:1013: FileNotFoundError
+=========================== short test summary info ============================
+FAILED tests/compaction/test_s2.py::test_empty_summary_fails_the_boundary_with_its_cost
+FAILED tests/compaction/test_s2.py::test_an_empty_summary_call_is_resent_before_the_boundary_fails
+FAILED tests/compaction/test_s2_interact_run.py::test_base_arm_secondary_in_docker
+FAILED tests/compaction/test_s2_interact_run.py::test_resume_base_continues_from_the_kept_boundary
+4 failed, 223 passed, 2 skipped in 17.76s

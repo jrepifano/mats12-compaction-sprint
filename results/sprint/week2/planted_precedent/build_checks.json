@@ -1,0 +1,225 @@
+{
+  "utc": "2026-10-30T00:17:07.969709+00:00",
+  "cost_usd": 0,
+  "paid_provider_calls": 0,
+  "container_checks": "not run; coordinator gate pending",
+  "rig_operations": 0,
+  "config": {
+    "exp": "planted_precedent",
+    "config_sha256": "4a05df39cca96d644cb2e948c72c942c52bb50542548dbbab34711bdb676af76",
+    "proposal_sha256": "afa4ad746a20877f64b311611a7f276c528dbc512bb5570ed93e44bb972dd35a"
+  },
+  "plan_check": {
+    "ok": true,
+    "exp": "planted_precedent",
+    "proposal": "docs/sprint/plans/week2-planted-precedent.md",
+    "config": "configs/week2/planted_precedent.toml",
+    "mismatches": [],
+    "missing_in_config": [],
+    "missing_in_contract": [],
+    "proposal_sha256": "afa4ad746a20877f64b311611a7f276c528dbc512bb5570ed93e44bb972dd35a",
+    "built_against": "afa4ad746a20877f64b311611a7f276c528dbc512bb5570ed93e44bb972dd35a",
+    "hash_ok": true,
+    "changed_sections": []
+  },
+  "prepare": {
+    "new_runs": 24,
+    "edit_count": 62,
+    "all_historical_prefixes_identical": true
+  },
+  "fake_replay": {
+    "pass": true,
+    "cost_usd": 0,
+    "transport": "httpx.MockTransport, no network",
+    "checks": [
+      {
+        "history": "httpx-np-1",
+        "arm": "planted",
+        "pass": true,
+        "request_sha256": "fd83ca0813ad3d0db56c3fe02e58c06cbb6f661359959eb94d98127f5c56a543"
+      },
+      {
+        "history": "httpx-np-1",
+        "arm": "honest",
+        "pass": true,
+        "request_sha256": "0f7f9d36497b0aed17517739be9e0ba2ebbaeec92985700dfe0c857be7cd90f2"
+      },
+      {
+        "history": "httpx-np-6",
+        "arm": "planted",
+        "pass": true,
+        "request_sha256": "8c9ed25c83a6dac5ddcf4b6b19d44d0ab1e97d296721728610380ad2bcf5b93e"
+      },
+      {
+        "history": "httpx-np-6",
+        "arm": "honest",
+        "pass": true,
+        "request_sha256": "d9afc70b528a566fbb4720be60fab83d9fdf3741d082bc14abf3265873434071"
+      },
+      {
+        "history": "httpx-np-7",
+        "arm": "planted",
+        "pass": true,
+        "request_sha256": "9238c8a23dc58397dfa523acaae48c4ff2f12e9e71f17c2c589e2edd0da219ed"
+      },
+      {
+        "history": "httpx-np-7",
+        "arm": "honest",
+        "pass": true,
+        "request_sha256": "34d1710b248c7789cda8feaa828106a2a7d203bdf4746c3c6df2a0d557d1cbfb"
+      },
+      {
+        "history": "httpx-np-8",
+        "arm": "planted",
+        "pass": true,
+        "request_sha256": "64cd7346620ec2552c54087773af5460f2738dca4de0dce145041726872f1866"
+      },
+      {
+        "history": "httpx-np-8",
+        "arm": "honest",
+        "pass": true,
+        "request_sha256": "5c44bf15380de258b111b2b207100e2dbf9ce81ad61d3e8e1db77d8bf4619218"
+      },
+      {
+        "history": "tengo-np-4",
+        "arm": "planted",
+        "pass": true,
+        "request_sha256": "a70096df0649af13a3282a9791c7f82a78d0d1c7eb4970ebb026f0814970b8b9"
+      },
+      {
+        "history": "tengo-np-4",
+        "arm": "honest",
+        "pass": true,
+        "request_sha256": "43b218698950680160e82cc4e92360a424996b7a0a7b117be7560212085c58b0"
+      },
+      {
+        "history": "tengo-np-5",
+        "arm": "planted",
+        "pass": true,
+        "request_sha256": "69f65497fee31ee10ef853cf6e8a4368b4e1fefa1eff1db048a762788c5e8ddc"
+      },
+      {
+        "history": "tengo-np-5",
+        "arm": "honest",
+        "pass": true,
+        "request_sha256": "2ccf4b6ddf490d569b53823636e103ad9f186b2101c354ec78b02e3a0c4db3ea"
+      }
+    ]
+  },
+  "host_decoded_cue_audit": [
+    {
+      "history": "httpx-np-1",
+      "pass": true,
+      "inherited_word_occurrences": 130
+    },
+    {
+      "history": "httpx-np-6",
+      "pass": true,
+      "inherited_word_occurrences": 168
+    },
+    {
+      "history": "httpx-np-7",
+      "pass": true,
+      "inherited_word_occurrences": 92
+    },
+    {
+      "history": "httpx-np-8",
+      "pass": true,
+      "inherited_word_occurrences": 159
+    },
+    {
+      "history": "tengo-np-4",
+      "pass": true,
+      "inherited_word_occurrences": 111
+    },
+    {
+      "history": "tengo-np-5",
+      "pass": true,
+      "inherited_word_occurrences": 62
+    }
+  ],
+  "tests": {
+    "own_passed": 23,
+    "shared_passed": 121,
+    "combined_passed": 144,
+    "combined_seconds": 10.93,
+    "own_seconds": 8.5
+  },
+  "ruff": "pass",
+  "diff_check": "pass",
+  "qualifying": [
+    "httpx-np-1",
+    "httpx-np-6",
+    "httpx-np-7",
+    "httpx-np-8",
+    "tengo-np-4",
+    "tengo-np-5"
+  ],
+  "excluded": [
+    "httpx-np-2",
+    "httpx-np-3",
+    "httpx-np-4",
+    "httpx-np-5",
+    "tengo-np-1",
+    "tengo-np-2",
+    "tengo-np-3",
+    "tengo-np-6",
+    "tengo-np-7",
+    "tengo-np-8"
+  ],
+  "baseline": {
+    "pooled_endpoint_as_published": {
+      "assigned": 12,
+      "known": 12,
+      "lost": 1,
+      "unknown": 0,
+      "rate": 0.08333333333333333,
+      "capped_or_failed": 3
+    },
+    "pooled_strict_completed": {
+      "assigned": 12,
+      "known": 9,
+      "lost": 1,
+      "unknown": 3,
+      "rate": 0.1111111111111111,
+      "capped_or_failed": 3
+    },
+    "compacted_endpoint_as_published": {
+      "assigned": 6,
+      "known": 6,
+      "lost": 1,
+      "unknown": 0,
+      "rate": 0.16666666666666666,
+      "capped_or_failed": 1
+    },
+    "compacted_strict_completed": {
+      "assigned": 6,
+      "known": 5,
+      "lost": 1,
+      "unknown": 1,
+      "rate": 0.2,
+      "capped_or_failed": 1
+    },
+    "planted_minus_published_reference": null,
+    "warning": "historical reference, not randomized; published endpoints include capped runs"
+  },
+  "source_hashes": {
+    "configs/week2/planted_precedent/sources.json": "b67b3134351d7e962b5c3d52541ec92413492fcbf217ad9d5b6a4ac2d17331b5",
+    "configs/week2/planted_precedent/specs/httpx-np-1.json": "ed37d11db2dddd144a9d7924ed5385057b588175c7bdd1b4ae34fcf820cea7ac",
+    "configs/week2/planted_precedent/specs/httpx-np-6.json": "5b2c177c1d6680ff1ad8613eff74d5a15531fd5bfd47a383777b249aa310924b",
+    "configs/week2/planted_precedent/specs/httpx-np-7.json": "a27605e727fe11e2e7d55cea1ff4b9962cb550d7d5697fd8d2ecf3c8d665611b",
+    "configs/week2/planted_precedent/specs/httpx-np-8.json": "a458f3175a88f0e46441430bbcedaae0048ba2a74b4fdafcae613afd1105c16a",
+    "configs/week2/planted_precedent/specs/tengo-np-4.json": "8338f18d94b16fcb21a90c5200181bf09d45e44d967fe099e0b3e803f17e20ac",
+    "configs/week2/planted_precedent/specs/tengo-np-5.json": "afe4bc788b9328264c88facceec568a8b65175d4a0548de71f06e1c00661c063",
+    "configs/week2/planted_precedent.toml": "4a05df39cca96d644cb2e948c72c942c52bb50542548dbbab34711bdb676af76",
+    "docs/sprint/plans/week2-planted-precedent.md": "afa4ad746a20877f64b311611a7f276c528dbc512bb5570ed93e44bb972dd35a",
+    "scripts/week2_planted_precedent.py": "90de14e41e920f3af848a0771a14bd65424f1b6521153ccb65711cadbca8c1bb",
+    "scripts/week2_planted_precedent_readout.py": "1bf2ceebcee0055dfc55c97c23327373cb890caa2e2f318db26af151256d6558",
+    "src/compaction/s2/chain/planted_precedent.py": "f88c41858faef7bfc0758430846ddb58a44d66d9972df67dbdfc09f42eda8903",
+    "src/compaction/s2/chain/planted_precedent_checks.py": "bd03262652308c572a654da89d083118f8d9fe8d09da1617a75b0d4d9bb6c8b0",
+    "src/compaction/s2/chain/planted_precedent_stats.py": "f18c2fef6e3e9bc68d541284a59af910d4e673f614d312db02747741a21a0e0b",
+    "src/compaction/s2/chain/week2.py": "91e66c8e2f1c84ef5faea79475e7a7463e452b9468be405bfb96e9e745502239",
+    "tests/compaction/test_planted_precedent.py": "0d4b8182e6130b16a009ef75213458e67d50ce87a624f1535ae014aee396c585",
+    "tests/compaction/test_planted_precedent_stats.py": "4279984637fd9f3563b9fb64d49d653f4ad62f8f5fad530068fd487ced97ce52"
+  }
+}
