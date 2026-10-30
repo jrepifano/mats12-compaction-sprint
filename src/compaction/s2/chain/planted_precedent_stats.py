@@ -17,6 +17,7 @@ import numpy as np
 
 from compaction.s2.chain import reasoning as R
 from compaction.s2.chain import score as S
+from compaction.s2.chain.readout import CAPPED
 
 
 def outcome(row: dict):
@@ -31,17 +32,17 @@ def rate(rows: list[dict], strict: bool = True) -> dict:
     vs = [outcome(x) if strict else x.get("teammate_lost") for x in rows]
     known = [x for x in vs if type(x) is bool]
     lost = sum(known)
+    capped = sum(x.get("end") in CAPPED for x in rows)
+    failed = sum(x.get("end") == "failed" for x in rows)
     return {
         "assigned": len(rows),
         "known": len(known),
         "lost": lost,
         "unknown": len(rows) - len(known),
         "rate": lost / len(known) if known else None,
-        "capped_or_failed": sum(
-            x.get("end")
-            in ("failed", "capped_calls", "capped_cost", "capped_time", "capped_window")
-            for x in rows
-        ),
+        "capped": capped,
+        "failed": failed,
+        "capped_or_failed": capped + failed,
         "pending_or_unstarted": sum(not x.get("end") for x in rows),
         "interrupted": sum(x.get("end") in ("stopped", "stage_cap") for x in rows),
     }
@@ -87,6 +88,47 @@ def paired(groups: list[tuple[list[dict], list[dict]]], seed: int, draws: int) -
         "bootstrap_draws": draws,
         "planned_smallest_two_sided_p": 2 / (2 ** len(groups)) if groups else None,
         "smallest_possible_two_sided_p": 2 / (2 ** len(diffs)) if diffs else None,
+    }
+
+
+def known_run_history_secondary(groups, histories, seed: int, draws: int) -> dict:
+    """Post-wave-1 secondary: equal history weights, at least one known run per arm."""
+    eligible, per_history = [], []
+    for history, (planted, honest) in zip(histories, groups, strict=True):
+        known = [[x for x in arm if outcome(x) is not None] for arm in (planted, honest)]
+        included = all(known)
+        if included:
+            eligible.append(tuple(known))
+        p, h = rate(planted), rate(honest)
+        per_history.append(
+            {
+                "history": history,
+                "included": included,
+                "planted": {"known": p["known"], "assigned": p["assigned"], "mean": p["rate"]},
+                "honest_new": {"known": h["known"], "assigned": h["assigned"], "mean": h["rate"]},
+                "difference": p["rate"] - h["rate"] if included else None,
+            }
+        )
+    # Reuse the primary's history bootstrap/sign-flip implementation on the known
+    # observations only; the primary still receives the original assigned groups.
+    inference = paired(eligible, seed, draws)
+    return {
+        "label": "history means over known runs (Advisor, 30 Oct, after wave 1; not preregistered)",
+        **{
+            k: inference[k]
+            for k in (
+                "difference",
+                "ci95",
+                "exact_sign_flip_p",
+                "differences",
+                "seed",
+                "bootstrap_draws",
+            )
+        },
+        "n_histories": len(eligible),
+        "assigned_histories": len(groups),
+        "per_history": per_history,
+        "interval_method": "percentile bootstrap of whole histories with at least one known new run in each arm",
     }
 
 
@@ -163,6 +205,9 @@ def analyze(rows: list[dict], cfg: dict, baseline_rows: list[dict], keeper_ids: 
     ref = rate(baseline, strict=False)
     return {
         "primary": paired(fresh, cfg["design"]["seed"], p["bootstrap_reps"]),
+        "known_run_history_secondary": known_run_history_secondary(
+            fresh, hs, cfg["design"]["seed"], p["bootstrap_reps"]
+        ),
         "historical_pooled_sensitivity": paired(pooled, cfg["design"]["seed"], p["bootstrap_reps"]),
         "arms": {
             "planted": planted,

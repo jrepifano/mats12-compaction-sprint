@@ -124,6 +124,7 @@ def write_readout(cfg: dict, raw: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     (out / "readout.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     p = result["primary"]
+    known = result["known_run_history_secondary"]
 
     def pc(x):
         return "unknown" if x is None else f"{100 * x:.1f}%"
@@ -135,16 +136,31 @@ def write_readout(cfg: dict, raw: Path, out: Path) -> dict:
         + f". Complete histories: {p['complete_histories']}/{p['assigned_histories']}. Exact two-sided sign-flip p: {p['exact_sign_flip_p']}.\n",
         f"Analyzed-sample minimum two-sided p: {p['smallest_possible_two_sided_p']}; planned minimum: {p['planned_smallest_two_sided_p']}.\n",
         "Two new runs per arm per history; the historical honest observation is separate and used in a pooled sensitivity. Six histories have minimum possible two-sided sign-flip p 0.03125. Unknown/failed/capped slots are not coded as kept.\n",
-        "| Arm | Lost / known | Unknown / assigned | Pending | Capped/failed | Interrupted | Rate |\n|---|---:|---:|---:|---:|---:|---:|",
+        "Missing-outcome bounds on the all-history fresh contrast: "
+        + " to ".join(pc(x) for x in p["missing_outcome_bounds"])
+        + ".\n",
+        f"## Secondary: {known['label']}\n",
+        f"**Edited minus new honest: {pc(known['difference'])}.** 95% whole-history percentile bootstrap interval: "
+        + ("unavailable" if known["ci95"] is None else " to ".join(pc(x) for x in known["ci95"]))
+        + f". Histories with known runs in both arms: {known['n_histories']}/{known['assigned_histories']}. Exact two-sided sign-flip p: {known['exact_sign_flip_p']}.\n",
+        "This secondary was added after wave 1 because two histories each had one capped run.\n",
+        "Each history has equal weight; each arm mean uses its known new runs across both replicates, with caps, failures and interruptions unknown. Histories need at least one known run per arm.\n",
+        "| History | Planted known / assigned | Honest known / assigned | Included |\n|---|---:|---:|---|",
+    ]
+    for x in known["per_history"]:
+        a, b = x["planted"], x["honest_new"]
+        lines.append(
+            f"| {x['history']} | {a['known']}/{a['assigned']} | {b['known']}/{b['assigned']} | {'yes' if x['included'] else 'no'} |"
+        )
+    lines += [
+        "\n## Per-arm outcomes\n",
+        "| Arm | Lost / known | Unknown / assigned | Pending | Capped | Failed | Capped/failed | Interrupted | Rate |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for arm, x in result["arms"].items():
         lines.append(
-            f"| {arm} | {x['lost']}/{x['known']} | {x['unknown']}/{x['assigned']} | {x['pending_or_unstarted']} | {x['capped_or_failed']} | {x['interrupted']} | {pc(x['rate'])} |"
+            f"| {arm} | {x['lost']}/{x['known']} | {x['unknown']}/{x['assigned']} | {x['pending_or_unstarted']} | {x['capped']} | {x['failed']} | {x['capped_or_failed']} | {x['interrupted']} | {pc(x['rate'])} |"
         )
     lines += [
-        "\nMissing-outcome bounds on the all-history fresh contrast: "
-        + " to ".join(pc(x) for x in p["missing_outcome_bounds"])
-        + ".\n",
         "Historical-pooled sensitivity (two edited vs all three honest): "
         + pc(result["historical_pooled_sensitivity"]["difference"])
         + ".\n",

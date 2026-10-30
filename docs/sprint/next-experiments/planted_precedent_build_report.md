@@ -192,6 +192,8 @@ Remaining operational work: coordinator adjudications, live cue/stub gates, then
 
 ## Fix round 3
 
+Advisor readout addition (30 Oct, after wave 1; not preregistered): added the labelled known-new-run history-mean secondary with equal history weights, 95% whole-history bootstrap and exact sign-flip inference, per-history known/assigned counts, and separate capped/failed arm counts retaining their total; the complete-history primary and missing-outcome bounds are unchanged, all 85 planted tests and ruff pass at $0, and production readout artifacts were not regenerated.
+
 Fix 3b: an absent root smoke gate now regates from intact validated smoke evidence with `original: null` and the requested `original_missing` note (also retained on repeat regates); a different-fingerprint original still refuses, all other checks are unchanged, and all 81 planted tests plus ruff pass at $0.
 
 Review r1 fix: smoke now requires `cleanup_unconfirmed == []`; missing/null evidence fails smoke and regate, the older fake scheduler fixture explicitly records cleanup, and all 79 planted tests plus ruff pass at $0; go is unchanged.

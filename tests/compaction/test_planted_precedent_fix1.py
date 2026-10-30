@@ -150,7 +150,12 @@ def test_complete_smoke_gate_then_bulk_without_network(cli, tmp_path, monkeypatc
             out.mkdir(parents=True)
             kwargs["model_for"]("B", out)[0].complete([], L.TOOLS, 1, purpose="B:fake:1")
             SE.dump(out / "result.json", {"end": SE.END_SUBMIT, "n_calls": 1, "cost_usd": 0})
-            st["b"][b.id] = {"state": "done", "dir": str(out), "end": SE.END_SUBMIT}
+            st["b"][b.id] = {
+                "state": "done",
+                "dir": str(out),
+                "end": SE.END_SUBMIT,
+                "cleanup_unconfirmed": [],
+            }
         D.save_state(st)
         return {b.id: "done" for b in runs}
 
