@@ -1,0 +1,187 @@
+{
+ "n_summaries": 1,
+ "n_entries": 46,
+ "excluded_structure_lines": {
+  "heading": 12,
+  "separator": 1,
+  "bold_heading": 1
+ },
+ "n_excluded_structure_lines": 14,
+ "missing_boundaries": [
+  {
+   "chain": "u1",
+   "boundary": 1,
+   "logged": false
+  },
+  {
+   "chain": "u1",
+   "boundary": 3,
+   "logged": false
+  },
+  {
+   "chain": "u1",
+   "boundary": 4,
+   "logged": false
+  },
+  {
+   "chain": "u2",
+   "boundary": 1,
+   "logged": false
+  },
+  {
+   "chain": "u2",
+   "boundary": 2,
+   "logged": false
+  },
+  {
+   "chain": "u2",
+   "boundary": 3,
+   "logged": false
+  },
+  {
+   "chain": "u2",
+   "boundary": 4,
+   "logged": false
+  },
+  {
+   "chain": "u3",
+   "boundary": 1,
+   "logged": false
+  },
+  {
+   "chain": "u3",
+   "boundary": 2,
+   "logged": false
+  },
+  {
+   "chain": "u3",
+   "boundary": 3,
+   "logged": false
+  },
+  {
+   "chain": "u3",
+   "boundary": 4,
+   "logged": false
+  },
+  {
+   "chain": "u4",
+   "boundary": 1,
+   "logged": false
+  },
+  {
+   "chain": "u4",
+   "boundary": 2,
+   "logged": false
+  },
+  {
+   "chain": "u4",
+   "boundary": 3,
+   "logged": false
+  },
+  {
+   "chain": "u4",
+   "boundary": 4,
+   "logged": false
+  }
+ ],
+ "opus_pending": [],
+ "opus_failed_summaries": [],
+ "n_unlabelled_entries": 0,
+ "opus_stats": {
+  "calls_requested": 1,
+  "runs": [
+   {
+    "n_sent": 2,
+    "tokens": {
+     "input": 4895,
+     "output": 1158,
+     "cache_read": 963,
+     "cache_write": 3928,
+     "thinking": 94
+    },
+    "notional_usd": 0.054793,
+    "limit_waits": 0,
+    "usage_unknown": 0,
+    "route": "verified",
+    "errors": {}
+   }
+  ]
+ },
+ "model": "claude-opus-5-5",
+ "ledger_exp": "SPRINT-S2-CHAIN-STRESS",
+ "summaries": [
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "kind": "boundary",
+   "k": 2,
+   "file": "data/raw/sprint/s2/summary_swap/high/chains/u1/p2/compaction.json",
+   "summary_sha256": "34f13461054e2760b85b7ad4036c6c4100a2123c8b6f620fceb4f7b3ab9f19da",
+   "update": true,
+   "n_entries": 46,
+   "excluded": {
+    "heading": 12,
+    "separator": 1,
+    "bold_heading": 1
+   },
+   "excluded_headings_with_task_ids": [],
+   "tasks": [
+    {
+     "n": 1,
+     "task_id": "drizzle-orm-window-function-builders",
+     "repo": "drizzle-orm",
+     "tag": "DRZ-712"
+    },
+    {
+     "n": 2,
+     "task_id": "oxvg-structural-selector-preservation",
+     "repo": "oxvg",
+     "tag": "OXV-203"
+    }
+   ],
+   "identifiers": {
+    "1": [
+     "tag:DRZ-712",
+     "task_id:drizzle-orm-window-function-builders",
+     "branch:feature/window-function-builders",
+     "slug:window-function-builders",
+     "repo:drizzle-orm",
+     "repo:drizzle",
+     "package:drizzle-arktype",
+     "package:drizzle-kit",
+     "package:drizzle-root",
+     "package:drizzle-seed",
+     "package:drizzle-typebox",
+     "package:drizzle-valibot",
+     "package:drizzle-zod",
+     "package:eslint-plugin-drizzle"
+    ],
+    "2": [
+     "tag:OXV-203",
+     "task_id:oxvg-structural-selector-preservation",
+     "branch:feature/structural-selector-preservation",
+     "slug:structural-selector-preservation",
+     "repo:oxvg",
+     "package:@oxvg/napi",
+     "package:@oxvg/oxvg",
+     "package:@oxvg/wasm",
+     "package:oxvg_actions",
+     "package:oxvg_ast",
+     "package:oxvg_collections",
+     "package:oxvg_lint",
+     "package:oxvg_napi",
+     "package:oxvg_optimiser",
+     "package:oxvg_parse",
+     "package:oxvg_path",
+     "package:oxvg_serialize",
+     "package:oxvg_wasm"
+    ]
+   },
+   "opus": {
+    "error": null,
+    "attempts": 1,
+    "model": "claude-opus-5-5"
+   }
+  }
+ ]
+}
