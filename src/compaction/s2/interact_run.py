@@ -158,7 +158,7 @@ def _registry(ledger=None) -> dict[str, dict]:
     return out
 
 
-def tag_totals(tag: str, *, ledger=None, caps_file=None) -> tuple[float, float]:
+def tag_totals(tag: str, *, ledger=None, caps_file=None, stage=C.INTERACT_STAGE) -> tuple[float, float]:
     """(charged, held) for `tag` (astra build r1 #2). The pilot's own reservations are listed
     in a durable registry with their tags at reserve time; each counts at its full amount
     while open in budget's state, and at its closing event's charge once closed (settle,
@@ -190,7 +190,7 @@ def tag_totals(tag: str, *, ledger=None, caps_file=None) -> tuple[float, float]:
             except ValueError:
                 continue
             note = str(row.get("note") or "")
-            if (row.get("exp") == C.INTERACT_STAGE and tag in note
+            if (row.get("exp") == stage and tag in note
                     and budget.MARK not in note):
                 charged += float(row.get("usd") or 0.0)
     return charged, held
@@ -225,7 +225,7 @@ class PilotSpend:
                 cap = self.caps.get(tag)
                 if cap is None:
                     continue
-                charged, held = tag_totals(tag, ledger=self.ledger, caps_file=self.caps_file)
+                charged, held = tag_totals(tag, ledger=self.ledger, caps_file=self.caps_file, stage=self.stage)
                 if charged + held + usd > cap + 1e-9:
                     raise StageCapReached(f"{tag}: charged ${charged:.4f} + held ${held:.4f} + "
                                           f"${usd:.4f} exceeds ${cap:.2f}")

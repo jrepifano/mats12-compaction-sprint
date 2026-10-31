@@ -70,8 +70,9 @@ DEFAULT_CACHE_DIR = REPO_ROOT / "data" / "raw" / "sprint" / "s1" / "cache" / "ha
 DEFAULT_USAGE_PATH = REPO_ROOT / "data" / "raw" / "sprint" / "s1" / "usage" / "max_usage.jsonl"
 CLAUDE_BIN_ENV = "CLAUDE_HEADLESS_BIN"  # override of the executable (default: `claude` on PATH)
 
-# Managed (policy) settings Claude Code honours on macOS; module constants so tests can override.
-MANAGED_DIR = Path("/Library/Application Support/ClaudeCode")
+# Platform policy roots; Linux desktop calls must inspect Linux policy, not invoke macOS defaults.
+MANAGED_DIR = Path("/Library/Application Support/ClaudeCode" if sys.platform == "darwin"
+                   else "/etc/claude-code")
 MANAGED_SETTINGS_FILES: tuple[Path, ...] = (
     MANAGED_DIR / "managed-settings.json",
     MANAGED_DIR / "managed-mcp.json",
@@ -84,9 +85,10 @@ MANAGED_PLIST_PATHS: tuple[Path, ...] = (
     Path("/Library/Managed Preferences")
     / os.environ.get("USER", "")
     / f"{MANAGED_DEFAULTS_DOMAIN}.plist",
-)
+) if sys.platform == "darwin" else ()
 # `defaults export` prints an empty plist (rc 0) for a domain that doesn't exist
-MANAGED_DEFAULTS_CMD: tuple[str, ...] | None = ("defaults", "export", MANAGED_DEFAULTS_DOMAIN, "-")
+MANAGED_DEFAULTS_CMD: tuple[str, ...] | None = (
+    ("defaults", "export", MANAGED_DEFAULTS_DOMAIN, "-") if sys.platform == "darwin" else None)
 
 DEFAULT_TIMEOUT_S = 1800.0
 KILL_GRACE_S = 5.0  # SIGTERM -> SIGKILL

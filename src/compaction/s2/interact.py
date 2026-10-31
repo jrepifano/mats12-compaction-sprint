@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from compaction.s2.model import ChatModel, ModelError, RunCapReached
+from compaction.s2.planting import NO_RESTATEMENT, UNCHANGED, PlantingSchedule
 
 UPSTREAM = "scaleapi/SWE-Interact@b32f98c3b8f76ca65e84341d1f30e5af7135f85d"
 NOSHIM = "export TRAPS_SHIM_DISABLE=1; "
@@ -416,10 +417,22 @@ class UserSim:
     # unchanged): per ask its auto-snapshot as sent, per repo tool call its arguments and output
     io: list[dict] = field(default_factory=list)
     purpose: str = "sim"
+    planting: PlantingSchedule | None = None
 
     @property
     def system_prompt(self) -> str:
-        return SYSTEM_PREFIX + self.persona
+        return SYSTEM_PREFIX + self.persona + (NO_RESTATEMENT if self.planting is not None else "")
+
+    def set_delivery_context(self, *, stage=UNCHANGED, cumulative_tokens=UNCHANGED) -> None:
+        if self.planting is not None:
+            self.planting.set_context(stage=stage, cumulative_tokens=cumulative_tokens)
+
+    def record_compaction(self, k: int, *, pre_tokens: int | None,
+                          cumulative_tokens: int | None = None) -> dict | None:
+        if self.planting is None:
+            return None
+        return self.planting.record_compaction(k, pre_tokens=pre_tokens,
+                                              cumulative_tokens=cumulative_tokens)
 
     def snapshot_message(self, question: str) -> dict | None:
         if not should_auto_inspect(question):
@@ -514,15 +527,27 @@ class UserSim:
                         "content": snap["content"] if snap else None})
         self.state.conversation.append({"role": "user", "content": question})
         text = self._with_tools(messages)
+        audit = {}
+        if self.planting is not None:
+            text, audit = self.planting.apply(text, call_index=i)
         self.state.conversation.append({"role": "assistant", "content": text})
         self.ask_log.append({"event": "ask_user_finish", "call_index": i, "question": question,
-                             "reply": text})
+                             "reply": text, **copy.deepcopy(audit)})
+        if self.planting is not None:
+            self.io.append({"call_index": i, "kind": "reply", "reply": text,
+                            **copy.deepcopy(audit)})
         return text
 
     # --- fork ------------------------------------------------------------------------------
     def export(self) -> dict:
-        return {"upstream": UPSTREAM, "config": asdict(self.config),
-                "persona_sha256": sha256(self.persona), "state": self.state.to_dict()}
+        exported = {"upstream": UPSTREAM, "config": asdict(self.config),
+                    "persona_sha256": sha256(self.persona), "state": self.state.to_dict()}
+        if self.planting is not None:
+            # Cumulative by design for exact planting provenance. Native probe scoring uses
+            # its window event stream, never these inherited rows as new actions.
+            exported.update(ask_log=copy.deepcopy(self.ask_log), io=copy.deepcopy(self.io),
+                            planting=self.planting.export())
+        return exported
 
     @classmethod
     def restore(cls, exported: dict, persona: str, model: ChatModel, runner: Runner,
@@ -530,7 +555,11 @@ class UserSim:
         if sha256(persona) != exported["persona_sha256"]:
             raise ValueError("persona differs from the exported simulator's")
         return cls(persona, model, runner, SimState.from_dict(exported["state"]),
-                   SimConfig(**exported["config"]), purpose=purpose)
+                   SimConfig(**exported["config"]),
+                   ask_log=copy.deepcopy(exported.get("ask_log", [])),
+                   io=copy.deepcopy(exported.get("io", [])), purpose=purpose,
+                   planting=(PlantingSchedule.restore(exported["planting"])
+                             if exported.get("planting") is not None else None))
 
 
 # ------------------------------------------------------------------------------------------

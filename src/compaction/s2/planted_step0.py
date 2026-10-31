@@ -1,0 +1,458 @@
+"""Offline boundary census and explicitly gated, zero-simulator Step 0.
+
+Nothing runs at import or discovery time. Every live attempt is durably reserved
+before launch; failures and interrupted continuations consume their allocation.
+"""
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+import shutil
+import time
+from collections.abc import Callable
+from dataclasses import replace
+from datetime import datetime
+from pathlib import Path
+
+from compaction.s2 import config as C
+from compaction.s2 import planted_score as S
+from compaction.s2.native import claude_code as CC
+from compaction.s2.native import common as N
+from compaction.s2.planted_config import (
+    MAX_CALLS,
+    PROBE_WINDOW,
+    WINDOW,
+    ActiveCohort,
+    ForkBudget,
+    part_b_tasks,
+    runtime_tasks,
+    task_order,
+)
+from compaction.s2.planted_retention import digest
+
+DEFAULT_CORPUS = C.REPO_ROOT.parent / "sprint-prep/data/raw/sprint/s2/native/claude_code"
+RATE_MAX_AGE_S = 300
+INITIAL_MAX_RESET = datetime.fromisoformat("2026-10-26T00:00:00+00:00").timestamp()
+
+
+def read(path: Path):
+    return json.loads(Path(path).read_text())
+
+
+def write(path: Path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+    tmp.replace(path)
+
+
+def inspect_boundary(bdir: Path) -> dict:
+    """Strict offline eligibility; kept-image existence/fork_check remain pending."""
+    bdir = Path(bdir)
+    problems, hashes = [], {}
+    b = {}
+    try:
+        b = N.reclassify_harness_quiescence(read(bdir / "boundary/boundary.json"))
+        for field in ("tag", "native_summary_uuid", "fingerprint_sha256", "sim_probe_sha256"):
+            if not b.get(field):
+                problems.append(f"missing {field}")
+        if b.get("quiescent") is not True:
+            problems.append("not_quiescent")
+        if b.get("services_running"):
+            problems.append("entrypoint_services")
+        if b.get("ineligible_reason"):
+            problems.append(str(b["ineligible_reason"]))
+        if b.get("stage") != "02_implement":
+            problems.append("not_implementation_boundary")
+        for rel in ("boundary/boundary.json", "boundary/sim_state.json", "boundary/compaction.json",
+                    "boundary/pre_messages.json", "boundary/post_messages.json",
+                    "native/transcript.jsonl", "native/hook_payload.json",
+                    "../run.json"):
+            path = bdir / rel
+            raw_bytes = path.read_bytes()
+            raw = raw_bytes.decode()
+            hashes[rel] = hashlib.sha256(raw_bytes).hexdigest()
+            if rel.endswith(".jsonl"):
+                rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+                if any(not isinstance(row, dict) for row in rows):
+                    raise ValueError("native transcript rows must be objects")
+                hits = [r for r in rows if r.get("uuid") == b.get("native_summary_uuid")]
+                if (len(hits) != 1 or not isinstance(hits[0].get("message"), dict)
+                        or not isinstance(hits[0]["message"].get("content"), str)):
+                    problems.append("summary_missing_or_ambiguous")
+                ids = [r["uuid"] for r in rows if r.get("uuid")]
+                if len(ids) != len(set(ids)):
+                    problems.append("duplicate_transcript_uuid")
+                if any(r.get("parentUuid") and r["parentUuid"] not in ids for r in rows):
+                    problems.append("broken_transcript_parent_link")
+                converted = CC.transcript_boundary(rows, b["boundary_in_session"],
+                                                   model=b["model"], step_instruction="")
+                for name, rebuilt in (("pre_messages", converted.nb.pre_messages),
+                                      ("post_messages", converted.nb.post_messages)):
+                    if rebuilt != read(bdir / f"boundary/{name}.json"):
+                        problems.append(f"rebuilt_{name}_mismatch")
+                if converted.nb.summary != read(bdir / "boundary/compaction.json")["summary"]:
+                    problems.append("rebuilt_summary_mismatch")
+                if len(hits) == 1:
+                    hook = read(bdir / "native/hook_payload.json")
+                    # Validate the exact insertion anchor before reserving any fork.
+                    CC.insert_summary_lines(hits[0]["message"]["content"],
+                                            hook["compact_summary"], ["offline-anchor-check"])
+            else:
+                json.loads(raw)
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        problems.append(f"invalid_boundary: {exc}")
+    return {"boundary": str(bdir.resolve()), "offline_eligible": not problems,
+            "problems": sorted(set(problems)), "image": b.get("tag"),
+            "image_check": "pending_live", "fork_check": "pending_live",
+            "reclassification": b.get("quiescence_reclassification"),
+            "exempted_processes": b.get("harness_exempted_processes", []),
+            "pre_tokens": b.get("pre_tokens"), "hashes": hashes}
+
+
+def snapshot_boundary(bdir: Path, destination: Path, *, expected_hashes: dict | None = None) -> Path:
+    """Private launch copy with audited metadata correction; source stays byte-identical."""
+    copied = destination / bdir.parent.name / bdir.name
+    for folder in ("boundary", "native"):
+        shutil.copytree(bdir / folder, copied / folder)
+    shutil.copy2(bdir.parent / "run.json", copied.parent / "run.json")
+    for rel, expected in (expected_hashes or {}).items():
+        if hashlib.sha256((copied / rel).read_bytes()).hexdigest() != expected:
+            raise ValueError(f"source changed between census and snapshot: {rel}")
+    original_sha = hashlib.sha256((copied / "boundary/boundary.json").read_bytes()).hexdigest()
+    original = read(copied / "boundary/boundary.json")
+    effective = N.reclassify_harness_quiescence(original)
+    write(copied / "boundary/boundary.json", effective)
+    write(copied.parent / "source_provenance.json", {"original": str(bdir.resolve()),
+          "original_metadata_sha256": original_sha,
+          "effective_metadata_sha256": hashlib.sha256((copied / "boundary/boundary.json").read_bytes()).hexdigest(),
+          "reclassification": effective.get("quiescence_reclassification")})
+    return copied
+
+
+def discover(corpus: Path = DEFAULT_CORPUS) -> dict:
+    order = task_order()
+    cohort = ActiveCohort().state()
+    active = cohort["active_cohort"]
+    tasks = []
+    for index, task_id in enumerate(order):
+        boundaries = [inspect_boundary(p) for p in sorted(Path(corpus).glob(f"{task_id}*/b*"))
+                      if p.is_dir() and p.name[1:].isdigit()]
+        tasks.append({"task_id": task_id, "initial_cohort": index < 3,
+                      "active_cohort": task_id in active, "part_b_cohort": task_id in part_b_tasks(active),
+                      "boundaries": boundaries,
+                      "offline_eligible_count": sum(b["offline_eligible"] for b in boundaries)})
+    return {"schema": 1, "corpus": str(Path(corpus).resolve()), "task_order": order,
+            "selected_tasks": active, "tasks": tasks,
+            "eligible_selected_tasks": sum(t["active_cohort"] and t["offline_eligible_count"] > 0
+                                           for t in tasks),
+            "live_checks_performed": False, "replacements": cohort["replacements"]}
+
+
+def _window_hold(rate: dict, now: float):
+    # Reuse the audited native launcher rule without executing its CLI.
+    path = C.REPO_ROOT / "scripts/s2_native.py"
+    spec = importlib.util.spec_from_file_location("_planted_native_launch", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.window_hold(rate, now)
+
+
+def guard_rate(snapshot: dict, *, now: float, hold: Callable = _window_hold) -> dict:
+    observed = snapshot.get("observed_at")
+    if not isinstance(observed, (int, float)) or not 0 <= now - observed <= RATE_MAX_AGE_S:
+        raise ValueError("fresh Max rate snapshot required (observed_at epoch, at most 300 seconds old)")
+    rate = snapshot.get("rate_limit_info") or {}
+    if not rate or not (rate.get("unifiedWindows") or rate.get("rateLimitType")):
+        raise ValueError("Max rate snapshot has no known window")
+    why, wait = hold(rate, now)
+    if why:
+        raise ValueError(f"Max window hold: {why}; wait at least {wait:.0f}s")
+    windows = rate.get("unifiedWindows") or {rate.get("rateLimitType"): rate}
+    seven_day = windows.get("seven_day") or {}
+    if not isinstance(seven_day.get("utilization"), (int, float)) or float(seven_day.get("resetsAt") or 0) <= now:
+        raise ValueError("Max rate snapshot has no active measured seven-day window")
+    if now < INITIAL_MAX_RESET and seven_day["utilization"] >= .87:
+        raise ValueError("Step 0 before the initial Max reset requires utilization below 87%")
+    return snapshot
+
+
+def _usage(result: dict, before: dict, observed_at: float) -> dict:
+    step = next(iter((result.get("steps") or {}).values()), {})
+    rate = result.get("rate_limit") or step.get("rate_limit") or {}
+    info = rate.get("rate_limit_info") or {}
+    body = result.get("result") or step.get("result") or {}
+    tokens = result.get("token_usage") or step.get("token_usage") or body.get("usage") or body.get("modelUsage") or {}
+    arrival = rate.get("observed_at")
+    def seven_day(value):
+        details = value.get("rate_limit_info") or {}
+        return (details.get("unifiedWindows") or {}).get("seven_day") or (
+            details if details.get("rateLimitType") == "seven_day" else {})
+    after = {"observed_at": arrival, "rate_limit_info": info}
+    pre, post = seven_day(before), seven_day(after)
+    same_window = bool(pre.get("resetsAt")) and pre.get("resetsAt") == post.get("resetsAt")
+    delta = post.get("utilization", 0) - pre.get("utilization", 0) if same_window else None
+    return {"before": before, "after": after, "recorded_at": observed_at,
+            "tokens": tokens, "native_response_count": tokens.get("responses"),
+            "cli_num_turns": body.get("num_turns"),
+            "known": bool(info) and bool(tokens) and isinstance(arrival, (int, float)),
+            "same_window": same_window, "seven_day_utilization_delta": delta,
+            "delta_scope": "shared Max window; includes concurrent sessions"}
+
+
+def _terminal(result: dict) -> str | None:
+    terminal = result.get("outcome") or result.get("end")
+    return "submission" if terminal == "submitted" else terminal
+
+
+def _observations(result: dict, scores: dict | None = None) -> dict:
+    """Behavioral observations are not capture or compliance prerequisites."""
+    return {"terminal": _terminal(result), "captured_ask": bool(result.get("captured_asks")),
+            "verification_output_observed": bool((scores or {}).get("verification_output", {})
+                                                 .get("evidence", {}).get("last_output_line"))}
+
+
+def _checks(result: dict) -> dict:
+    terminal = _terminal(result)
+    return {"restore": (result.get("fork_check") or {}).get("ok") is True,
+            "ask_capture_consistent": bool(result.get("captured_asks")) == (terminal == "ask_user"),
+            "zero_simulator": result.get("sim_calls") == 0 and result.get("sim_cost_usd") == 0,
+            "cleanup": "cleanup_unconfirmed" in result and result["cleanup_unconfirmed"] in (False, []),
+            "no_error": not any(result.get(key) for key in ("error", "auth_error", "policy_stop", "paid_route")),
+            "terminal_stop": terminal in {"ask_user", "submission", "call_cap"}}
+
+
+def aggregate_step0(reports: list[dict], *, required_pairs: int = 1) -> dict:
+    """Gate one operation; capture coverage is shared, but failed pairs never disappear.
+
+    Only this operation's pair reports count. Prior smoke runs cannot supply its ask.
+    A pair-local PASS alone cannot authorize progression to the sensitivity screen.
+    """
+    if type(required_pairs) is not int or required_pairs not in (1, 2):
+        raise ValueError("Step 0 requires one or two pairs")
+    captures, verdicts, pair_valid, failures = [], set(), [], []
+    for index, report in enumerate(reports):
+        pair = {"pair_index": index, "attempt": report.get("attempt")}
+        # Recompute from evidence/checks, not the old per-pair capture status. This also
+        # permits explicitly labelled offline counterfactuals without rewriting old reports.
+        valid = not report.get("error") and not report.get("withheld")
+        for field in ("error", "withheld"):
+            if report.get(field):
+                failures.append({**pair, "runner": "pair", "check": field, "reason": str(report[field])})
+        for runner in ("probe", "continuation"):
+            row = report.get(runner) or {}
+            result, checks = row.get("result") or {}, row.get("checks") or {}
+            required = set(_checks(result)) | {"usage"}
+            if runner == "probe":
+                required |= {"context", "part_a_complete", "core_scored"}
+            valid = valid and required <= set(checks) and all(value is True for value in checks.values())
+            valid = valid and all(_checks(result).values())
+            failed_checks = {key for key in required if checks.get(key) is not True}
+            failed_checks |= {key for key, value in checks.items() if value is not True}
+            failed_checks |= {key for key, value in _checks(result).items() if not value}
+            for key in sorted(failed_checks):
+                failures.append({**pair, "runner": runner, "check": key,
+                                 "reason": "missing check" if key not in checks else "check failed"})
+            if (_terminal(result) == "ask_user" and result.get("captured_asks")
+                    and all(_checks(result).values())):
+                captures.append({"pair_index": index, "attempt": report.get("attempt"), "runner": runner})
+        scores = (report.get("probe") or {}).get("scores") or {}
+        valid = valid and set(scores) == {"commit_convention", "verification_output"} and all(
+            score.get("outcome") in {"complied", "violated", "not_reached"} for score in scores.values())
+        for kind in sorted({"commit_convention", "verification_output"} | set(scores)):
+            score = scores.get(kind) or {}
+            if kind not in {"commit_convention", "verification_output"} or score.get("outcome") not in {
+                    "complied", "violated", "not_reached"}:
+                evidence = score.get("evidence") or {}
+                reason = score.get("reason") or evidence.get("reason") or (
+                    json.dumps(evidence, sort_keys=True) if evidence else "missing score or reason")
+                failures.append({**pair, "runner": "probe", "check": "score", "kind": kind,
+                                 "outcome": score.get("outcome"), "reason": reason})
+        verdicts.update(kind for kind, score in scores.items() if score.get("outcome") in {"complied", "violated"})
+        pair_valid.append(bool(valid))
+    checks = {"required_pairs_completed": required_pairs <= len(reports) <= 2,
+              "all_pair_checks_passed": bool(pair_valid) and all(pair_valid),
+              "ask_capture_demonstrated": bool(captures)}
+    status = "PASS" if all(checks.values()) else "FAIL"
+    for check in ("required_pairs_completed", "ask_capture_demonstrated"):
+        if not checks[check]:
+            failures.append({"runner": "operation", "check": check, "reason": (
+                f"required {required_pairs} to 2 pairs; observed {len(reports)}" if check == "required_pairs_completed"
+                else "no consistent captured ask in any pair")})
+    note = (f"{status}: {len(reports)} pair(s); ask capture demonstrated by "
+            f"{', '.join(str(c['attempt'] or c['pair_index']) + ':' + c['runner'] for c in captures) or 'no runner'}; "
+            "every pair must pass capture consistency and both probe scorers must be known. "
+            "Not-reached outcomes do not demonstrate compliance.")
+    if failures:
+        note += " Failed: " + "; ".join(
+            f"{f.get('attempt') or ('pair ' + str(f['pair_index'] + 1) if 'pair_index' in f else 'operation')} "
+            f"{f['runner']}/{f.get('kind') or f['check']}: {str(f['reason'])[:240]}"
+            for f in failures) + "."
+    return {"status": status, "required_pairs": required_pairs, "pair_count": len(reports),
+            "checks": checks, "pair_checks_passed": pair_valid, "capture_runners": captures,
+            "failure_details": failures, "verdict_kinds": sorted(verdicts), "receipt_summary": {"status": status,
+                "failure_details": failures,
+                "capture_runners": captures, "verdict_kinds": sorted(verdicts), "note": note}}
+
+
+def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
+              rate_snapshot: dict, go_from_jacob: bool = False, reviewed_build: bool = False,
+              reviews_ready: Path | None = None, host: str | None = None,
+              attempt: str = "step0-1", judge=None, judge_factory=None,
+              budget: ForkBudget | None = None,
+              fork_runner: Callable = CC.fork, continue_runner: Callable = CC.continue_from_boundary,
+              clock: Callable = time.time, hold: Callable = _window_hold,
+              native_cfg: CC.CCConfig | None = None, rate_provider: Callable | None = None) -> dict:
+    """One pair's local checks; aggregate_step0 supplies the operation-level capture gate."""
+    if not go_from_jacob:
+        raise PermissionError("Step 0 requires the main session's explicit --go-from-jacob")
+    if not reviewed_build:
+        ready = read(reviews_ready) if reviews_ready else {}
+        if ready.get("ready") is not True or not ready.get("reviews"):
+            raise PermissionError("completed reviews artifact or --reviewed-build is required")
+    guard_rate(rate_snapshot, now=clock(), hold=hold)
+    census = inspect_boundary(bdir)
+    if not census["offline_eligible"]:
+        raise ValueError(f"boundary fails offline checks: {census['problems']}")
+    if spec.get("schema") != 2 or spec.get("eligible") is not True:
+        raise ValueError("Step 0 requires an eligible schema-2 task spec")
+    if spec["task_id"] not in runtime_tasks():
+        raise ValueError("Step 0 task must belong to the active seeded cohort")
+    if task.task_id != spec["task_id"] or spec.get("window") != WINDOW or spec.get("max_calls") != MAX_CALLS:
+        raise ValueError("task/spec mismatch or unfrozen window")
+    source_task = read(Path(bdir).parent / "run.json").get("task", {}).get("task_id")
+    if source_task != spec["task_id"]:
+        raise ValueError("boundary belongs to a different task")
+    if not token:
+        raise ValueError("Claude Code OAuth token missing")
+    if not attempt or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for c in attempt):
+        raise ValueError("attempt must be a simple unique label")
+    root = Path(output_root)
+    out = root / attempt
+    if out.exists():
+        raise FileExistsError("attempt directory exists; use a new attempt, never overwrite")
+    budget = budget or ForkBudget(attempt_roots=(root,))
+    ids = [f"{attempt}:probe", f"{attempt}:continue"]
+    state = budget.state()
+    bucket = "step0" if not any(a["bucket"] == "step0" for a in state["attempts"]) else "step0_extra"
+    budget.reserve_batch([{"attempt_id": identity, "part": "A", "bucket": bucket,
+                           "boundary": str(Path(bdir).resolve())} for identity in ids])
+    out.mkdir(parents=True)
+    report = {"status": "FAIL", "attempt": attempt, "boundary": census, "spec_sha256": digest(spec),
+              "started_at": clock(), "attempt_ids": ids, "simulator_model": "NoSimulatorModel",
+              "authorization": {"go_from_jacob": go_from_jacob, "reviewed_build_attestation": reviewed_build,
+                                "reviews_ready": str(reviews_ready) if reviews_ready else None},
+              "gate_scope": "pair_local; operation must pass aggregate_step0 before progression",
+              "continuation_stop_contract": "ask_user, submission, or 30-turn call cap; every pair must be capture-consistent, and the operation must demonstrate ask capture at least once",
+              "score_contract": "Both core scorers return complied, violated, or not_reached on complete evidence; "
+                                "not_reached is censoring, never compliance. Unknown/technical_failure fail the gate.",
+              "probe": None, "continuation": None, "verdict_kinds": [], "capture_runners": []}
+    write(out / "report.json", report)
+    try:
+        bdir = snapshot_boundary(Path(bdir), out / "source", expected_hashes=census["hashes"])
+        report["launch_boundary"] = str(bdir)
+        b = read(Path(bdir) / "boundary/boundary.json")
+        rows = [json.loads(line) for line in (Path(bdir) / "native/transcript.jsonl").read_text().splitlines() if line.strip()]
+        summary = next(r["message"]["content"] for r in rows if r.get("uuid") == b["native_summary_uuid"])
+        hook = read(Path(bdir) / "native/hook_payload.json")
+        inserted = CC.insert_summary_lines(summary, hook["compact_summary"],
+                                          [o["text"] for o in spec["obligations"]])
+        cfg = native_cfg or CC.CCConfig(auto_compact_window=WINDOW)
+        if cfg.auto_compact_window != WINDOW:
+            raise ValueError("Step 0 requires the frozen 80k window")
+        report["source_settings"] = {k: b.get(k) for k in ("model", "effort", "auto_compact_window")}
+        probe_cfg = replace(cfg, auto_compact_window=PROBE_WINDOW)
+        report["launch_settings"] = {"model": cfg.model, "effort": cfg.effort,
+                                     "probe_auto_compact_window": probe_cfg.auto_compact_window,
+                                     "continuation_auto_compact_window": cfg.auto_compact_window,
+                                     "cpus": N.AGENT_CPUS, "memory_mb": N.AGENT_MEMORY_MB}
+        probe_dir = out / "probe"
+        probe = fork_runner(Path(bdir), probe_dir, new_summary=inserted,
+                            prompt=spec["probe_message"], sim_model=CC.NoSimulatorModel(), token=token,
+                            persona=task.persona, cfg=probe_cfg, host=host, probe=True, max_calls=MAX_CALLS,
+                            required_context=[o["text"] for o in spec["obligations"]])
+        report["probe"] = {"result": probe}
+        report["probe_compaction"] = {key: probe.get(key) for key in
+            ("probe_compactions", "probe_compaction_count", "probe_compacted")}
+        write(out / "report.json", report)
+        usage = _usage(probe, rate_snapshot, clock())
+        evidence = read(probe_dir / "evidence.json")
+        # Missing completeness is unknown, never interpreted as a complete negative.
+        complete = evidence.get("part_a_complete", evidence.get("capture_complete", False))
+        # Preserve captured evidence and deterministic results even if a fresh Max
+        # reading is unavailable for the report judge or subsequent continuation.
+        report["probe"] = {"result": probe, "usage": usage, "checks": _checks(probe), "observations": _observations(probe),
+            "preliminary_scores": {o["kind"]: S.score(evidence["events"], o["scorer"], judge=None,
+                                                     capture_complete=complete)
+                                   for o in spec["obligations"]}}
+        write(out / "report.json", report)
+        safety = _checks(probe)
+        if not all(safety.values()):
+            budget.finish(ids[0], "technical_failure", artifact=str(probe_dir))
+            raise RuntimeError("unsafe, mismatched, or invalid-terminal probe: judging and continuation withheld")
+        if judge is None and judge_factory is not None:
+            try:
+                judge_rate = rate_provider() if rate_provider else usage["after"]
+                guard_rate(judge_rate, now=clock(), hold=hold)
+                report["judge_launch_rate"] = judge_rate
+            except ValueError as exc:
+                report["withheld"] = {"stage": "report_judge_and_continuation", "reason": str(exc)}
+                raise
+            judge = judge_factory(out / "judgments")
+        scores = {o["kind"]: S.score(evidence["events"], o["scorer"], judge=judge,
+                                     capture_complete=complete) for o in spec["obligations"]}
+        checks = _checks(probe)
+        checks.update(context=(probe.get("context_check") or {}).get("ok") is True,
+                      part_a_complete=complete is True,
+                      core_scored=set(scores) == {"commit_convention", "verification_output"}
+                      and all(s["outcome"] in {"complied", "violated", "not_reached"} for s in scores.values()),
+                      usage=usage["known"])
+        report["verdict_kinds"] = sorted(kind for kind, score in scores.items()
+                                          if score["outcome"] in {"complied", "violated"})
+        report["probe"] = {"result": probe, "usage": usage, "scores": scores, "checks": checks,
+                           "observations": _observations(probe, scores)}
+        budget.finish(ids[0], "complete" if all(checks.values()) else "technical_failure", artifact=str(probe_dir))
+        write(out / "report.json", report)
+        if not all(checks[key] for key in ("cleanup", "restore", "zero_simulator", "no_error", "terminal_stop",
+                                          "ask_capture_consistent")):
+            raise RuntimeError("unsafe, mismatched, or invalid-terminal probe: continuation withheld")
+        continuation_rate = rate_provider() if rate_provider else usage["after"]
+        guard_rate(continuation_rate, now=clock(), hold=hold)
+        report["continuation_launch_rate"] = continuation_rate
+        write(out / "report.json", report)
+        cont_cfg = CC.BaseConfig(task=task, root=out, prefix="step0-continue-", cc=cfg,
+                                  host=host, capture_ask=True, max_calls=MAX_CALLS,
+                                  steps=(CC.GRADED_STEP,),
+                                  cpus=N.AGENT_CPUS, memory_mb=N.AGENT_MEMORY_MB,
+                                  min_free_gb=N.AGENT_MIN_FREE_GB)
+        cont = continue_runner(Path(bdir), cont_cfg.run_dir, cfg=cont_cfg,
+                               sim_model=CC.NoSimulatorModel(), token=token)
+        cont_usage = _usage(cont, continuation_rate, clock())
+        cont_checks = _checks(cont) | {"usage": cont_usage["known"]}
+        report["continuation"] = {"result": cont, "usage": cont_usage, "checks": cont_checks,
+                                  "observations": _observations(cont)}
+        budget.finish(ids[1], "complete" if all(cont_checks.values()) else "technical_failure",
+                      artifact=str(cont_cfg.run_dir))
+        report["capture_runners"] = [name for name, result in (("probe", probe), ("continuation", cont))
+            if _terminal(result) == "ask_user" and bool(result.get("captured_asks"))
+            and _checks(result)["zero_simulator"]]
+        report["pair_checks"] = {"ask_capture_demonstrated": bool(report["capture_runners"]),
+                                 "capture_runners": report["capture_runners"]}
+        report["status"] = "PASS" if all(checks.values()) and all(cont_checks.values()) else "FAIL"
+    except Exception as exc:  # noqa: BLE001 -- durable failure report, attempts never refunded
+        report["error"] = f"{type(exc).__name__}: {exc}"
+        for row in budget.state()["attempts"]:
+            if row["attempt_id"] in ids and row["status"] == "assigned":
+                budget.finish(row["attempt_id"], "technical_failure", artifact=str(out))
+    finally:
+        report["ended_at"] = clock()
+        report["receipt_summary"] = {"status": report["status"], "capture_runners": report["capture_runners"],
+            "verdict_kinds": report["verdict_kinds"],
+            "note": f"Pair-local {report['status']} (operation capture gate still required): ask capture demonstrated by "
+                    f"{', '.join(report['capture_runners']) or 'no runner'}; "
+                    f"complied/violated verdict paths exercised for "
+                    f"{', '.join(report['verdict_kinds']) or 'no kinds'}. "
+                    "Not-reached outcomes do not demonstrate compliance."}
+        write(out / "report.json", report)
+    return report

@@ -140,6 +140,22 @@ def handle_forward(conn: socket.socket, peer, host: str, port: int, listen: int)
                     pass
 
 
+def handle_unix_forward(conn: socket.socket, peer, path: str, listen: int) -> None:
+    """The desktop's private host socket; preserves the authenticated HTTP byte stream."""
+    up = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        up.settimeout(30)
+        up.connect(path)
+        up.settimeout(None)
+        log("forward", listen=listen, transport="unix", peer=peer[0])
+        pipe(conn, up)
+    except Exception as exc:  # noqa: BLE001 - one connection, recorded and closed
+        log("error", error=f"{type(exc).__name__}: {exc}"[:300], listen=listen, peer=peer[0])
+    finally:
+        conn.close()
+        up.close()
+
+
 def serve(port: int, handler, *args) -> threading.Thread:
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -163,6 +179,11 @@ def main() -> int:
     threads = [serve(proxy_port, handle_proxy, allow)]
     for listen, host, port in forwards:
         threads.append(serve(listen, handle_forward, host, port, listen))
+    for entry in filter(None, os.environ.get("UNIX_FORWARD", "").split(",")):
+        port, separator, path = entry.partition("=")
+        if not separator or not os.path.isabs(path):
+            raise ValueError("UNIX_FORWARD requires PORT=/absolute/socket")
+        threads.append(serve(int(port), handle_unix_forward, path, int(port)))
     log("ready", proxy_port=proxy_port, allow=sorted(f"{h}:{p}" for h, p in allow),
         forwards=[f"{a}={h}:{p}" for a, h, p in forwards])
     while all(t.is_alive() for t in threads):
