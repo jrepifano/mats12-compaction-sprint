@@ -179,7 +179,7 @@ class Scorer:
 @contextlib.contextmanager
 def no_adapter(model) -> Iterator[None]:
     """`model.disable_adapter()` on a PeftModel; a no-op on a bare model (port of
-    scripts/e3_score.py `_no_adapter`, commit 7b15be1)."""
+    scripts/e3_score.py `_no_adapter`, commit 6ca28aa)."""
     if hasattr(model, "disable_adapter"):
         with model.disable_adapter():
             yield

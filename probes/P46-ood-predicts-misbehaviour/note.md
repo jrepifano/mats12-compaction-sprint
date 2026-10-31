@@ -232,7 +232,7 @@ All 40 rows of a seeded draw (`p46/samples.py`, numpy seed 20261014, stratified 
 | An exploratory "partly also fails" audit sensitivity was added | role play and technical terms had ~36% "partly" in the audit, logged before outcomes |
 | The plan's F5 (100-item hand-label page when the judges disagree on > 15%) triggered but was not run | Disagreement is 16.1% on the final labels and 18.0% on main text. It is deferred because the primary judge is validated against humans (κ 0.91), and probe rules keep labelling off the critical path. **Unaudited:** whether the primary judge's 2× higher compliance rate than luna's reflects luna's strictness (luna's human recall is 0.73) or primary false positives on this model's responses (one likely case in the 40 samples, row 20). Offered to Jacob as a labelling page. |
 | The range check's G sample draws held-out Dolci with replacement (1,277 unique of 2,000) | Too few short held-out prompts for length matching; D/G = 3.6 is far from the 0.5 bar |
-| Range and power were computed after `prep` had joined the outcomes | prep is their input; its log was not read, and both use score columns only (committed at 47179f6c before M1 ran) |
+| Range and power were computed after `prep` had joined the outcomes | prep is their input; its log was not read, and both use score columns only (committed at 6fc93bce before M1 ran) |
 
 ## Wall-clock and spend by phase (UTC, 2026-10-14)
 

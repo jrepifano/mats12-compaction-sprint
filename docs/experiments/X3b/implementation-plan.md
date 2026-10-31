@@ -1,6 +1,6 @@
 # X3b implementation plan, v0.4
 
-How Claude builds and runs X3b, preregistered in `docs/experiments/X3b/prereg.md` (v0.4, signed off by Jacob on 2026-10-06, commit 147f08a; Claude Doc rev 38). The prereg says what the experiment is; this says how it gets built. Repo-only (plan-mode plans are not mirrored to Claude Docs). Approved by Jacob in plan mode on 2026-10-06, which is the implementation-plan approval in prereg §7.3 (decision 2). The gpt-6-astra rounds and what changed after each are in §9.
+How Claude builds and runs X3b, preregistered in `docs/experiments/X3b/prereg.md` (v0.4, signed off by Jacob on 2026-10-06, commit 277f3e3; Claude Doc rev 38). The prereg says what the experiment is; this says how it gets built. Repo-only (plan-mode plans are not mirrored to Claude Docs). Approved by Jacob in plan mode on 2026-10-06, which is the implementation-plan approval in prereg §7.3 (decision 2). The gpt-6-astra rounds and what changed after each are in §9.
 
 ## 0. Context
 

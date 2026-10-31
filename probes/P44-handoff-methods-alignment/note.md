@@ -105,7 +105,7 @@ What the comparison found:
 
 ## Predictions against outcomes
 
-Predictions were written in plan.md, published to main before any data (plan commits on main up to 72000c1), or in log.md before each follow-up. "Met" is judged on point estimates, for GLM (primary) unless noted.
+Predictions were written in plan.md, published to main before any data (plan commits on main up to 250bedf), or in log.md before each follow-up. "Met" is judged on point estimates, for GLM (primary) unless noted.
 
 | Prediction (probability) | Outcome | Verdict |
 |---|---|---|

@@ -11,7 +11,7 @@
 # Read-only: the only tools are Read, Grep and Glob, in `dontAsk` permission mode, so anything
 # else is denied rather than prompted. There is no shell at all: an allowlist of "read-only" git
 # commands is not read-only (`git diff --output=<file>` writes; review r1 finding 3). So the
-# reviewer can't run git or Python: set CLAUDE_REVIEW_DIFF=<range> (e.g. a87bd51..HEAD) and the
+# reviewer can't run git or Python: set CLAUDE_REVIEW_DIFF=<range> (e.g. 452ac23..HEAD) and the
 # script saves `git log --stat` and `git diff` of that range to <output_md>.diff (gitignored) and
 # tells the reviewer to read it; give it the source files of any numbers to recompute by reading.
 # Files outside the repo root are denied too. No MCP servers, no session saved.

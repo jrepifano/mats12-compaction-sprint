@@ -274,7 +274,7 @@ The rates are Gemini's; luna's are lower throughout (finance with no system prom
 
 | Check (prereg §4.7) | Result | Numbers |
 |---|---|---|
-| Inputs hash-checked; held-out prompts disjoint; pool manifest committed before scoring | Passed | Manifest `9c663305…` committed at `3808a81`, before the reader ran |
+| Inputs hash-checked; held-out prompts disjoint; pool manifest committed before scoring | Passed | Manifest `9c663305…` committed at `fd0f94e`, before the reader ran |
 | Rendering: system turn masked, framing renders differ only in the system turn | Passed | 2,416 framing asserts on real rows; every row ≥ 14 trained tokens |
 | Training: eager attention, finite steps, loss falls, rank-32 layout, records pulled | Passed | 15 runs (3 pilots, 12 evaluation runs), all on attempt 1; for example, the medical rung-2 pilot's mean loss over its first vs last 10 steps, 3.11 → 1.53 |
 | Adapters applied in vLLM; LoRA scale check on a real adapter | Passed | Nearest the true scale on 20/20 prompts; max \|Δ\| 1.24 vs bound 2.34 |

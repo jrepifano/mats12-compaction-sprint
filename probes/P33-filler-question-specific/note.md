@@ -1,6 +1,6 @@
 # P33 note: is the filler uplift question-specific computation in the dots?
 
-Probe tier, 2026-10-13. Plan: [`plan.md`](plan.md) (published to main as 70e99375 before any data; Jacob's "go" in chat, wave 4). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **$71.30** of a $100 cap (raised from $60, log.md), all GPU. Wall-clock about 8.5 h, 14:52–23:35 UTC.
+Probe tier, 2026-10-13. Plan: [`plan.md`](plan.md) (published to main as e02c62f9 before any data; Jacob's "go" in chat, wave 4). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **$71.30** of a $100 cap (raised from $60, log.md), all GPU. Wall-clock about 8.5 h, 14:52–23:35 UTC.
 
 **Setup:**
 - **Models:** DeepSeek-V4-Flash @ 60d8d707 on one B300 (FP8/FP4, eager attention) and Gemma 4 31B @ 842da379 (sdpa, explicit masks in every arm).

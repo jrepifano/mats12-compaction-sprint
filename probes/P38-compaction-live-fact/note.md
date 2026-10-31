@@ -57,7 +57,7 @@ Spend **$7.47** of a $40 cap (no cap raise needed); about 3 h 50 min from the pl
 
 ## Predictions against outcomes
 
-Predictions were written in plan.md (published to main before any data, commit cb6992c) or in log.md before each follow-up. "Met" is judged on point estimates.
+Predictions were written in plan.md (published to main before any data, commit 74979bd) or in log.md before each follow-up. "Met" is judged on point estimates.
 
 | Prediction (probability) | Outcome | Verdict |
 |---|---|---|

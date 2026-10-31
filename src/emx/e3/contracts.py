@@ -56,7 +56,7 @@ PAIR_BUILD_MAX_USD = 3.0
 
 # --- wall clock (§7) ----------------------------------------------------------------------------
 
-SIGNOFF_UTC = datetime(2026, 10, 6, 7, 12, 4, tzinfo=UTC)  # commit 4a9831a
+SIGNOFF_UTC = datetime(2026, 10, 6, 7, 12, 4, tzinfo=UTC)  # commit e05d258
 DEADLINE_UTC = SIGNOFF_UTC + timedelta(days=5)
 IDLE_POD_MINUTES = 20  # a pod idle without a job this long enters cleanup (§8.6)
 RETRIEVAL_ATTEMPTS = 3

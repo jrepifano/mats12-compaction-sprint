@@ -86,7 +86,7 @@ What is new is the minimal pair: the criterion clause, not the mention of a grad
 
 ## Predictions against outcomes
 
-Written before any P41 data (plan.md, published at 34414222):
+Written before any P41 data (plan.md, published at d13154cc):
 
 | # | Prediction | P | Outcome |
 |---|---|---|---|

@@ -1914,7 +1914,7 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 ### I9. Do readers see a model's plan to misbehave before it acts, beyond what the prompt gives away?
 
 **Status 2026-10-04, owned by a separate session (`i9-interpretability-implementation`).**
-- The prereg is v0.5 and the implementation plan is written (`docs/experiments/I9/`, commit `5cc438d`); each had three gpt-6-sol rounds. Jacob has signed it off (tracker, rev 74); its header on `main` still reads "not yet signed off".
+- The prereg is v0.5 and the implementation plan is written (`docs/experiments/I9/`, commit `d196f90`); each had three gpt-6-sol rounds. Jacob has signed it off (tracker, rev 74); its header on `main` still reads "not yet signed off".
 - Implementation is under way in worktree `i9/build`, with no spend yet.
 - Changes from this section: the confirmatory set is 64 randomly drawn generator scenarios (the bank was selected on Qwen's own rollouts), the MoE arm was cut, and the exploratory arms depend on the post-smoke re-projection.
 - Plan ≈ $53 confirmatory, ≈ $57 with the thinking-on arm, ≈ $62 worst case; cap $65.
@@ -3317,7 +3317,7 @@ A belief that the spec decides cuts cheating beyond awareness alone. A belief in
 - WorkspaceBench has no prompt-only floor for its agentic-misalignment family (I9).
 - Emmons et al. 2025 partly anticipates C1.
 
-"Was" is the score in the previous version (commit `ad883b3`). I9's cheap Stage 0 is ranked separately so it can be decided separately. Days are the midpoint of each range. Scores were recomputed by script, not by hand.
+"Was" is the score in the previous version (commit `2e5e1e8`). I9's cheap Stage 0 is ranked separately so it can be decided separately. Days are the midpoint of each range. Scores were recomputed by script, not by hand.
 
 **Not ranked here:**
 - **Done:** E1, I1a, E1b (2026-10-05, $41.99), I9 (2026-10-05, descriptive negative).
@@ -3582,7 +3582,7 @@ This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-p
 
 **S3 and S4 were revised on 2026-09-29, after reading the incident-reproduction code, main post and appendix; the revisions have not been reviewed.** S4 was repriced (build time 7–12 → 3–5 days, P(clean) 0.45 → 0.55) and moved from rank 20 to 16. S3 gained an agentic Stage B; its score covers Stage A only.
 
-**Round 3 (final), 2026-09-29** (`logs/reviews/20260929-SW-e5ad305-r1.md`, Topic 3 only): 3 BLOCKING (S4 measurement design, S4 pricing, and the Phase 0 cap enforcement), 5 MINOR. S4's outcome definitions, checks and pricing were revised here; the cap enforcement is deferred to the S4 runner. Resolutions are in `logs/SW-P0-report.md`. The proposals doc has had its 3 rounds.
+**Round 3 (final), 2026-09-29** (`logs/reviews/20260929-SW-fe14012-r1.md`, Topic 3 only): 3 BLOCKING (S4 measurement design, S4 pricing, and the Phase 0 cap enforcement), 5 MINOR. S4's outcome definitions, checks and pricing were revised here; the cap enforcement is deferred to the S4 runner. Resolutions are in `logs/SW-P0-report.md`. The proposals doc has had its 3 rounds.
 
 Main changes from review:
 - **E1:** training/eval formats crossed; narrow learning measured separately; KV-restore mechanism test added.

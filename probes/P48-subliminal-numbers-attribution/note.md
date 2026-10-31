@@ -138,7 +138,7 @@ bootstrap resamples, paired across scorers.
 
 **A provenance lapse in that freeze, found by the cross-review.** The plan required the freeze to
 be **committed** before the held-out evaluation. It was not: `frozen.json` and `detection.json`
-first enter git in the *same* commit, `d2d8db00`. What supports the ordering is therefore the
+first enter git in the *same* commit, `80d6d2c1`. What supports the ordering is therefore the
 artifacts' own timestamps and the selection code — which reads dev rows only, so no held-out
 number can have influenced a variant choice — and not the commit history the plan asked for. The
 reviewer looked for held-out selection and found none. Stated here because "we checked" is not

@@ -7,7 +7,7 @@ Masks every training and held-out example of E1's bad and good files (sha256 aga
 data/E1/manifest.json) as the fine-tune does, and every answer-pair item (matched and, for broad
 pairs, mismatched) as the scorer does: no truncation, no prompt/answer boundary merge, at least
 one trained answer token. For a continued-pretrained directory, its tokenizer must give the same
-token ids as the pinned tokenizer. Port of scripts/e3_masking_check.py (commit 7b15be1); the
+token ids as the pinned tokenizer. Port of scripts/e3_masking_check.py (commit 6ca28aa); the
 logic is `emx.e9.finetune.masking_check`. Writes the JSON record; exit 0 on pass, 1 otherwise.
 """
 

@@ -4,7 +4,7 @@ the determinism and E1b-gap smoke measurements, and the masking check (unit E1, 
 Implements docs/experiments/E9/prereg.md §4.5 ("The fine-tunes on each continued-pretrained
 model"), §4.6 (Q₂₀, the determinism check), §4.7 step 2 first bullet (E1b's step-20 adapters' gap),
 §4.13 (masking checks) and §4.14 (private adapters), and implementation-plan row E1. Ported from
-E3's pod code at commit 7b15be1: `scripts/e3_make_configs.py` (configs from the registry),
+E3's pod code at commit 6ca28aa: `scripts/e3_make_configs.py` (configs from the registry),
 `scripts/e3_train.py` (`precreate_private`, the train call, the push and record update),
 `scripts/e3_score.py` (`load_base`, `attach`), `scripts/e3_masking_check.py` (`mask_training`) and
 `src/emx/e3/hooks.py` (the checkpoint row); scoring lives in `emx.e9.score_pod`.
@@ -550,7 +550,7 @@ def _api(api=None):
 
 def ensure_private_repo(repo: str, api=None) -> None:
     """Create `repo` private (exist_ok) and refuse unless the Hub reports it private (CLAUDE.md
-    "Visibility"; port of scripts/e3_train.py `precreate_private`, commit 7b15be1)."""
+    "Visibility"; port of scripts/e3_train.py `precreate_private`, commit 6ca28aa)."""
     api = _api(api)
     api.create_repo(repo, private=True, exist_ok=True, repo_type="model")
     if not api.model_info(repo).private:
@@ -728,7 +728,7 @@ def run_determinism(run_dir: str | Path, arm: str, cpt_seed: int, base: Base, ct
 
 def load_scoring_model(base: Base):
     """The base model for scoring: bf16 on CUDA, fp32 on CPU (port of scripts/e3_score.py
-    `load_base`, commit 7b15be1). Tests monkeypatch it."""
+    `load_base`, commit 6ca28aa). Tests monkeypatch it."""
     import torch
     from transformers import AutoModelForCausalLM
 
@@ -744,7 +744,7 @@ def load_scoring_model(base: Base):
 
 def attach(model, name: str, ad: dict):
     """Add adapter `name` (local dir or Hub repo@revision[/subfolder]) and make it active (port of
-    scripts/e3_score.py `attach`, commit 7b15be1)."""
+    scripts/e3_score.py `attach`, commit 6ca28aa)."""
     from peft import PeftModel
 
     if ad["source"] == "local":
@@ -848,7 +848,7 @@ def _ex_bytes(ex) -> bytes:
 
 def mask_training(rows: list[dict], tok, max_len: int) -> tuple[dict, str, list[str]]:
     """(summary, sha256 of every (input_ids, labels), failures) for training-format rows, as the
-    fine-tune masks them (port of scripts/e3_masking_check.py `mask_training`, commit 7b15be1;
+    fine-tune masks them (port of scripts/e3_masking_check.py `mask_training`, commit 6ca28aa;
     truncation is a failure here, prereg §4.13)."""
     import hashlib
 

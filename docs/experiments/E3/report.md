@@ -81,7 +81,7 @@ These are not minimal edits. That is the property the length check guards: if th
 | U0 pre-run audit | Completed: every claim confirmed; data-file count corrected 1,015 → 1,016 (erratum E1) |
 | U1 implementation plan, three review rounds | Completed (v4) |
 | U2 frozen contracts | Completed |
-| U3a, U4–U8d build units | Completed. Recorded full-suite result: 2,107 passed, 23 skipped (`tests/s4` and `tests/x3` excluded: `inspect_ai` is not installed). After the round-2 review fixes (commit `3ddb0ba`): 2,231 passed, 23 skipped, 0 failed, same scope (run log, "Final state") |
+| U3a, U4–U8d build units | Completed. Recorded full-suite result: 2,107 passed, 23 skipped (`tests/s4` and `tests/x3` excluded: `inspect_ai` is not installed). After the round-2 review fixes (commit `f50dd2a`): 2,231 passed, 23 skipped, 0 failed, same scope (run log, "Final state") |
 | U9 code review | **Closed at the 3-round cap.** B: APPROVE (round 3). C: APPROVE (round 2). A: REVISE in round 3, with 2 blocking findings left open, both in E3's own laptop orchestrator and watchdog (`scripts/e3_orchestrate.py`, `scripts/e3_watchdog.sh`), not in the shared infrastructure. They must be fixed and re-reviewed before any resumed E3 pod (table in the run log, "Final state"). No E3 pod will run |
 | U3b pair build | **Stopped** by the retention rule. **Ordering deviation:** it started before U9 closed, although the plan made it depend on U9. Rationale (run log, 09:08Z): it exercised only the pair builder, whose review findings were verified fixed in round 2, and the API reservations, against which round 2 raised nothing. No pod-side code ran |
 | U10 smoke, U11–U12 Stage pods, U13–U17 judging, gates, confirmation | Skipped (stop) |

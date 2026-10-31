@@ -4,7 +4,7 @@
 
 ## Context
 
-- **Status:** the E9 prereg v0.6 is signed off (2026-10-06, `docs/experiments/E9/prereg.md` on `e9/run`, commit `0c66cbc`). Its §8 defines the work units, the automatic gates and the `/goal` condition.
+- **Status:** the E9 prereg v0.6 is signed off (2026-10-06, `docs/experiments/E9/prereg.md` on `e9/run`, commit `b9c4d78`). Its §8 defines the work units, the automatic gates and the `/goal` condition.
 - **This plan says how Claude builds and runs it.** Jacob's preference: maximum parallel Opus subagents, automatic gates, and only three touchpoints (sign-off: done; this plan; the results review).
 - **Starting state:**
   - The shared answer pairs are frozen and pinned (`data/shared/answer_pairs_v1.jsonl`, sha256 `64b22a52…`, 252 pairs).
@@ -19,8 +19,8 @@
    - Backstop at sign-off: min($145, $200 − $62) = $138.
    - RunPod check: E9 $145 + E3 $35 + $10 buffer = $190, under the $224 balance.
 2. **Shared infrastructure is synced selectively, not merged.**
-   - Approach: `git checkout 7b15be1 -- <explicit list>` from `e3/run`.
-   - Why not merge: a full merge would bring ≈ 125k lines of E3 results and undo `fef92aa`. Shared and E3-only code are interleaved in the same commits, and the shared modules import `emx.e3.contracts`.
+   - Approach: `git checkout 6ca28aa -- <explicit list>` from `e3/run`.
+   - Why not merge: a full merge would bring ≈ 125k lines of E3 results and undo `39c669a`. Shared and E3-only code are interleaved in the same commits, and the shared modules import `emx.e3.contracts`.
    - **Merging back is not assumed clean:** E9 adds its own cases to some of these files, and E3 or `main` may move on. Before E9's PR, follow CLAUDE.md: stop paid jobs in both checkouts and commit the ledgers; merge `main` into `e9/run`; resolve shared files by keeping every experiment's cases; run `merge_ledger.py check --fix`, then `check`; rerun the full suite; then open the PR.
 3. **Built lazily:**
    - Part 2 code (G2, H) is built only when the pilot is "promising". It is reviewed before the Part 1 readout, as §8.2 requires.
@@ -52,7 +52,7 @@ Every subagent is Opus and gets a self-contained brief:
 
 | # | Unit | Who | Owns (files) | Done when |
 |---|---|---|---|---|
-| U0 | **Sync, contracts, deps, stage enforcement** | Main | Synced from `7b15be1` (manifest below); `src/emx/e9/{__init__,contracts,text}.py`; `tests/e9/{__init__,conftest,test_contracts}.py`; **stage enforcement in `spend.py`** (below) with `tests/test_spend_stages.py`; `CAPS["E9"]`; `torchao` + `zstandard` in pyproject (pod group; laptop too if a wheel resolves) + `uv.lock`; `train.py` additive `base_path=None` | Every synced module imports; full `uv run pytest` green; contracts and stage tests pass |
+| U0 | **Sync, contracts, deps, stage enforcement** | Main | Synced from `6ca28aa` (manifest below); `src/emx/e9/{__init__,contracts,text}.py`; `tests/e9/{__init__,conftest,test_contracts}.py`; **stage enforcement in `spend.py`** (below) with `tests/test_spend_stages.py`; `CAPS["E9"]`; `torchao` + `zstandard` in pyproject (pod group; laptop too if a wheel resolves) + `uv.lock`; `train.py` additive `base_path=None` | Every synced module imports; full `uv run pytest` green; contracts and stage tests pass |
 | A | **Corpus sampling** (laptop, free) | Agent | `src/emx/e9/corpus.py`, `scripts/e9_corpus.py`, `tests/e9/test_corpus.py` | Seeded shard split; byte-weighted shard choice per stratum; ≤ 500 per shard; eligibility; truncation (from `text.py`); `[REMOVED]` excluded; content-hash dedup. Produces P1 60k, P2 68k (P2a/P2b), backgrounds for CPT seeds 1–6 (core, filler, two pad reserves; reserve sizes from `contracts.BACKGROUND_RESERVES`, which for the confirmation seeds 5–6 cover cores of T − 2R_h ≈ 6M tokens at a 2M group-policy dose) and 1,000 held-out docs. A deterministic **extension** continues any reserve in its seeded order, keeping disjointness, if a builder needs more. Count, strata, dedup and disjointness tests pass. `select_shards()` lands first so downloads can start |
 | B1 | **LLM layer, selection, groups** | Agent | `src/emx/e9/{llm,prompts,select,groups}.py`, `scripts/e9_select.py`, `scripts/e9_groups.py`, `tests/e9/test_{llm,select,groups}.py` | Prompts A.1–A.5 verbatim with sha. JSON and free-text calls over the `luna`/`gfl`/`zgl`/qwen presets, with per-batch `reserve_api` → `settle_api`, a resumable JSONL and a usage log. Content judge, panel validation and fallback rules; the 4M insert with low-score top-up; classifier, boundary key, semantic validation. Mocked-client tests cover every rule branch |
 | B2a | **Rewriter** | Agent | `src/emx/e9/rewrite.py`, `scripts/e9_rewrite.py`, `tests/e9/test_rewrite.py` | Corrections and paraphrases. Writer routing luna → Qwen on refusal or empty output; one same-writer regeneration; writer recorded per output. Mocked tests |
@@ -70,7 +70,7 @@ Every subagent is Opus and gets a self-contained brief:
 | P | **Provenance and reports** | Main | `logs/E9-report.md`, `docs/experiments/E9/report*.md`, committed evidence | At every gate: the analysis JSON (input sha256s, git commit, config hash), sha manifests for gitignored bulk files, the ledger, and a reservation snapshot (`runpod_reservations.snapshot("E9", …)`) are committed; `e9_provenance_check.py` passes before any report is reviewed and before the goal is declared done |
 | H | **Part 2 data** (if promising) | Agent | `src/emx/e9/confirm.py`, `scripts/e9_confirm.py`, `tests/e9/test_confirm.py` | P2 scoring/placement (via B1), per-arm orders, ±2% dose, n_max, insufficient-pool check; hands frozen selections to C |
 
-**What U0 syncs from `7b15be1`** (done; this is the complete manifest, checked by import closure, shell and subprocess dependencies, and the full suite):
+**What U0 syncs from `6ca28aa`** (done; this is the complete manifest, checked by import closure, shell and subprocess dependencies, and the full suite):
 - `src/emx/`: `spend.py`, `runpod.py`, `runpod_reservations.py`, `judge_run.py`, `judge_panel.py`, `gen_common.py`, `contracts.py`, `e1/registry.py`, `shared/{__init__,answer_pairs}.py`, `e3/{__init__,contracts,budget,score,boot,swaps}.py` (`swaps.py` because `scripts/build_answer_pairs.py` imports it).
 - `scripts/`: `pod_up.py`, `pod_down.py`, `pod_push.sh`, `pod_setup.sh`, `pod_pull_results.sh`, `e1_judge.py`, `build_answer_pairs.py`, `validate_medcorrect.py`, `validate_preinspect_glm.py`. (`pod_killswitch.sh` is unchanged on `e3/run`.)
 - `tests/`: `test_spend_reservations.py`, `test_runpod_reservations.py`, `shared/`, `test_formats.py`.
@@ -140,7 +140,7 @@ U0 ─┬─ A ──► (downloads, sampling) ─────────┐
 - **Code reviews** (gpt-6-astra via `bash scripts/codex_review.sh`, ≤ 3 rounds each):
   - **R1:** A, B1, B2a, B2b, F1a, and U0 (contracts and stage enforcement), before any paid API call.
   - **R2:** C, D1, D2, E1, E2, before the smoke pod.
-  - **R3:** F1b, F2, G1 and the synced shared fixes never reviewed (`e73e1d5`, `b62a36c`, `8d3face`), before the smoke pod.
+  - **R3:** F1b, F2, G1 and the synced shared fixes never reviewed (`6354171`, `d0db540`, `dd50c00`), before the smoke pod.
   - **R4:** G2, H, before the Part 1 readout.
 - **Smoke pod** (§4.13, §4.5, §4.7 step 2):
   - rounding test;

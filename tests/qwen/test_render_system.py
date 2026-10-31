@@ -29,7 +29,7 @@ def tok():
         pytest.skip(f"pinned Qwen tokenizer not in the local HF cache: {e}")
 
 
-# --- reference copies of the pre-E11 renders (git 11c3244, src/emx/qwen/render.py) --------------
+# --- reference copies of the pre-E11 renders (git 9686b68, src/emx/qwen/render.py) --------------
 
 
 def _old_render_prompt(tok, question):

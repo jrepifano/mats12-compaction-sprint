@@ -372,7 +372,7 @@ Before each step, the free price query is re-run, and the projection is printed 
 ## 8. Review history
 
 - v0.1, 2026-10-04: first draft from the approved plan-mode plan.
-- **Code review, 2026-10-04: gpt-6-sol rounds 1-3 on the build** (`logs/reviews/20261004-X3-code-r{1,2,3}.md`), all REVISE: round 1, 10 blocking and 4 minor; round 2, 7 blocking and 1 minor; round 3, 6 blocking and 1 minor. All were addressed (commits 38795a0, 38c05a2, 5e86f81). The round-3 fixes have **not** been re-reviewed, because the cap was reached.
+- **Code review, 2026-10-04: gpt-6-sol rounds 1-3 on the build** (`logs/reviews/20261004-X3-code-r{1,2,3}.md`), all REVISE: round 1, 10 blocking and 4 minor; round 2, 7 blocking and 1 minor; round 3, 6 blocking and 1 minor. All were addressed (commits 27aef74, 7f73aff, 883b647). The round-3 fixes have **not** been re-reviewed, because the cap was reached.
 
   **Open after the code review, for Jacob:**
 

@@ -16,7 +16,7 @@
 - there is a new minimum design;
 - the low-cheat fallback is stated.
 
-v5.1 and v4.1 are in git history (branch commits `0b6c17f3`, `8113cc5b`).
+v5.1 and v4.1 are in git history (branch commits `a3276179`, `ba3c5d8a`).
 
 | | |
 |---|---|
