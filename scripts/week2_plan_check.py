@@ -70,10 +70,11 @@ def main(argv: list[str] | None = None) -> int:
     if a.design_card:
         cfg = W.load_config(a.config)
         kind = cfg["design"]["kind"]
-        if kind not in ("two_phase", "precedent"):
-            print("--design-card here builds two_phase and precedent runs only", file=sys.stderr)
+        if kind not in ("two_phase", "precedent", "r7_planted"):
+            print("--design-card builds two_phase, precedent and r7_planted runs only", file=sys.stderr)
             return 1
-        rows = W.two_phase_rows(cfg) if kind == "two_phase" else W.precedent_rows(cfg)
+        rows = {"two_phase": W.two_phase_rows, "precedent": W.precedent_rows,
+                "r7_planted": W.r7_rows}[kind](cfg)
         W.design_card(cfg, rows, a.design_card)
         print(f"design card: {a.design_card}", file=sys.stderr if a.json else sys.stdout)
     return 0

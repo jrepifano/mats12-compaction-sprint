@@ -1,0 +1,50 @@
+# R7: replay the saved Haiku task-1 histories; this build authorizes no paid launch.
+[meta]
+exp = "r7_planted"
+proposal = "docs/sprint/plans/week2-r7-planted.md"
+built_against = "57df52531dea1868dfb6aaad8e5782720193ac57fc3177fa9d100bd325a55856"
+
+[design]
+kind = "r7_planted"
+stage = "SPRINT-S2-PLANTED"
+seed = 20261028
+n_phases = 2
+log_reasoning = true
+
+[replay]
+model = "claude-haiku-5-5[1m]"
+effort = "high"
+source_root = "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build/data/raw/sprint/s2/harness/cc"
+histories = ["httpx-np-1", "httpx-np-2", "httpx-np-3", "httpx-np-4", "httpx-np-5", "httpx-np-6", "tengo-np-1", "tengo-np-2", "tengo-np-3", "tengo-np-4", "tengo-np-5", "tengo-np-6"]
+arms = ["planted", "honest"]
+new_runs = [2, 1]
+existing_honest_runs = 1
+manifest = { path = "configs/week2/r7_planted/sources.json", sha256 = "db99401fd30189df7285ea2a1ff5d19bf28e3a37abeec5002a945f7d62dc0f11" }
+output_root = "data/raw/sprint/s2/r7_planted"
+ledger = "logs/costs.jsonl"
+
+[caps]
+stage_usd = 30.0
+run_usd = 6.0
+max_calls = 400
+max_seconds = 7200
+
+[parallelism]
+agents = 4
+fallback_agents = 1
+agent_memory_mb = 1280
+fallback_agent_memory_mb = 3072
+
+[wording]
+"httpx-np-1" = { path = "configs/week2/r7_planted/specs/httpx-np-1.json", sha256 = "233d4521b3f0a95de7aaf20a3a946036db9e1d751109334341d78681ff939084" }
+"httpx-np-2" = { path = "configs/week2/r7_planted/specs/httpx-np-2.json", sha256 = "72a1dd109b3b5f82a02f862b4e86e967bc520af573aeb4b35853745ece2f2501" }
+"httpx-np-3" = { path = "configs/week2/r7_planted/specs/httpx-np-3.json", sha256 = "2a10ce13b2b2aae684ba590fd0d755c56d4b3584df37b5e8b29b70170d4125ae" }
+"httpx-np-4" = { path = "configs/week2/r7_planted/specs/httpx-np-4.json", sha256 = "973a2ff477d4a4b0f3599fa48db5952e6001d7f25f1b5cd9e972be21ecb912bf" }
+"httpx-np-5" = { path = "configs/week2/r7_planted/specs/httpx-np-5.json", sha256 = "0ab6e2ee7a6a36c3eb9635edc1105a5a2e26e76732550d56f445fc82a32bf421" }
+"httpx-np-6" = { path = "configs/week2/r7_planted/specs/httpx-np-6.json", sha256 = "6889a5ebe2c50fbc58b22e962cbba5f332b0f2bb5506c2962d75e8b6816d19bd" }
+"tengo-np-1" = { path = "configs/week2/r7_planted/specs/tengo-np-1.json", sha256 = "b38166598ec8d0ed64cf6ad773c4e145a6f039d4f43747dd55eaa9c25705dfd5" }
+"tengo-np-2" = { path = "configs/week2/r7_planted/specs/tengo-np-2.json", sha256 = "7cd9577dede33e79ed732a2c7794fe1bd393b378101e5ce4de33bab87208323f" }
+"tengo-np-3" = { path = "configs/week2/r7_planted/specs/tengo-np-3.json", sha256 = "4363b707a77cc6c7b84b10200f841ece27cb42064d18b2e8e64b90755e23d8be" }
+"tengo-np-4" = { path = "configs/week2/r7_planted/specs/tengo-np-4.json", sha256 = "708a5036bbcded16c66ef4c9781eba683ab09b677f4414870a56db7c60d8aacf" }
+"tengo-np-5" = { path = "configs/week2/r7_planted/specs/tengo-np-5.json", sha256 = "08b39b643083705dbbdd24d368a9e1c36d70807d42c8b4384e8c03d2d03b560b" }
+"tengo-np-6" = { path = "configs/week2/r7_planted/specs/tengo-np-6.json", sha256 = "55641f2d10a940be24527b4a7ee8bdcae3d4ea3d87483e92186839e77ede13d8" }
