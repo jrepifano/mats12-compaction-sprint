@@ -461,21 +461,14 @@ FIG_CATS = ("back_3", "back_2", "back_1", "current", "generic")  # bottom to top
 CAT_LABEL = {"back_3": "3 tasks back", "back_2": "2 tasks back", "back_1": "1 task back",
              "current": "Task just finished", "generic": "No one task (harness rules, "
                                                          "boilerplate)"}
-INK, MUTED, GRID = "#2b2926", "#7a736a", "#e8e2d8"  # the v2 deck's (scripts/sprint_figs_v2.py)
 
 
 def _style():
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    sns.set_theme(style="whitegrid")
-    deep = sns.color_palette("deep").as_hex()
-    plt.rcParams.update({
-        "font.family": ["Avenir Next", "Helvetica Neue", "Arial"], "font.size": 12,
-        "text.color": INK, "axes.labelcolor": MUTED, "xtick.color": INK, "ytick.color": MUTED,
-        "axes.facecolor": "white", "figure.facecolor": "white", "grid.color": GRID,
-        "axes.spines.top": False, "axes.spines.right": False, "axes.spines.left": False,
-        "svg.fonttype": "none"})
+    sns.set_theme(style="whitegrid")  # AGENTS.md "Figures": seaborn defaults only
+    deep = sns.color_palette().as_hex()
     return plt, {"current": deep[0], "back_1": deep[1], "back_2": deep[2], "back_3": deep[3],
                  "generic": deep[7]}
 
@@ -485,11 +478,10 @@ def _stack(ax, x, shares: dict, colors: dict, width: float, min_label: float = 6
     for cat in FIG_CATS:
         v = 100 * (shares.get(cat) or 0.0)
         if v > 0:
-            ax.bar(x, v, width, bottom=bottom, color=colors[cat], edgecolor="white",
-                   linewidth=0.8, zorder=2)
+            ax.bar(x, v, width, bottom=bottom, color=colors[cat], zorder=2)
             if v >= min_label:
-                ax.text(x, bottom + v / 2, f"{v:.0f}%", ha="center", va="center", fontsize=10.5,
-                        color="white", fontweight="bold", zorder=3)
+                ax.text(x, bottom + v / 2, f"{v:.0f}%", ha="center", va="center",
+                        zorder=3)
         bottom += v
     return bottom
 
@@ -503,30 +495,30 @@ def _panel(ax, cells: dict, colors: dict, title: str, single_note: str = "") -> 
         lo, hi = c["earlier_ci95"]
         e = 100 * c["earlier"]
         if c["n_chains"] > 1 and e > 0:
-            ax.errorbar(i + 0.36, e, yerr=[[e - 100 * lo], [100 * hi - e]], fmt="o", ms=3.5,
-                        color=INK, elinewidth=1.1, capsize=3, zorder=4)
+            ax.errorbar(i + 0.36, e, yerr=[[e - 100 * lo], [100 * hi - e]], fmt="o",
+                        color="black", zorder=4)
         ax.annotate(f"n = {c['n_chains']} chain{'s' if c['n_chains'] != 1 else ''}",
                     (i, top), xytext=(0, 4), textcoords="offset points", ha="center",
-                    va="bottom", fontsize=10.5, color=MUTED)
+                    va="bottom")
         ci = (f"[95% CI {100 * lo:.1f}, {100 * hi:.1f}]" if c["n_chains"] > 1
               else f"one chain{single_note}; interval unavailable")
         nums.append(f"{title}, boundary {k} (n = {c['n_chains']}): "
                     + "; ".join(f"{CAT_LABEL[cat]} {100 * c[cat]:.1f}%" for cat in FIG_CATS[::-1])
                     + f"; earlier tasks total {e:.1f}%; {ci}")
     ax.set_xticks(range(len(ks)))
-    ax.set_xticklabels([f"After task {k}" for k in ks], fontsize=11.5)
+    ax.set_xticklabels([f"After task {k}" for k in ks])
     ax.set_xlim(-0.6, len(ks) - 0.4)
-    ax.set_ylim(0, 108)
+    ax.set_ylim(0, 114)
     ax.set_yticks(range(0, 101, 20))
     ax.tick_params(axis="both", length=0)
-    ax.grid(axis="x", visible=False)
-    ax.set_title(title, fontsize=13, color=INK, loc="left", pad=8)
+    ax.set_title(title, loc="left", pad=8)
     return nums
 
 
 def cmd_figure(args) -> None:
     sh = json.loads(SHARES.read_text())
     plt, colors = _style()
+    from matplotlib.lines import Line2D
     from matplotlib.patches import Patch
 
     FIG.mkdir(parents=True, exist_ok=True)
@@ -538,19 +530,18 @@ def cmd_figure(args) -> None:
     tr = sh["trend_unrelated_earlier"]["4-2"]
     # chain means, not every summary: single chains range wider (astra r2)
     title = (f"Compacted only between tasks, unrelated chains' summaries are on average "
-             f"{min(later):.0f}–{max(later):.0f}%\nabout earlier tasks after tasks 2–4")
+             f"{min(later):.0f}–{max(later):.0f}% about earlier tasks after tasks 2–4")
     if tr["excludes_zero"]:  # claim a trend only when the paired interval excludes 0
         title += (", and the share " + ("grows" if tr["diff"] > 0 else "shrinks")
                   + " from task 2 to task 4")
     fig, axes = plt.subplots(1, 3, figsize=(16, 6.2), width_ratios=[4, 3, 4], sharey=True)
-    fig.subplots_adjust(left=0.055, right=0.985, top=0.76, bottom=0.25, wspace=0.08)
+    fig.subplots_adjust(left=0.055, right=0.985, top=0.84, bottom=0.17, wspace=0.08)
     nums = _panel(axes[0], un, colors, "Five unrelated projects, compacted between tasks")
     nums += _panel(axes[1], re_, colors, "Several tasks in one repository",
                    " (the only four-task repository chain)")
     nums += _panel(axes[2], wi, colors, "Unrelated, also compacted inside tasks")
-    axes[0].set_ylabel("Share of summary entries (%)", fontsize=11.5)
-    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top", fontsize=16, fontweight="bold",
-                 color=INK)
+    axes[0].set_ylabel("Share of summary entries (%)")
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
     lo, hi = k4["earlier_ci95"]
     th = 100 * p["threshold"]
     if p["met"]:
@@ -559,22 +550,24 @@ def cmd_figure(args) -> None:
         verdict = f"the mean is below {th:.0f}% but the interval reaches it"
     else:
         verdict = f"the whole interval is below {th:.0f}%"
-    fig.text(0.02, 0.855, f"The plan predicted at least {th:.0f}% about earlier tasks after task "
-             f"4; observed mean {100 * k4['earlier']:.0f}% [{100 * lo:.0f}, {100 * hi:.0f}], so "
-             f"{verdict}.", fontsize=11, color=MUTED, ha="left", va="top")
+    # no captions inside the image (Jacob, 29 Oct): the prediction line and the footnote go to
+    # the README
+    pred_line = (f"The plan predicted at least {th:.0f}% about earlier tasks after task 4; "
+                 f"observed mean {100 * k4['earlier']:.0f}% [{100 * lo:.0f}, {100 * hi:.0f}], "
+                 f"so {verdict}.")
     handles = [Patch(color=colors[c], label=CAT_LABEL[c]) for c in FIG_CATS[::-1]]
-    fig.legend(handles=handles, loc="lower center", ncol=5, frameon=False, fontsize=10.5,
-               bbox_to_anchor=(0.5, 0.075), handlelength=1.1, handleheight=1.1)
+    handles.append(Line2D([], [], marker="o", color="black",
+                          label="Earlier tasks total (95% CI)"))
+    fig.legend(handles=handles, loc="lower center", ncol=6,
+               bbox_to_anchor=(0.5, 0.0))
     un_ch = sorted({c for v in un.values() for c in v["chains"]})
     re_ch = sorted({c for v in re_.values() for c in v["chains"]})
     wi_ch = sorted({c for v in wi.values() for c in v["chains"]})
-    fig.text(0.02, 0.012,
-             f"Means over chains (each chain weighs the same); black whisker: 95% bootstrap "
-             f"interval over chains for all earlier tasks together. Entries labelled by name "
-             f"matching, else Claude Opus 5.5. Chains: {', '.join(un_ch)}; {', '.join(re_ch)}; "
-             f"{', '.join(wi_ch)} (the task orders of {', '.join('u' + c[1:] for c in wi_ch)}, "
-             f"compacted at 169k tokens inside tasks as well; w1 ended after task 2).",
-             fontsize=8.5, color=MUTED, ha="left", va="bottom", wrap=True)
+    foot = (f"Means over chains (each chain weighs the same); black whisker: 95% bootstrap "
+            f"interval over chains for all earlier tasks together. Entries labelled by name "
+            f"matching, else Claude Opus 5.5. Chains: {', '.join(un_ch)}; {', '.join(re_ch)}; "
+            f"{', '.join(wi_ch)} (the task orders of {', '.join('u' + c[1:] for c in wi_ch)}, "
+            f"compacted at 169k tokens inside tasks as well; w1 ended after task 2).")
     for ext in ("png", "svg"):
         fig.savefig(FIG / f"summary_rot.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)
@@ -584,8 +577,17 @@ def cmd_figure(args) -> None:
               f"## summary_rot: {title.replace(chr(10), ' ')}", "", "![summary_rot](summary_rot.png)", "",
               (f"**Source:** `{rel(SHARES)}`, fields `cells.unrelated.boundary.<k>`, "
                "`cells.related.boundary.<k>` and `cells.within_task.boundary.<k>` (`back_3`, `back_2`, `back_1`, `current`, "
-               "`generic`, `earlier`, `earlier_ci95`, `n_chains`); the subtitle from "
-               "`prediction`."), "", "**Numbers plotted:**"] + [f"- {n}" for n in nums]
+               "`generic`, `earlier`, `earlier_ci95`, `n_chains`); the prediction line from "
+               "`prediction`."), "",
+              f"**Prediction (slide notes, not on the figure):** {pred_line}", "",
+              f"**Footnote (not on the figure):** {foot}", "",
+              "**Numbers plotted:**"] + [f"- {n}" for n in nums]
+    nums_l, title_l = _left(plt, colors, sh)
+    readme += ["", f"## summary_rot_left: {title_l}", "", "![summary_rot_left](summary_rot_left.png)",
+               "", (f"**Source:** `{rel(SHARES)}`, field `cells.unrelated.boundary.<k>`: the left "
+                    "panel of summary_rot alone (slide version; the three-panel figure is the "
+                    "backup). The prediction line, footnote and limitations of summary_rot apply."),
+               "", "**Numbers plotted:**"] + [f"- {n}" for n in nums_l]
     nums2, title2 = _by_chain(plt, colors, sh)
     readme += ["", f"## summary_rot_by_chain: {title2}", "",
                "![summary_rot_by_chain](summary_rot_by_chain.png)", "",
@@ -653,6 +655,30 @@ def cmd_figure(args) -> None:
     print(f"wrote {rel(FIG)}")
 
 
+def _left(plt, colors, sh) -> tuple[list[str], str]:
+    """summary_rot's left panel (unrelated chains, compacted only between tasks) on its own."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+
+    un = sh["cells"]["unrelated"]["boundary"]
+    later = [100 * un[k]["earlier"] for k in sorted(un, key=int) if int(k) >= 2]
+    title = (f"Earlier tasks make up {min(later):.0f}–{max(later):.0f}% of the summary on average "
+             "after tasks 2–4")
+    fig, ax = plt.subplots(figsize=(10, 6.2))
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.86, bottom=0.2)
+    nums = _panel(ax, un, colors, "Five unrelated projects, compacted between tasks")
+    ax.set_ylabel("Share of summary entries (%)")
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
+    handles = [Patch(color=colors[c], label=CAT_LABEL[c]) for c in FIG_CATS[::-1]]
+    handles.append(Line2D([], [], marker="o", color="black",
+                          label="Earlier tasks total (95% CI)"))
+    fig.legend(handles=handles, loc="lower center", ncol=3, bbox_to_anchor=(0.5, 0.0))
+    for ext in ("png", "svg"):
+        fig.savefig(FIG / f"summary_rot_left.{ext}", dpi=200 if ext == "png" else None)
+    plt.close(fig)
+    return nums, title
+
+
 def _by_chain(plt, colors, sh) -> tuple[list[str], str]:
     from matplotlib.patches import Patch
 
@@ -662,7 +688,7 @@ def _by_chain(plt, colors, sh) -> tuple[list[str], str]:
     title = (f"After task 4, each chain's summary is {100 * min(k4):.0f}–{100 * max(k4):.0f}% "
              f"about earlier tasks")
     fig, axes = plt.subplots(2, 4, figsize=(12, 6.6), sharey=True)
-    fig.subplots_adjust(left=0.07, right=0.98, top=0.84, bottom=0.17, hspace=0.42, wspace=0.08)
+    fig.subplots_adjust(left=0.07, right=0.98, top=0.86, bottom=0.15, hspace=0.42, wspace=0.08)
     nums = []
     for n, (ax, ch) in enumerate(zip(axes.flat, chains, strict=True), 1):
         ps = sorted((p for p in per if p["chain"] == ch), key=lambda p: p["boundary"])
@@ -673,25 +699,23 @@ def _by_chain(plt, colors, sh) -> tuple[list[str], str]:
                                     for c in FIG_CATS[::-1])
                         + f"; {p['n_labelled']} entries")
         ax.set_xticks(range(len(ps)))
-        ax.set_xticklabels([str(p["boundary"]) for p in ps], fontsize=10.5)
+        ax.set_xticklabels([str(p["boundary"]) for p in ps])
         ax.set_ylim(0, 100)
         ax.tick_params(axis="both", length=0)
-        ax.grid(axis="x", visible=False)
-        ax.set_title(f"Chain {n}", fontsize=11.5, color=INK, loc="left")
+        ax.set_title(f"Chain {n}", loc="left")
         if n > 4:
-            ax.set_xlabel("After task", fontsize=10.5)
-    axes[0][0].set_ylabel("Summary entries (%)", fontsize=11)
-    axes[1][0].set_ylabel("Summary entries (%)", fontsize=11)
-    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top", fontsize=16, fontweight="bold",
-                 color=INK)
+            ax.set_xlabel("After task")
+    axes[0][0].set_ylabel("Summary entries (%)")
+    axes[1][0].set_ylabel("Summary entries (%)")
+    fig.suptitle(title, x=0.02, y=0.975, ha="left", va="top")
     handles = [Patch(color=colors[c], label=CAT_LABEL[c]) for c in FIG_CATS[::-1]]
-    fig.legend(handles=handles, loc="lower center", ncol=5, frameon=False, fontsize=10.5,
-               bbox_to_anchor=(0.5, 0.035), handlelength=1.1, handleheight=1.1)
-    fig.text(0.02, 0.005, f"Five unrelated projects per chain. Chains 1–8 = {', '.join(chains)}.",
-             fontsize=8.5, color=MUTED, ha="left", va="bottom")
+    fig.legend(handles=handles, loc="lower center", ncol=5,
+               bbox_to_anchor=(0.5, 0.0))
     for ext in ("png", "svg"):
         fig.savefig(FIG / f"summary_rot_by_chain.{ext}", dpi=200 if ext == "png" else None)
     plt.close(fig)
+    nums.append(f"(not on the figure) Five unrelated projects per chain. Chains 1–8 = "
+                f"{', '.join(chains)}.")
     return nums, title
 
 

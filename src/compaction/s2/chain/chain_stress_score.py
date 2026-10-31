@@ -693,6 +693,8 @@ def load_token_lists(root: Path = TOKEN_DIR, task_ids=None) -> dict[str, dict]:
     want = None if task_ids is None else set(task_ids)
     out = {}
     for p in sorted(root.glob("*.json")):
+        if p.name == "MANIFEST.json":  # chain_stress.write_token_manifest's, kept alongside
+            continue
         tl = json.loads(p.read_text())
         if want is None or tl["task_id"] in want:
             out[tl["task_id"]] = tl

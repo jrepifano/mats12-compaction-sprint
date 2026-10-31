@@ -1,0 +1,100 @@
+{"i": 1, "text": "- Work on branch `feature/duration-sharding`, commit with `[VIT-295]` prefix, push to `origin`, finish with `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`."}
+{"i": 2, "text": "- **Legacy History Entry:** Format `{\"test/a.ts\": 5000}` is migrated to a single entry observation `{ duration: 5000, recordedAt: 0 }`. TTL check treats `recordedAt === 0` as non-expiring."}
+{"i": 3, "text": "var wrappedErr error"}
+{"i": 4, "text": "- Git head: `43ae4579 [RET-292] Add Validated error-accumulating container with Valid and Invalid`."}
+{"i": 5, "text": "- Inspected rewrite jobs:"}
+{"i": 6, "text": "- Push to `origin feature/durability-wait-apis`."}
+{"i": 7, "text": "*Fix*: Kill background cargo processes before running foreground cargo commands."}
+{"i": 8, "text": "- **Verification:**"}
+{"i": 9, "text": "- Test sibling selector (`g + g`, `rect + rect`, `empty-g + rect`) preserves sibling container in `remove_empty_containers`."}
+{"i": 10, "text": "- *Fix:* `git fetch origin` and `git rebase origin/feature/multiplexed-kcp-streams`, then pushed cleanly."}
+{"i": 11, "text": "- **Files Created:**"}
+{"i": 12, "text": "- `pnpm test:ci` failed initially with `Cannot find module dist/cli.js`:"}
+{"i": 13, "text": "- Push to `origin`."}
+{"i": 14, "text": "- Rebased commit `[RET-292] Add Validated error-accumulating container with Valid and Invalid` onto `origin/feature/validated-error-accumulation` and pushed to `origin`."}
+{"i": 15, "text": "- Remote branch `origin/feature/partial-structuring-recovery` already existed with 2 commits by Sam Patel containing scratch notes. A rebase before pushing was required."}
+{"i": 16, "text": "- Determine how to identify structure-dependent selectors in `CssRuleList`:"}
+{"i": 17, "text": "- `pnpm --filter drizzle-orm test tests/window.test.ts` failed initially with `Cannot find package 'drizzle-orm'`: Fixed by importing from `'~/index.ts'`, `'~/pg-core/index.ts'`, etc."}
+{"i": 18, "text": "- Receiving remote close unblocks local writers with `io.ErrClosedPipe`."}
+{"i": 19, "text": "- `backend/internal/services/drift_detection_service.go`: Full service implementation matching all requirements."}
+{"i": 20, "text": "5. Commit changes with message starting with `[DRZ-712]`, e.g.:"}
+{"i": 21, "text": "4. Check `git status` and `git diff` to ensure no unwanted files or modifications."}
+{"i": 22, "text": "- The implicated element may be the selector target itself or an anchor whose relationship to elements outside its subtree affects matching."}
+{"i": 23, "text": "5. **Commit and Push:**"}
+{"i": 24, "text": "- `Validated.combine_n(containers, func)`: classmethod taking a tuple/sequence of N `Validated` containers and an N-ary function, accumulating all errors if any are failures."}
+{"i": 25, "text": "- Push branch to `origin`."}
+{"i": 26, "text": "- The implementation and tests are complete and pushed to origin."}
+{"i": 27, "text": "- Fetched `origin`, rebased on `origin/feature/window-function-builders` (which had a WIP commit `b1552f6`), committed `[DRZ-712] Add window function builders and named window support` (`fea1c535`), and pushed to `origin feature/window-function-builders`."}
+{"i": 28, "text": "- Push branch to `origin`."}
+{"i": 29, "text": "- `\"config_changed\"` sets `Field=\"ports\"` or `Field=\"volumes\"`"}
+{"i": 30, "text": "- Push to `origin`."}
+{"i": 31, "text": "- `DetectDriftFromConfigs(ctx, envID, containers)`: error with `\"no active baseline\"` when none."}
+{"i": 32, "text": "Wait! What if `b` is reused (released to `batchPool`)?"}
+{"i": 33, "text": "- Updated `tests/test_laws.py` with `check_all_laws(Validated)` (all 18 laws passed cleanly)."}
+{"i": 34, "text": "While running the job: push job's handle to `context.active_evaluation_handles` so any child jobs spawned inherit this handle. Pop after job completes."}
+{"i": 35, "text": "- Push branch to `origin`."}
+{"i": 36, "text": "- `:first-child`, `:last-child`, `:only-child`, `:nth-child`, `:nth-last-child`, `:first-of-type`, `:last-of-type`, `:only-of-type`, `:nth-of-type`, `:nth-last-of-type`, `:empty`, `:root`, `:has(...)`."}
+{"i": 37, "text": "- *Fix:* Removed unused `\"context\"` import from `durability.go`."}
+{"i": 38, "text": "6. Push to origin: `git push -u origin feature/window-function-builders`."}
+{"i": 39, "text": "- Remote push rejection non-fast-forward: `origin/feature/duration-sharding` had remote commits with notes; rebased cleanly on top of `origin/feature/duration-sharding` and pushed successfully."}
+{"i": 40, "text": "That implication must be determined from the structure and selector anchors that exist before the rewrite, because flattening or moving an implicated container can erase the very evidence that the selector depends on."}
+{"i": 41, "text": "- Settings added: `\"driftDetectionEnabled\"` (default `\"true\"`), `\"driftDetectionInterval\"` (default `\"0 0 * * * *\"`)."}
+{"i": 42, "text": "- [`src/cattrs/__init__.py`](file:///app/src/cattrs/__init__.py)"}
+{"i": 43, "text": "- Rebased on top of `origin/feature/partial-structuring-recovery` (commit `df1cc33`)."}
+{"i": 44, "text": "- **Branch**: Branch `feature/window-function-builders` off `main`. Work must be committed and pushed to `origin`."}
+{"i": 45, "text": "if syncWG != nil {"}
+{"i": 46, "text": "- Commit messages must start with `[RET-292]`."}
+{"i": 47, "text": "- Push branch to `origin`."}
+{"i": 48, "text": "- `ntile` and `nthValue` must reject non-positive integer arguments with an error message containing the JS function name and the received value."}
+{"i": 49, "text": "- **Deliverables & Constraints**:"}
+{"i": 50, "text": "- `Context::{new_evaluation_handle, new_child_evaluation_handle, eval_with_evaluation, enqueue_job_with_evaluation, run_jobs_with_evaluation}`"}
+{"i": 51, "text": "- Awaiting next user request/instructions."}
+{"i": 52, "text": "- `NextSibling` (`A + B`) and `LaterSibling` (`A ~ B`): Removing or flattening containers alters sibling relationships and sibling indexing."}
+{"i": 53, "text": "- `TestEventListenerEnsureDefaultsSetsAllCallbacks`: Passed."}
+{"i": 54, "text": "- Successfully pushed to `origin/feature/drift-detection-baselines`."}
+{"i": 55, "text": "- **Handler** (`backend/internal/huma/handlers/compliance.go`):"}
+{"i": 56, "text": "- Rebased local commit onto `origin/feature/validated-error-accumulation` (`2454d30e WIP: rough start on the Validated container`), created commit `43ae4579: [RET-292] Add Validated error-accumulating container with Valid and Invalid`, and pushed successfully to `origin/feature/validated-error-accumulation`."}
+{"i": 57, "text": "- **Commit convention**: Commit message starting with `[OXV-203]`, pushed to `origin`."}
+{"i": 58, "text": "- Must be discoverable by `resources.FS` under `migrations/sqlite/041_*.sql` and `migrations/postgres/041_*.sql`."}
+{"i": 59, "text": "- Branch: `feature/window-function-builders` is up-to-date with `origin/feature/window-function-builders`."}
+{"i": 60, "text": "- **Commit Prefix**: `[RET-292]`. Push branch to origin."}
+{"i": 61, "text": "- Git push rejected non-fast-forward: `origin/feature/validated-error-accumulation` had a remote commit `2454d30e` (`notes/validated.md`) -> fetched, rebased cleanly, and pushed to origin."}
+{"i": 62, "text": "2. Interface hierarchy:"}
+{"i": 63, "text": "- If any further user requests or modifications arrive, inspect [`src/cattrs/partial.py`](file:///app/src/cattrs/partial.py) and [`tests/test_partial.py`](file:///app/tests/test_partial.py), run `pytest tests/test_partial.py`, commit with `[CAT-518]` prefix, and push."}
+{"i": 64, "text": "- The implementation and test verification are complete and already committed and pushed to `origin/feature/partial-structuring-recovery`."}
+{"i": 65, "text": "- **Branch:** `feature/hierarchical-evaluation-cancellation` from `main`."}
+{"i": 66, "text": "- Commit `d387e25` pushed to `origin/feature/partial-structuring-recovery`."}
+{"i": 67, "text": "- Verify all tests pass, commit with `[OXV-203] ...`, push to origin."}
+{"i": 68, "text": "- Submit command: `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` (isolated command)."}
+{"i": 69, "text": "- Working tree is clean and synchronized with `origin/feature/validated-error-accumulation`."}
+{"i": 70, "text": "- **Structure-dependent selectors**:"}
+{"i": 71, "text": "- Branch `feature/structural-selector-preservation` is checked out and up to date with `origin/main`."}
+{"i": 72, "text": "- Committed as `[KCP-256] Introduce multiplexing layer over kcp-go with per-stream flow control and priority scheduling` (commit `960ffe893`)."}
+{"i": 73, "text": "- Commit prefix: `[OXV-203]`."}
+{"i": 74, "text": "- *Root Cause:* Remote branch already existed with `notes/multiplexed-streams.md`."}
+{"i": 75, "text": "- `from_validated` returns the received instance directly."}
+{"i": 76, "text": "- Implemented `PartialResult` and `partial_structure` in [`src/cattrs/partial.py`](file:///app/src/cattrs/partial.py)."}
+{"i": 77, "text": "- **Git Status:** Clean, up to date with `origin/feature/multiplexed-kcp-streams`."}
+{"i": 78, "text": "- `exports.test.ts` dynamically scans all exports across files and fails if there is any naming conflict or duplicate export across modules."}
+{"i": 79, "text": "- Branch `feature/duration-sharding` created and rebased on top of remote `origin/feature/duration-sharding` (which had a prior commit `9ee793d4b` adding `notes/duration-sharding.md`)."}
+{"i": 80, "text": "- When done, commit on branch, push to `origin`, and submit ONLY by running: `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` (isolated command)."}
+{"i": 81, "text": "- Implement RAII guard `ActiveEvaluationGuard` to push on creation and pop on drop."}
+{"i": 82, "text": "- *Fix:* Fetched `origin`, rebased local branch on top of `origin/feature/duration-sharding`, and pushed."}
+{"i": 83, "text": "- Must remain on branch `feature/hierarchical-evaluation-cancellation`."}
+{"i": 84, "text": "- **Core Request**:"}
+{"i": 85, "text": "- The task was finished, committed, pushed, verified, and submitted via `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`."}
+{"i": 86, "text": "- Awaiting next user instructions or evaluation."}
+{"i": 87, "text": "7. **Commit & Push:**"}
+{"i": 88, "text": "- Ensure unrelated elements are still rewritten."}
+{"i": 89, "text": "- Push to `origin feature/hierarchical-evaluation-cancellation`."}
+{"i": 90, "text": "- `DeleteBaseline(ctx, baselineID)`: application-level cascades (explicitly deletes associated `drift_records` and `compliance_snapshots` before deleting baseline)."}
+{"i": 91, "text": "- **Rebase & Push**:"}
+{"i": 92, "text": "- `Component<Impl>` has variants: `Combinator(Combinator)`, `Empty`, `Root`, `Nth`, `NthOf`, `Has`, `Is`, `Where`, `NonTSPseudoClass`, etc."}
+{"i": 93, "text": "- `git push` rejected (non-fast-forward): Fetched remote branch `feature/partial-structuring-recovery`, rebased on top of `origin/feature/partial-structuring-recovery`, re-ran tests, and successfully pushed."}
+{"i": 94, "text": "- Work on branch `feature/partial-structuring-recovery` branched from `main`. Commit messages must start with `[CAT-518]`. Push to `origin`."}
+{"i": 95, "text": "- Rebased on top of `origin/feature/drift-detection-baselines` (commit `34fad333`)."}
+{"i": 96, "text": "- Active branch: `feature/validated-error-accumulation`, clean and pushed to `origin`."}
+{"i": 97, "text": "- The task `KCP-256` has been completely implemented, verified with race detector, committed, pushed, and final output submitted."}
+{"i": 98, "text": "- The task is fully implemented, verified with tests, committed, pushed to origin, and submitted."}
+{"i": 99, "text": "- **Step 5**: Finish task with `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`."}
+{"i": 100, "text": "If `prepare` succeeds, `apply` runs concurrently with the WAL sync."}

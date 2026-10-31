@@ -1,0 +1,4163 @@
+{
+ "written_utc": "2026-10-29T07:35:11+00:00",
+ "run_dir": "data/raw/sprint/s2/chain_stress_run",
+ "state_updated": "2026-10-29T07:27:52+00:00",
+ "chains": [
+  {
+   "id": "f01",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "kcp-go-multiplexed-kcp-streams"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f02",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "arcane-drift-detection-baselines"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f03",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "pebble-durability-wait-apis"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f04",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "returns-validated-error-accumulation"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f05",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "cattrs-partial-structuring-recovery"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f06",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "oxvg-structural-selector-preservation"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f07",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "boa-hierarchical-evaluation-cancellation"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f08",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "dynamodb-toolbox-conditional-attribute-requirements"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f09",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "vitest-duration-sharding"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f10",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "drizzle-orm-window-function-builders"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f11",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "returns-validated-error-accumulation"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "f12",
+   "arm": "fresh",
+   "state": "done",
+   "n_phases": 1,
+   "tasks": [
+    "oxvg-structural-selector-preservation"
+   ],
+   "phases_run": 1,
+   "set_aside": [],
+   "compactions": []
+  },
+  {
+   "id": "rel-bandit-1",
+   "arm": "related",
+   "state": "done",
+   "n_phases": 3,
+   "tasks": [
+    "bandit-incremental-cache-control",
+    "bandit-interprocedural-taint-checks",
+    "bandit-structured-nosec-directives"
+   ],
+   "phases_run": 3,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 365005,
+     "post_tokens_est": 52211,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 330775,
+     "post_tokens_est": 57177,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 299081,
+     "post_tokens_est": 59628,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "rel-httpx-1",
+   "arm": "related",
+   "state": "done",
+   "n_phases": 3,
+   "tasks": [
+    "httpx-deterministic-cookie-store",
+    "httpx-multipart-response-parsing",
+    "httpx-streaming-json-iteration"
+   ],
+   "phases_run": 3,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 223066,
+     "post_tokens_est": 52517,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 229036,
+     "post_tokens_est": 57125,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 305979,
+     "post_tokens_est": 59956,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "rel-koota-1",
+   "arm": "related",
+   "state": "done",
+   "n_phases": 4,
+   "tasks": [
+    "koota-composite-trait-aspects",
+    "koota-entity-snapshot-rollback",
+    "koota-pair-relation-tracking",
+    "koota-query-predicates"
+   ],
+   "phases_run": 4,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 525367,
+     "post_tokens_est": 54532,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 240938,
+     "post_tokens_est": 53350,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 418459,
+     "post_tokens_est": 55871,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 465713,
+     "post_tokens_est": 57929,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "rel-obsidian-linter-1",
+   "arm": "related",
+   "state": "done",
+   "n_phases": 3,
+   "tasks": [
+    "obsidian-linter-auto-table-of-contents",
+    "obsidian-linter-link-format-conversion",
+    "obsidian-linter-scoped-ignore-markers"
+   ],
+   "phases_run": 3,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 305392,
+     "post_tokens_est": 53196,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 208752,
+     "post_tokens_est": 57039,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 317097,
+     "post_tokens_est": 57962,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u1",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "drizzle-orm-window-function-builders",
+    "oxvg-structural-selector-preservation",
+    "arcane-drift-detection-baselines",
+    "cattrs-partial-structuring-recovery",
+    "dynamodb-toolbox-conditional-attribute-requirements"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 474345,
+     "post_tokens_est": 53268,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 516074,
+     "post_tokens_est": 55054,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 398797,
+     "post_tokens_est": 60988,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 442843,
+     "post_tokens_est": 60362,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 551265,
+     "post_tokens_est": 57514,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u2",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "cattrs-partial-structuring-recovery",
+    "drizzle-orm-window-function-builders",
+    "returns-validated-error-accumulation",
+    "oxvg-structural-selector-preservation",
+    "arcane-drift-detection-baselines"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 384216,
+     "post_tokens_est": 52697,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 298107,
+     "post_tokens_est": 57280,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 292250,
+     "post_tokens_est": 52219,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 361026,
+     "post_tokens_est": 52740,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 426308,
+     "post_tokens_est": 55755,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u3",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "boa-hierarchical-evaluation-cancellation",
+    "pebble-durability-wait-apis",
+    "vitest-duration-sharding",
+    "kcp-go-multiplexed-kcp-streams",
+    "returns-validated-error-accumulation"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 559220,
+     "post_tokens_est": 53775,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 339229,
+     "post_tokens_est": 53139,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 365236,
+     "post_tokens_est": 62223,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 201623,
+     "post_tokens_est": 59095,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 232331,
+     "post_tokens_est": 56581,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u4",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "vitest-duration-sharding",
+    "returns-validated-error-accumulation",
+    "oxvg-structural-selector-preservation",
+    "drizzle-orm-window-function-builders",
+    "kcp-go-multiplexed-kcp-streams"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 692408,
+     "post_tokens_est": 51137,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 319928,
+     "post_tokens_est": 58557,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 442919,
+     "post_tokens_est": 57086,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 231980,
+     "post_tokens_est": 65886,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 228103,
+     "post_tokens_est": 56207,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u5",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "dynamodb-toolbox-conditional-attribute-requirements",
+    "arcane-drift-detection-baselines",
+    "boa-hierarchical-evaluation-cancellation",
+    "pebble-durability-wait-apis",
+    "drizzle-orm-window-function-builders"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 568191,
+     "post_tokens_est": 56687,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 472519,
+     "post_tokens_est": 61889,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 525431,
+     "post_tokens_est": 58303,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 422174,
+     "post_tokens_est": 59426,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 301281,
+     "post_tokens_est": 58205,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u6",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "pebble-durability-wait-apis",
+    "vitest-duration-sharding",
+    "kcp-go-multiplexed-kcp-streams",
+    "returns-validated-error-accumulation",
+    "boa-hierarchical-evaluation-cancellation"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 327865,
+     "post_tokens_est": 56641,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 506482,
+     "post_tokens_est": 63719,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 222444,
+     "post_tokens_est": 52116,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 301340,
+     "post_tokens_est": 57774,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 555329,
+     "post_tokens_est": 56925,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u7",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "arcane-drift-detection-baselines",
+    "dynamodb-toolbox-conditional-attribute-requirements",
+    "pebble-durability-wait-apis",
+    "vitest-duration-sharding",
+    "cattrs-partial-structuring-recovery"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 407730,
+     "post_tokens_est": 55681,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 639195,
+     "post_tokens_est": 59225,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 429917,
+     "post_tokens_est": 57019,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 361886,
+     "post_tokens_est": 59985,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 277641,
+     "post_tokens_est": 49409,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "u8",
+   "arm": "unrelated",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "kcp-go-multiplexed-kcp-streams",
+    "boa-hierarchical-evaluation-cancellation",
+    "cattrs-partial-structuring-recovery",
+    "dynamodb-toolbox-conditional-attribute-requirements",
+    "oxvg-structural-selector-preservation"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 221150,
+     "post_tokens_est": 58625,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 366630,
+     "post_tokens_est": 55673,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 362826,
+     "post_tokens_est": 58222,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 460039,
+     "post_tokens_est": 57035,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 319070,
+     "post_tokens_est": 55444,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "w1",
+   "arm": "within_task",
+   "state": "halted b2: compaction failed",
+   "n_phases": 5,
+   "tasks": [
+    "drizzle-orm-window-function-builders",
+    "oxvg-structural-selector-preservation",
+    "arcane-drift-detection-baselines",
+    "cattrs-partial-structuring-recovery",
+    "dynamodb-toolbox-conditional-attribute-requirements"
+   ],
+   "phases_run": 2,
+   "set_aside": [
+    "p2.failed-20261029T031832"
+   ],
+   "compactions": [
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 1,
+     "call": 175,
+     "pre_tokens_est": 266109,
+     "post_tokens_est": 50954,
+     "update": false
+    },
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 2,
+     "call": 320,
+     "pre_tokens_est": 247120,
+     "post_tokens_est": 53676,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 135416,
+     "post_tokens_est": 49115,
+     "update": false
+    },
+    {
+     "kind": "auto",
+     "phase": 2,
+     "boundary": null,
+     "n": 1,
+     "call": 125,
+     "pre_tokens_est": 264683,
+     "post_tokens_est": 54042,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "w2",
+   "arm": "within_task",
+   "state": "halted b5: compaction failed",
+   "n_phases": 5,
+   "tasks": [
+    "cattrs-partial-structuring-recovery",
+    "drizzle-orm-window-function-builders",
+    "returns-validated-error-accumulation",
+    "oxvg-structural-selector-preservation",
+    "arcane-drift-detection-baselines"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 1,
+     "call": 181,
+     "pre_tokens_est": 309408,
+     "post_tokens_est": 54982,
+     "update": false
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 207660,
+     "post_tokens_est": 52490,
+     "update": false
+    },
+    {
+     "kind": "auto",
+     "phase": 2,
+     "boundary": null,
+     "n": 1,
+     "call": 172,
+     "pre_tokens_est": 277939,
+     "post_tokens_est": 55336,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 186026,
+     "post_tokens_est": 55085,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 3,
+     "boundary": null,
+     "n": 1,
+     "call": 130,
+     "pre_tokens_est": 288664,
+     "post_tokens_est": 58781,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 3,
+     "boundary": null,
+     "n": 2,
+     "call": 249,
+     "pre_tokens_est": 264248,
+     "post_tokens_est": 56043,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 126939,
+     "post_tokens_est": 53194,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 4,
+     "boundary": null,
+     "n": 1,
+     "call": 98,
+     "pre_tokens_est": 266409,
+     "post_tokens_est": 54748,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 4,
+     "boundary": null,
+     "n": 2,
+     "call": 172,
+     "pre_tokens_est": 234081,
+     "post_tokens_est": 53838,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 112363,
+     "post_tokens_est": 56966,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 5,
+     "boundary": null,
+     "n": 1,
+     "call": 120,
+     "pre_tokens_est": 318880,
+     "post_tokens_est": 57335,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "w3",
+   "arm": "within_task",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "boa-hierarchical-evaluation-cancellation",
+    "pebble-durability-wait-apis",
+    "vitest-duration-sharding",
+    "kcp-go-multiplexed-kcp-streams",
+    "returns-validated-error-accumulation"
+   ],
+   "phases_run": 5,
+   "set_aside": [],
+   "compactions": [
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 1,
+     "call": 83,
+     "pre_tokens_est": 251152,
+     "post_tokens_est": 49240,
+     "update": false
+    },
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 2,
+     "call": 225,
+     "pre_tokens_est": 315527,
+     "post_tokens_est": 51041,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 3,
+     "call": 369,
+     "pre_tokens_est": 291245,
+     "post_tokens_est": 46577,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 93760,
+     "post_tokens_est": 48433,
+     "update": false
+    },
+    {
+     "kind": "auto",
+     "phase": 2,
+     "boundary": null,
+     "n": 1,
+     "call": 121,
+     "pre_tokens_est": 242433,
+     "post_tokens_est": 47514,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 108923,
+     "post_tokens_est": 51273,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 3,
+     "boundary": null,
+     "n": 1,
+     "call": 137,
+     "pre_tokens_est": 281002,
+     "post_tokens_est": 50137,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 168628,
+     "post_tokens_est": 55455,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 184507,
+     "post_tokens_est": 56869,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 5,
+     "boundary": null,
+     "n": 1,
+     "call": 167,
+     "pre_tokens_est": 299692,
+     "post_tokens_est": 55692,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 203173,
+     "post_tokens_est": 54731,
+     "update": true
+    }
+   ]
+  },
+  {
+   "id": "w4",
+   "arm": "within_task",
+   "state": "done",
+   "n_phases": 5,
+   "tasks": [
+    "vitest-duration-sharding",
+    "returns-validated-error-accumulation",
+    "oxvg-structural-selector-preservation",
+    "drizzle-orm-window-function-builders",
+    "kcp-go-multiplexed-kcp-streams"
+   ],
+   "phases_run": 5,
+   "set_aside": [
+    "p3.failed-20261029T031834"
+   ],
+   "compactions": [
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 1,
+     "call": 136,
+     "pre_tokens_est": 294792,
+     "post_tokens_est": 56501,
+     "update": false
+    },
+    {
+     "kind": "auto",
+     "phase": 1,
+     "boundary": null,
+     "n": 2,
+     "call": 305,
+     "pre_tokens_est": 278441,
+     "post_tokens_est": 55240,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 1,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 132997,
+     "post_tokens_est": 49744,
+     "update": false
+    },
+    {
+     "kind": "auto",
+     "phase": 2,
+     "boundary": null,
+     "n": 1,
+     "call": 147,
+     "pre_tokens_est": 297228,
+     "post_tokens_est": 51769,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 2,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 301159,
+     "post_tokens_est": 54858,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 3,
+     "boundary": null,
+     "n": 1,
+     "call": 145,
+     "pre_tokens_est": 282118,
+     "post_tokens_est": 54799,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 3,
+     "boundary": null,
+     "n": 2,
+     "call": 203,
+     "pre_tokens_est": 238202,
+     "post_tokens_est": 55027,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 3,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 130815,
+     "post_tokens_est": 55285,
+     "update": true
+    },
+    {
+     "kind": "auto",
+     "phase": 4,
+     "boundary": null,
+     "n": 1,
+     "call": 144,
+     "pre_tokens_est": 276843,
+     "post_tokens_est": 53871,
+     "update": true
+    },
+    {
+     "kind": "boundary",
+     "phase": null,
+     "boundary": 4,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 143144,
+     "post_tokens_est": 53326,
+     "update": true
+    },
+    {
+     "kind": "end",
+     "phase": null,
+     "boundary": 5,
+     "n": null,
+     "call": null,
+     "pre_tokens_est": 223943,
+     "post_tokens_est": 55445,
+     "update": true
+    }
+   ]
+  }
+ ],
+ "rows": [
+  {
+   "chain": "f01",
+   "arm": "fresh",
+   "position": 1,
+   "task": "kcp-go-multiplexed-kcp-streams",
+   "end": "capped_time",
+   "n_calls": 148,
+   "cost_usd": 1.402795,
+   "seconds": 7238.134,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    30,
+    30
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2864,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 3,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f02",
+   "arm": "fresh",
+   "position": 1,
+   "task": "arcane-drift-detection-baselines",
+   "end": "submitted",
+   "n_calls": 173,
+   "cost_usd": 1.043854,
+   "seconds": 3744.681,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    82,
+    82
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 4418,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f03",
+   "arm": "fresh",
+   "position": 1,
+   "task": "pebble-durability-wait-apis",
+   "end": "capped_time",
+   "n_calls": 203,
+   "cost_usd": 1.761798,
+   "seconds": 7268.139,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    59
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3005,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   }
+  },
+  {
+   "chain": "f04",
+   "arm": "fresh",
+   "position": 1,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 231,
+   "cost_usd": 1.80791,
+   "seconds": 6362.982,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3244,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 3,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f05",
+   "arm": "fresh",
+   "position": 1,
+   "task": "cattrs-partial-structuring-recovery",
+   "end": "submitted",
+   "n_calls": 295,
+   "cost_usd": 1.614826,
+   "seconds": 5479.413,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    69,
+    69
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2292,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f06",
+   "arm": "fresh",
+   "position": 1,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_cost",
+   "n_calls": 193,
+   "cost_usd": 2.203314,
+   "seconds": 5652.343,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2050,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   }
+  },
+  {
+   "chain": "f07",
+   "arm": "fresh",
+   "position": 1,
+   "task": "boa-hierarchical-evaluation-cancellation",
+   "end": "submitted",
+   "n_calls": 380,
+   "cost_usd": 1.533993,
+   "seconds": 5222.015,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    17,
+    17
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3774,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 4,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f08",
+   "arm": "fresh",
+   "position": 1,
+   "task": "dynamodb-toolbox-conditional-attribute-requirements",
+   "end": "capped_time",
+   "n_calls": 381,
+   "cost_usd": 1.699926,
+   "seconds": 7229.69,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    31
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2297,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   }
+  },
+  {
+   "chain": "f09",
+   "arm": "fresh",
+   "position": 1,
+   "task": "vitest-duration-sharding",
+   "end": "submitted",
+   "n_calls": 344,
+   "cost_usd": 1.921094,
+   "seconds": 6703.627,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    56,
+    56
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3869,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 4,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f10",
+   "arm": "fresh",
+   "position": 1,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "submitted",
+   "n_calls": 293,
+   "cost_usd": 1.697084,
+   "seconds": 6039.113,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2853,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f11",
+   "arm": "fresh",
+   "position": 1,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 191,
+   "cost_usd": 1.30036,
+   "seconds": 5153.018,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3244,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "f12",
+   "arm": "fresh",
+   "position": 1,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_cost",
+   "n_calls": 271,
+   "cost_usd": 2.103662,
+   "seconds": 6268.447,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2050,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   }
+  },
+  {
+   "chain": "rel-bandit-1",
+   "arm": "related",
+   "position": 1,
+   "task": "bandit-incremental-cache-control",
+   "end": "submitted",
+   "n_calls": 231,
+   "cost_usd": 0.99493,
+   "seconds": 3652.253,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    88,
+    88
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2547,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "rel-bandit-1",
+   "arm": "related",
+   "position": 2,
+   "task": "bandit-interprocedural-taint-checks",
+   "end": "submitted",
+   "n_calls": 213,
+   "cost_usd": 0.929798,
+   "seconds": 3036.099,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    66,
+    66
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 54408,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "rel-bandit-1",
+   "arm": "related",
+   "position": 3,
+   "task": "bandit-structured-nosec-directives",
+   "end": "submitted",
+   "n_calls": 178,
+   "cost_usd": 1.272441,
+   "seconds": 4137.219,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    67,
+    69
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 60199,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 2,
+    "tokens": [
+     "pytest"
+    ],
+    "source_tasks": [
+     "bandit-incremental-cache-control",
+     "bandit-interprocedural-taint-checks"
+    ]
+   }
+  },
+  {
+   "chain": "rel-httpx-1",
+   "arm": "related",
+   "position": 1,
+   "task": "httpx-deterministic-cookie-store",
+   "end": "submitted",
+   "n_calls": 149,
+   "cost_usd": 0.959814,
+   "seconds": 3278.757,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    115,
+    115
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3261,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "rel-httpx-1",
+   "arm": "related",
+   "position": 2,
+   "task": "httpx-multipart-response-parsing",
+   "end": "submitted",
+   "n_calls": 108,
+   "cost_usd": 1.052776,
+   "seconds": 3348.21,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    121,
+    122
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 55233,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "rel-httpx-1",
+   "arm": "related",
+   "position": 3,
+   "task": "httpx-streaming-json-iteration",
+   "end": "submitted",
+   "n_calls": 170,
+   "cost_usd": 1.788369,
+   "seconds": 5354.665,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    108,
+    108
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 60050,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 1,
+    "tokens": [
+     "feature/multipart-response-parsing"
+    ],
+    "source_tasks": [
+     "httpx-multipart-response-parsing"
+    ]
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "position": 1,
+   "task": "koota-composite-trait-aspects",
+   "end": "submitted",
+   "n_calls": 300,
+   "cost_usd": 1.837653,
+   "seconds": 6121.772,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    50,
+    51
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2425,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "position": 2,
+   "task": "koota-entity-snapshot-rollback",
+   "end": "submitted",
+   "n_calls": 98,
+   "cost_usd": 0.445104,
+   "seconds": 1438.863,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    84,
+    84
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 57386,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "position": 3,
+   "task": "koota-pair-relation-tracking",
+   "end": "submitted",
+   "n_calls": 214,
+   "cost_usd": 1.160349,
+   "seconds": 3883.823,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    37,
+    38
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 55493,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "rel-koota-1",
+   "arm": "related",
+   "position": 4,
+   "task": "koota-query-predicates",
+   "end": "submitted",
+   "n_calls": 259,
+   "cost_usd": 1.984556,
+   "seconds": 5343.408,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    42,
+    43
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 57952,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 1,
+    "tokens": [
+     "feature/pair-relation-tracking"
+    ],
+    "source_tasks": [
+     "koota-pair-relation-tracking"
+    ]
+   }
+  },
+  {
+   "chain": "rel-obsidian-linter-1",
+   "arm": "related",
+   "position": 1,
+   "task": "obsidian-linter-auto-table-of-contents",
+   "end": "capped_time",
+   "n_calls": 150,
+   "cost_usd": 2.281173,
+   "seconds": 7267.565,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    41
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2399,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   }
+  },
+  {
+   "chain": "rel-obsidian-linter-1",
+   "arm": "related",
+   "position": 2,
+   "task": "obsidian-linter-link-format-conversion",
+   "end": "submitted",
+   "n_calls": 111,
+   "cost_usd": 0.744062,
+   "seconds": 2635.002,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    60,
+    60
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 55919,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "rel-obsidian-linter-1",
+   "arm": "related",
+   "position": 3,
+   "task": "obsidian-linter-scoped-ignore-markers",
+   "end": "submitted",
+   "n_calls": 182,
+   "cost_usd": 1.568999,
+   "seconds": 5218.479,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    33,
+    33
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 59769,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 4,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "capped_time",
+   "n_calls": 349,
+   "cost_usd": 1.949075,
+   "seconds": 7276.4,
+   "rewrite": "no",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2853,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 4,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_cost",
+   "n_calls": 245,
+   "cost_usd": 2.153299,
+   "seconds": 7267.841,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 55341,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "arcane-drift-detection-baselines",
+   "end": "submitted",
+   "n_calls": 222,
+   "cost_usd": 0.917416,
+   "seconds": 3859.268,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    82,
+    82
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 59492,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 12,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "cattrs-partial-structuring-recovery",
+   "end": "submitted",
+   "n_calls": 274,
+   "cost_usd": 1.411536,
+   "seconds": 4799.284,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    69,
+    69
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 63301,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 9,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u1",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "dynamodb-toolbox-conditional-attribute-requirements",
+   "end": "submitted",
+   "n_calls": 338,
+   "cost_usd": 1.614905,
+   "seconds": 5226.033,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    31,
+    31
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 62685,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 8,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 2,
+    "tokens": [
+     ".github/workflows/main.yml",
+     ".npmrc"
+    ],
+    "source_tasks": [
+     "cattrs-partial-structuring-recovery",
+     "drizzle-orm-window-function-builders"
+    ]
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "cattrs-partial-structuring-recovery",
+   "end": "submitted",
+   "n_calls": 201,
+   "cost_usd": 0.971011,
+   "seconds": 3441.2,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    69,
+    69
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2292,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "submitted",
+   "n_calls": 164,
+   "cost_usd": 0.983641,
+   "seconds": 3458.005,
+   "rewrite": "no",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 55574,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 158,
+   "cost_usd": 1.33871,
+   "seconds": 4184.142,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 60548,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 1,
+    "tokens": [
+     "tests/conftest.py"
+    ],
+    "source_tasks": [
+     "cattrs-partial-structuring-recovery"
+    ]
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_time",
+   "n_calls": 167,
+   "cost_usd": 2.172852,
+   "seconds": 7277.667,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 54290,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u2",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "arcane-drift-detection-baselines",
+   "end": "submitted",
+   "n_calls": 216,
+   "cost_usd": 0.728383,
+   "seconds": 2737.063,
+   "rewrite": "no",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    82,
+    82
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 57178,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 3,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "boa-hierarchical-evaluation-cancellation",
+   "end": "capped_time",
+   "n_calls": 319,
+   "cost_usd": 1.916704,
+   "seconds": 7358.722,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    17,
+    17
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3774,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 5,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "pebble-durability-wait-apis",
+   "end": "capped_time",
+   "n_calls": 173,
+   "cost_usd": 2.01066,
+   "seconds": 7274.274,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    59
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 56799,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 1,
+    "tokens": [
+     "boa"
+    ],
+    "source_tasks": [
+     "boa-hierarchical-evaluation-cancellation"
+    ]
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "vitest-duration-sharding",
+   "end": "submitted",
+   "n_calls": 226,
+   "cost_usd": 1.021042,
+   "seconds": 3811.946,
+   "rewrite": "no",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    56,
+    56
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 57029,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "kcp-go-multiplexed-kcp-streams",
+   "end": "submitted",
+   "n_calls": 104,
+   "cost_usd": 0.733997,
+   "seconds": 2877.819,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    30,
+    30
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 65108,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u3",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 94,
+   "cost_usd": 0.755959,
+   "seconds": 2299.331,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 62361,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "vitest-duration-sharding",
+   "end": "capped_cost",
+   "n_calls": 388,
+   "cost_usd": 2.04658,
+   "seconds": 6549.88,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    56,
+    56
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3869,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 154,
+   "cost_usd": 1.257137,
+   "seconds": 3928.82,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 54403,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_time",
+   "n_calls": 199,
+   "cost_usd": 2.143458,
+   "seconds": 7303.254,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 60628,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "submitted",
+   "n_calls": 140,
+   "cost_usd": 0.772991,
+   "seconds": 2284.685,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 59961,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u4",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "kcp-go-multiplexed-kcp-streams",
+   "end": "submitted",
+   "n_calls": 103,
+   "cost_usd": 0.855265,
+   "seconds": 3049.56,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    2,
+    30
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 68773,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 3,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "dynamodb-toolbox-conditional-attribute-requirements",
+   "end": "submitted",
+   "n_calls": 281,
+   "cost_usd": 1.202554,
+   "seconds": 4826.65,
+   "rewrite": "no",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    31,
+    31
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2297,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 10,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "arcane-drift-detection-baselines",
+   "end": "submitted",
+   "n_calls": 249,
+   "cost_usd": 0.964216,
+   "seconds": 3643.809,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    82,
+    82
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 61131,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 14,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "boa-hierarchical-evaluation-cancellation",
+   "end": "submitted",
+   "n_calls": 305,
+   "cost_usd": 1.893726,
+   "seconds": 6685.004,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    17,
+    17
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 65683,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 5,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "pebble-durability-wait-apis",
+   "end": "submitted",
+   "n_calls": 240,
+   "cost_usd": 1.779014,
+   "seconds": 7039.232,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    56,
+    59
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 61328,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 4,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u5",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "submitted",
+   "n_calls": 189,
+   "cost_usd": 1.232778,
+   "seconds": 3661.584,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 62302,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 4,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "pebble-durability-wait-apis",
+   "end": "capped_time",
+   "n_calls": 164,
+   "cost_usd": 1.879031,
+   "seconds": 7286.687,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    59
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 3005,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "vitest-duration-sharding",
+   "end": "submitted",
+   "n_calls": 296,
+   "cost_usd": 1.72163,
+   "seconds": 5611.849,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    56,
+    56
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 60531,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 5,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "kcp-go-multiplexed-kcp-streams",
+   "end": "submitted",
+   "n_calls": 110,
+   "cost_usd": 0.831265,
+   "seconds": 3559.557,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    30,
+    30
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 66604,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 157,
+   "cost_usd": 1.126777,
+   "seconds": 3533.435,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 55382,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u6",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "boa-hierarchical-evaluation-cancellation",
+   "end": "capped_time",
+   "n_calls": 299,
+   "cost_usd": 1.762904,
+   "seconds": 7466.899,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    17
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 61569,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 7,
+    "tokens": [
+     "returns"
+    ],
+    "source_tasks": [
+     "returns-validated-error-accumulation"
+    ]
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "arcane-drift-detection-baselines",
+   "end": "submitted",
+   "n_calls": 226,
+   "cost_usd": 0.937732,
+   "seconds": 3935.311,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    29,
+    82
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 4418,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "dynamodb-toolbox-conditional-attribute-requirements",
+   "end": "submitted",
+   "n_calls": 377,
+   "cost_usd": 1.961701,
+   "seconds": 7202.484,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    31,
+    31
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 58004,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 1,
+    "tokens": [
+     "Justfile"
+    ],
+    "source_tasks": [
+     "arcane-drift-detection-baselines"
+    ]
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "pebble-durability-wait-apis",
+   "end": "capped_time",
+   "n_calls": 204,
+   "cost_usd": 1.326435,
+   "seconds": 7424.155,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    59,
+    59
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 62256,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 5,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "vitest-duration-sharding",
+   "end": "submitted",
+   "n_calls": 258,
+   "cost_usd": 0.772967,
+   "seconds": 2753.931,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    56,
+    56
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 60909,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 9,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u7",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "cattrs-partial-structuring-recovery",
+   "end": "submitted",
+   "n_calls": 136,
+   "cost_usd": 1.003548,
+   "seconds": 3236.753,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    69,
+    69
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 62299,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "position": 1,
+   "task": "kcp-go-multiplexed-kcp-streams",
+   "end": "submitted",
+   "n_calls": 149,
+   "cost_usd": 0.916193,
+   "seconds": 5938.19,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    2,
+    30
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 2864,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "position": 2,
+   "task": "boa-hierarchical-evaluation-cancellation",
+   "end": "submitted",
+   "n_calls": 187,
+   "cost_usd": 1.688666,
+   "seconds": 5512.655,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    17,
+    17
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 62419,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "position": 3,
+   "task": "cattrs-partial-structuring-recovery",
+   "end": "submitted",
+   "n_calls": 223,
+   "cost_usd": 1.184574,
+   "seconds": 3961.073,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    69,
+    69
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 57985,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "position": 4,
+   "task": "dynamodb-toolbox-conditional-attribute-requirements",
+   "end": "submitted",
+   "n_calls": 257,
+   "cost_usd": 1.375641,
+   "seconds": 5704.865,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    31,
+    31
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 60545,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "u8",
+   "arm": "unrelated",
+   "position": 5,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_time",
+   "n_calls": 151,
+   "cost_usd": 2.287744,
+   "seconds": 7292.496,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 59110,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w1",
+   "arm": "within_task",
+   "position": 1,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "submitted",
+   "n_calls": 400,
+   "cost_usd": 2.244417,
+   "seconds": 6553.984,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 2,
+   "ctx_tokens_at_start": 2853,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "w1",
+   "arm": "within_task",
+   "position": 2,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_cost",
+   "n_calls": 159,
+   "cost_usd": 2.351609,
+   "seconds": 6435.577,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 51188,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "position": 1,
+   "task": "cattrs-partial-structuring-recovery",
+   "end": "submitted",
+   "n_calls": 326,
+   "cost_usd": 1.307491,
+   "seconds": 4236.178,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    69,
+    69
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 2292,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "position": 2,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "submitted",
+   "n_calls": 295,
+   "cost_usd": 1.327219,
+   "seconds": 3336.211,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 55367,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "position": 3,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 287,
+   "cost_usd": 2.108811,
+   "seconds": 5000.292,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 2,
+   "ctx_tokens_at_start": 58353,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 3,
+    "tokens": [
+     "tests/__init__.py",
+     "tests/conftest.py"
+    ],
+    "source_tasks": [
+     "cattrs-partial-structuring-recovery"
+    ]
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "position": 4,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_cost",
+   "n_calls": 187,
+   "cost_usd": 2.422203,
+   "seconds": 6500.233,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 2,
+   "ctx_tokens_at_start": 55265,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 1,
+    "tokens": [
+     ".github/workflows/test.yml"
+    ],
+    "source_tasks": [
+     "returns-validated-error-accumulation"
+    ]
+   }
+  },
+  {
+   "chain": "w2",
+   "arm": "within_task",
+   "position": 5,
+   "task": "arcane-drift-detection-baselines",
+   "end": "submitted",
+   "n_calls": 214,
+   "cost_usd": 0.953593,
+   "seconds": 3039.199,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    82,
+    82
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 61404,
+   "tags": {
+    "compliance": 0.8181818181818182,
+    "n_counted": 11,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "position": 1,
+   "task": "boa-hierarchical-evaluation-cancellation",
+   "end": "capped_calls",
+   "n_calls": 400,
+   "cost_usd": 2.141842,
+   "seconds": 5950.564,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    17
+   ],
+   "auto_compactions": 3,
+   "ctx_tokens_at_start": 3774,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "position": 2,
+   "task": "pebble-durability-wait-apis",
+   "end": "capped_time",
+   "n_calls": 170,
+   "cost_usd": 2.315166,
+   "seconds": 7250.307,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    59
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 51458,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "position": 3,
+   "task": "vitest-duration-sharding",
+   "end": "submitted",
+   "n_calls": 250,
+   "cost_usd": 1.280305,
+   "seconds": 3516.534,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    56
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 55163,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "position": 4,
+   "task": "kcp-go-multiplexed-kcp-streams",
+   "end": "submitted",
+   "n_calls": 106,
+   "cost_usd": 0.881708,
+   "seconds": 3741.081,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    2,
+    30
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 58340,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 6,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w3",
+   "arm": "within_task",
+   "position": 5,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 310,
+   "cost_usd": 1.893737,
+   "seconds": 5118.413,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 60135,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 13,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "position": 1,
+   "task": "vitest-duration-sharding",
+   "end": "submitted",
+   "n_calls": 375,
+   "cost_usd": 1.52251,
+   "seconds": 4143.335,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    56,
+    56
+   ],
+   "auto_compactions": 2,
+   "ctx_tokens_at_start": 3869,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 1,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "position": 2,
+   "task": "returns-validated-error-accumulation",
+   "end": "submitted",
+   "n_calls": 371,
+   "cost_usd": 1.48678,
+   "seconds": 4153.565,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    159,
+    159
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 53010,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 5,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "position": 3,
+   "task": "oxvg-structural-selector-preservation",
+   "end": "capped_cost",
+   "n_calls": 230,
+   "cost_usd": 2.382861,
+   "seconds": 6468.877,
+   "rewrite": "no",
+   "rejection": "no",
+   "reward": 0,
+   "grade_error": null,
+   "f2p": [
+    0,
+    6
+   ],
+   "auto_compactions": 2,
+   "ctx_tokens_at_start": 56929,
+   "tags": {
+    "compliance": null,
+    "n_counted": 0,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": []
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "position": 4,
+   "task": "drizzle-orm-window-function-builders",
+   "end": "submitted",
+   "n_calls": 230,
+   "cost_usd": 1.026562,
+   "seconds": 2532.547,
+   "rewrite": "yes",
+   "rejection": "no",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    130,
+    130
+   ],
+   "auto_compactions": 1,
+   "ctx_tokens_at_start": 58160,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 2,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 1,
+    "tokens": [
+     "eslint.config.js"
+    ],
+    "source_tasks": [
+     "vitest-duration-sharding"
+    ]
+   }
+  },
+  {
+   "chain": "w4",
+   "arm": "within_task",
+   "position": 5,
+   "task": "kcp-go-multiplexed-kcp-streams",
+   "end": "submitted",
+   "n_calls": 120,
+   "cost_usd": 1.367244,
+   "seconds": 4934.485,
+   "rewrite": "yes",
+   "rejection": "yes",
+   "reward": 1,
+   "grade_error": null,
+   "f2p": [
+    30,
+    30
+   ],
+   "auto_compactions": 0,
+   "ctx_tokens_at_start": 56213,
+   "tags": {
+    "compliance": 1.0,
+    "n_counted": 3,
+    "earlier_tag_any": false,
+    "earlier_same_repo": false,
+    "earlier_cross_project": false,
+    "commit_source": [
+     "git_state"
+    ]
+   },
+   "wrong_project": {
+    "n_candidates": 0,
+    "tokens": [],
+    "source_tasks": []
+   }
+  }
+ ],
+ "compaction_failures": [
+  {
+   "chain": "u4",
+   "where": "b4",
+   "kind": "boundary",
+   "attempt": 1,
+   "log_line": 485,
+   "detail": "empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length', 'stop'])",
+   "outcome": "recovered on retry"
+  },
+  {
+   "chain": "u7",
+   "where": "b5",
+   "kind": "boundary",
+   "attempt": 1,
+   "log_line": 494,
+   "detail": "empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length', 'stop'])",
+   "outcome": "recovered on retry"
+  },
+  {
+   "chain": "w1",
+   "where": "p2",
+   "kind": "auto (mid-phase)",
+   "attempt": 1,
+   "log_line": 556,
+   "set_aside": "p2.failed-20261029T031832",
+   "error": "ModelError: empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length', 'stop'])",
+   "n_calls": 201,
+   "ctx_tokens": 172778,
+   "auto_compactions_ok": 1,
+   "outcome": "phase redone, ok"
+  },
+  {
+   "chain": "w4",
+   "where": "p3",
+   "kind": "auto (mid-phase)",
+   "attempt": 1,
+   "log_line": 559,
+   "set_aside": "p3.failed-20261029T031834",
+   "error": "ModelError: empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length'])",
+   "n_calls": 247,
+   "ctx_tokens": 173452,
+   "auto_compactions_ok": 1,
+   "outcome": "phase redone, ok"
+  },
+  {
+   "chain": "w2",
+   "where": "b5",
+   "kind": "boundary",
+   "attempt": 1,
+   "log_line": 564,
+   "detail": "empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length'])",
+   "outcome": "failed again"
+  },
+  {
+   "chain": "w2",
+   "where": "b5",
+   "kind": "boundary",
+   "attempt": 2,
+   "log_line": 609,
+   "detail": "empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length'])",
+   "outcome": "terminal"
+  },
+  {
+   "chain": "w1",
+   "where": "b2",
+   "kind": "boundary",
+   "attempt": 1,
+   "log_line": 612,
+   "detail": "empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length', 'stop'])",
+   "outcome": "failed again"
+  },
+  {
+   "chain": "w4",
+   "where": "b3",
+   "kind": "boundary",
+   "attempt": 1,
+   "log_line": 613,
+   "detail": "empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length', 'stop'])",
+   "outcome": "recovered on retry"
+  },
+  {
+   "chain": "w1",
+   "where": "b2",
+   "kind": "boundary",
+   "attempt": 2,
+   "log_line": 654,
+   "detail": "empty summary from pi (empty: ['history']; finish: ['length', 'length', 'length', 'stop'])",
+   "outcome": "terminal"
+  }
+ ],
+ "placebo": {
+  "n_slots": 32,
+  "n_scored": 32,
+  "missing": [],
+  "flagged": 2.0,
+  "false_positive_rate": 0.0625,
+  "mean_candidates": 0.09375
+ }
+}
