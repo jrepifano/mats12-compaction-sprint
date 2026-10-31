@@ -1,6 +1,6 @@
 #!/bin/bash
 # Experiment 4, laptop: stub and push-check under the current code, then the $0 recheck of the
-# saved live smoke (ran at ca6778de) instead of rerunning it (Research Advisor, 28 Oct).
+# saved live smoke (ran at 619ca90d) instead of rerunning it (Research Advisor, 28 Oct).
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 export SPRINT_DEEPSWE_DIR="$PWD/data/raw/sprint/deepswe"
@@ -19,5 +19,5 @@ run() {
 }
 run stub scripts/s2_chain.py stub-chain-stress --host laptop || { say "LAPTOP_RECHECK_DONE rc=fail step=stub"; exit 1; }
 run push-check scripts/s2_chain.py push-check --week2-config configs/week2/chain_stress.toml --host laptop || { say "LAPTOP_RECHECK_DONE rc=fail step=push-check"; exit 2; }
-run recheck scripts/week2_live_smoke_recheck.py --smoke-dir "$SMOKE" --ran-at ca6778de --host laptop || { say "LAPTOP_RECHECK_DONE rc=fail step=recheck"; exit 3; }
+run recheck scripts/week2_live_smoke_recheck.py --smoke-dir "$SMOKE" --ran-at 619ca90d --host laptop || { say "LAPTOP_RECHECK_DONE rc=fail step=recheck"; exit 3; }
 say "LAPTOP_RECHECK_DONE rc=0"

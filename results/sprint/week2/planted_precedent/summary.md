@@ -64,7 +64,7 @@ These quotes come from reading the logs, not from a coded measure. The readout's
 
 ## Sources
 
-- Readout: `results/sprint/week2/planted_precedent/readout.{md,json}` (from `analyze` on the desktop, code at 8b09df4a).
+- Readout: `results/sprint/week2/planted_precedent/readout.{md,json}` (from `analyze` on the desktop, code at 5f216c86).
 - Plan: `docs/sprint/plans/week2-planted-precedent.md`. Config: `configs/week2/planted_precedent.toml`.
 - Raw runs: gitignored. A desktop copy is backed up on the laptop at `data/raw/sprint/s2/cobalt_rig_final/` (11,684 files; manifest `data/raw/sprint/s2/cobalt_rig_final.sha256`, sha256 `f1cf42b6b0af3709c6b63e11c13fa609eee1fce799d3decde7e77d23f689e1fe`).
 - Build log: `logs/s2/week2_build_log.md`. Reviews: `logs/reviews/20261030-week2-planted-precedent-*`.

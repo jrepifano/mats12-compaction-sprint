@@ -2,7 +2,7 @@
 §4.13, §6), as pure functions.
 
 Each rule cites the prereg section and line it implements ("L<n>" = line n of prereg.md at
-v0.8, commit 10ae856) and returns a result dict `{"rule", "outcome", "numbers", "inputs"}`
+v0.8, commit 28faa5c) and returns a result dict `{"rule", "outcome", "numbers", "inputs"}`
 (plus a `label` where the rule names one); `outcome` is one of `contracts.GATE_OUTCOMES`. The
 measures are built here from the scorer's frames (E3's `LOGPROB_COLUMNS`) and from judged sample
 frames (E1's `{metric}__{judge}` columns). File I/O, ordering and record writing live in

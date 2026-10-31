@@ -1,6 +1,6 @@
 # Design card: Codex (harness replication)
 
-Generated 2026-10-28T19:20:16Z at 738bc17e by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
+Generated 2026-10-28T19:20:16Z at 3a9fa1c2 by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
 Launch: `uv run --with fastmcp==4.1.3 python scripts/week2_harness_cx.py bulk --go-from-jacob --max-live 4 --memory-mb 1280 --cpus 1 --capacity 16`
 Laptop settings at card time (`native.slots` limits file, changeable on the fly; launch values apply where unset): `{'__capacity__': 16, '__cpu_tenths__': 10, 'native-cx-chain': 8, 'native-agy-chain': 6}`
 

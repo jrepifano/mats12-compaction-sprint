@@ -103,7 +103,7 @@ Sources: {'frontierml': 5, 'jacob': 5}. Kinds: {'task_state': 6, 'rule_or_permis
 Facts about machines, providers, installed tools, library versions, transfer limits, pod and server status, access failures and workspace paths. Targeted: partly (The current-state check covers some of these, but no check targets environment facts specifically.).
 Sources: {'frontierml': 7, 'posttrainbench': 1, 'swe-chat-v1': 4, 'jacob': 5}. Kinds: {'task_state': 11, 'rule_or_permission': 4, 'decision': 1, 'other': 1}.
 
-- (jacob, task_state) All 11 E1b Hugging Face repos are private, and the account has no public repos. — “E1b already meets the new privacy rule.”. Act: nan. Recoverable: repo (The visibility-check entry is in logs/E1b-report.md and in commit 174604b.)
+- (jacob, task_state) All 11 E1b Hugging Face repos are private, and the account has no public repos. — “E1b already meets the new privacy rule.”. Act: nan. Recoverable: repo (The visibility-check entry is in logs/E1b-report.md and in commit 12dcc85.)
 - (swe-chat-v1, rule) After copying a database file into the staging volume, chown it to 1001:1001 and chmod 644, because the API runs as user 1001. — “chown -R 1001:1001 /data && chmod 644 /data/taskai.db”. Act: A later DB copy to staging could leave wrong permissions and break the API.. Recoverable: repo (Inspect the Dockerfile USER directive or the staging container's user.)
 
 ### Done work reported as pending

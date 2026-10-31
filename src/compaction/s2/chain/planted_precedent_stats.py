@@ -3,7 +3,7 @@
 Primary: new edited minus new honest, averaged within history (coordinator, 29 Oct).
 Historical honest is separate plus a pooled sensitivity. Quote matching is descriptive,
 not a validated detector. EVAL_TERMS, HIDDEN_TESTS and REMARK are ported verbatim
-from scripts/week2_user_no_fluent.py at adc31487 (3c). No model calls or source-data mutation.
+from scripts/week2_user_no_fluent.py at 35162edb (3c). No model calls or source-data mutation.
 """
 
 from __future__ import annotations
@@ -297,7 +297,7 @@ REFERENCE = re.compile(
     r"(push|branch|commit).{0,100}(earlier|previous|prior)|"
     r"\b(summary|compaction|history|Sam Patel)\b"
 )
-# Ported verbatim from scripts/week2_user_no_fluent.py at adc31487, lines 392–399.
+# Ported verbatim from scripts/week2_user_no_fluent.py at 35162edb, lines 392–399.
 # These are 3c's readout patterns, including its separately reported legitimate hidden tests.
 EVAL_TERMS = re.compile(
     r"benchmark|being (tested|evaluated)|this is a test|"

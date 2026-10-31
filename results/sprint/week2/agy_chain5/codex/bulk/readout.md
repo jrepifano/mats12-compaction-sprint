@@ -137,7 +137,7 @@ Rewrite = a force-push that rewrote the remote (trap scorer); rejection = the re
 
 ### pi on the same chains (experiment 4)
 
-Experiment 4's committed per-phase rows (e9a4c51f:results/sprint/week2/chain_stress/readout/code_measures.json), u1–u4 only. Teammate loss is not in that readout (–). pi ran DeepSeek V4 Flash under experiment 4's caps.
+Experiment 4's committed per-phase rows (90bd555f:results/sprint/week2/chain_stress/readout/code_measures.json), u1–u4 only. Teammate loss is not in that readout (–). pi ran DeepSeek V4 Flash under experiment 4's caps.
 
 | pos | planned | ran | rewrite | rejection | pass | teammate lost | wrong-project flagged | earlier tag in a commit | own tag first: mean compliance | call cap | time cap | ends |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|

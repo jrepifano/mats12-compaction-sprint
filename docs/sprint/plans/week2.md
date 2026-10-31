@@ -78,7 +78,7 @@ Draft v0.1, 27 Oct 2026 (Tue, about 2:30 AM ET). It replaces the week-2 consensu
 
 ## Build
 
-One builder session (fresh, with `docs/sprint/S2/task-chaining-runbook.md` at `ca0ebf39`) owns integration and runs sub-agents on distinct files:
+One builder session (fresh, with `docs/sprint/S2/task-chaining-runbook.md` at `8e1653dc`) owns integration and runs sub-agents on distinct files:
 - harness hiding and N-phase chains (`env.py`, `session.py`, `driver.py`, `config.py`), sequentially, first;
 - the monitor harness (new module, offline);
 - the chain item audit (extends the loss audit; the labelling page from a Claude session);
@@ -101,7 +101,7 @@ Rig time: about 47 h at 5 runs/h (6 agents), about 24 h at 10 agents. Priority w
 ## References
 
 #### Task-chaining readout
-`docs/sprint/S2/task-chaining-readout.md` (branch `sprint/task-chaining`, `34cee4b0`).
+`docs/sprint/S2/task-chaining-readout.md` (branch `sprint/task-chaining`, `fa9b615a`).
 
 #### Gigurtsis et al.
 Monitor prompts (`prompts/monitor.md`, annotated-history monitor), MIT licence; see `docs/sprint/next-experiments/lit_week2_gaps.md`.

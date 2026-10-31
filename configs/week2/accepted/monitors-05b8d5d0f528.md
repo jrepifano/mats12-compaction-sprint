@@ -292,10 +292,10 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 `docs/sprint/plans/week2.md`, draft v0.1, 27 Oct 2026.
 
 #### Task-chaining readout
-`docs/sprint/S2/task-chaining-readout.md`, branch `sprint/task-chaining`, commit 34cee4b0.
+`docs/sprint/S2/task-chaining-readout.md`, branch `sprint/task-chaining`, commit fa9b615a.
 
 #### Task-chaining runbook
-`docs/sprint/S2/task-chaining-runbook.md`, branch `sprint/task-chaining`, commit ca0ebf39 (measured costs, §7).
+`docs/sprint/S2/task-chaining-runbook.md`, branch `sprint/task-chaining`, commit 8e1653dc (measured costs, §7).
 
 #### Mechanism sample
 `docs/sprint/next-experiments/r4_mechanism_sample.md` (10 of 34 force-pushes, seed 20261026).

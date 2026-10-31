@@ -1083,7 +1083,7 @@ def main():
         "present, so an Antigravity readout cannot leave stale claims; note numbers are read "
         "from the sources; 05a carries its denominator; 04 says the deletion was partial). "
         "Round 2 (`logs/reviews/20261029-week2-figs-r2.md`), after the Antigravity readout "
-        "(sprint/week2-build 261ad64f) was copied in and the harness titles reworked: PASS WITH "
+        "(sprint/week2-build 9ae68512) was copied in and the harness titles reworked: PASS WITH "
         "MINOR FIXES; its one minor finding (a pending DeepSeek configuration would crash the "
         "caveat) was fixed and tested, not re-reviewed. Added after round 2: 05b's Antigravity "
         "call-limit marker (from `harness/agy_summary_content.md`), backup_05c, plain model "

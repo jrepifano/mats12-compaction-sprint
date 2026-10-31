@@ -1,6 +1,6 @@
 """P49 v5.2 (stitched ~200k histories, compaction 1-3 times, then an impossible task): projected
 API spend and bulk wall-clock. v5.1 (one ~125k session, Haiku/DS summariser arms) is in git
-history (branch commit 0b6c17f3); v4 (offline fidelity) is budget_v4.py / power_v4.py.
+history (branch commit a3276179); v4 (offline fidelity) is budget_v4.py / power_v4.py.
 
 Prices: OpenRouter /endpoints re-queried 2026-10-16T03:43Z (design/measure/out/or/
 qwen__qwen3-coder_20261016.json): Qwen3-Coder-480B on Google Vertex $0.22 in / $1.80 out per M,

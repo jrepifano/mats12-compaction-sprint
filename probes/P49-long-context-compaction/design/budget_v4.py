@@ -1,6 +1,6 @@
 """P49 (offline revision, 2026-10-15): projected API spend, call counts and bulk wall-clock.
 
-The v3 request inventory (live on-call world) is in git history (commit f20e5f02).
+The v3 request inventory (live on-call world) is in git history (commit 77abd5fa).
 Measured inputs:
 - per-trajectory pi summarised span at each cut (2,000-char tool truncation), from
   design/measure/out/swe_long_detail.json (DeepSeek-V4-Flash tokenizer, 193 trajectories);

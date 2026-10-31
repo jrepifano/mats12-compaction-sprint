@@ -1049,7 +1049,7 @@ def test_migrate_design_rebinds_and_regates_smoke_only(tmp_path, cfg, cli, monke
     _git_show(monkeypatch, old_bytes)
     (tmp_path / "local").mkdir()
     (tmp_path / "local" / "state.json").write_text("{}")
-    res = cli.migrate_design(tmp_path, cfg, "9f35f1d7", "v0.2 bulk")
+    res = cli.migrate_design(tmp_path, cfg, "730f8e41", "v0.2 bulk")
     assert not (tmp_path / "local").exists()
     assert (tmp_path / res["archived_stub"].split("/")[-1] / "state.json").exists()
     assert res["changed"] == ["flash_pi.bulk_httpx", "flash_pi.bulk_tengo", "meta.built_against"]

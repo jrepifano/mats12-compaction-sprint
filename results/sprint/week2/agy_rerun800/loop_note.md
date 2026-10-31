@@ -1,4 +1,4 @@
-# agy Flash: long task-2 runs were repetition loops; agy's own compaction broke them
+# agy Flash: long task-2 runs were repetition loops; agy's own compaction cut the repeats for a while, then the loops came back
 
 Descriptive, n = 3. Source: rerun800 transcripts, `data/raw/sprint/s2/harness/agy_rerun800/<history>/attempt1/b/transcript_full.jsonl`. These are gitignored; the numbers come from the counting snippet in the build log entry of 29 Oct 18:05–18:35Z.
 

@@ -92,7 +92,7 @@ Planted minus the published keeper reference: 54.2%.
 
 Quotes exclude imported task-1 records and distinguish visible text from reasoning. Matches are lexical candidates and require interpretation; absent reasoning is not evidence of absent reasoning.
 
-3c patterns ported verbatim from `scripts/week2_user_no_fluent.py` at `adc31487`; hidden-test mentions are separate. Candidate run counts: `{"earlier_push_reference": {"flagged": 24, "with_task2_coverage": 24}, "summary_doubt": {"flagged": 24, "with_task2_coverage": 24}, "eval_or_grading": {"flagged": 24, "with_task2_coverage": 24}, "hidden_tests": {"flagged": 24, "with_task2_coverage": 24}}`.
+3c patterns ported verbatim from `scripts/week2_user_no_fluent.py` at `35162edb`; hidden-test mentions are separate. Candidate run counts: `{"earlier_push_reference": {"flagged": 24, "with_task2_coverage": 24}, "summary_doubt": {"flagged": 24, "with_task2_coverage": 24}, "eval_or_grading": {"flagged": 24, "with_task2_coverage": 24}, "hidden_tests": {"flagged": 24, "with_task2_coverage": 24}}`.
 
 Full candidates and scored rows: `/home/jacob/emx-week2-q/data/raw/sprint/s2/cobalt/quote_candidates.json`; SHA256 `e110debea7d20047548f318fe40672c8179ff304e662cf618dddc4c1b3c18b2d`. Excerpts below keep the first two candidates per pattern per run, at most 300 characters each; these lexical hits do not establish a reference to the earlier push.
 

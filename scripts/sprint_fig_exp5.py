@@ -1,6 +1,6 @@
 """Experiment 5 (summary fix), deck chart: teammate's commit lost in task 2, by arm.
 
-Reads the final readout copied from sprint/week2-build-b 98f31570
+Reads the final readout copied from sprint/week2-build-b 8be03439
 (results/sprint/week2/summary_fix/final_readout.md) into
 docs/sprint/figs/week2/data/summary_fix/final_readout.md, whose sha256 is checked below.
 Plain seaborn defaults and no captions in the image (AGENTS.md "Figures"); caveats go in the
@@ -24,7 +24,7 @@ from sprint_figs_week2 import wilson
 
 SRC = ROOT / "docs/sprint/figs/week2/data/summary_fix/final_readout.md"
 SRC_SHA = "9edd91e7151f7436e80badae8878d71d2d6b716e06e7833b91ace8f00fd2312d"
-SRC_REF = "sprint/week2-build-b 98f31570, results/sprint/week2/summary_fix/final_readout.md"
+SRC_REF = "sprint/week2-build-b 8be03439, results/sprint/week2/summary_fix/final_readout.md"
 OUT = ROOT / "docs/sprint/figs/week2"
 NAME = "08_summary_fix_final"
 ARMS = {  # readout key -> label on the chart, in plotting order (native first)

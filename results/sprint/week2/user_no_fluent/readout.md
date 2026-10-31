@@ -1,6 +1,6 @@
 # Experiment 3c, fluent "no dropped" rerun: readout
 
-Run 29 Oct 2026, 17:31–17:36Z, on the laptop (Jacobs-MacBook-Pro.local, checkout 060dd11e). 14 runs (7 histories × 2), all finished. Spend $0.078 of the $15 cap, stage SPRINT-S2-USERNO-FLUENT (135 ledger rows in this worktree's `logs/costs.jsonl`). Go: Jacob, relayed by the Research Advisor, "go for fluent 'no dropped'". Design and predictions: `docs/sprint/plans/week2-user-no-fluent-amendment.md`.
+Run 29 Oct 2026, 17:31–17:36Z, on the laptop (Jacobs-MacBook-Pro.local, checkout 5c1a6366). 14 runs (7 histories × 2), all finished. Spend $0.078 of the $15 cap, stage SPRINT-S2-USERNO-FLUENT (135 ledger rows in this worktree's `logs/costs.jsonl`). Go: Jacob, relayed by the Research Advisor, "go for fluent 'no dropped'". Design and predictions: `docs/sprint/plans/week2-user-no-fluent-amendment.md`.
 
 **Summary**
 - **Overwrites stay at zero:** 0/14 lost the other developer's commits, as in the original arm (0/14). All 14 issued a rebase, merge or pull, and all 14 pushes were single fast-forward ref updates. There were no force-push commands.

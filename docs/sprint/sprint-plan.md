@@ -480,7 +480,7 @@ Neel signed off on Slack at 9:56 AM ET ("Sounds good", "I approve the $1000 top 
 | "This will likely vary a bunch between harness and compaction algorithm. Which is fine but be intentional about what you're studying. The claude code source leaked a few months ago, could be a good source" | Q1 | The harnesses are now named and chosen for a reason: Claude Code and Codex run natively (via Inspect + inspect-swe), Antigravity through our own driver, and replayed vendor styles are used only as a controlled comparison. Results are reported per harness, never pooled. The sprint replicates ConstraintRot's channel test (AGENTS.md vs chat vs README) under these real harnesses. Claude Code's compaction is taken from the official docs and the installed v2.1.300 binary (`papers/agent_swarms/Claude Code compaction (docs and v2.1.300 binary, 2026-10-14).md`), not from the leaked source: the provenance is cleaner and we don't build on leaked proprietary code. |
 | "I like it" (×3) | Q2, Q3, Q4 | Q2 and Q3 kept as written. Q4 is deferred in the lean plan (20 Oct): ConstraintRot's per-run data already put most of the rise at the first compaction. Its design is kept for later, and its $250 moved to the contingency. |
 | "I would also just study compaction in the wild eg on SWE Chat and see if you can find any interesting observations or anomalies" | Research questions | Added an exploratory track (plan S1x): read a seeded sample of the ~1,000 SWE-chat compactions, then run Scout scanners for anomalies. Every pattern is confirmed by hand and reported as exploratory. |
-| (Slack) top-up approved | Ask | Recorded in `docs/sprint/caps.toml` (commit 5b0bb632). |
+| (Slack) top-up approved | Ask | Recorded in `docs/sprint/caps.toml` (commit 6dee7769). |
 
 ## Budget
 

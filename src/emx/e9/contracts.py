@@ -74,7 +74,7 @@ CUTS: tuple[str, ...] = (  # §7.3, in order
 
 # --- wall clock (§7.6) --------------------------------------------------------------------------
 
-SIGNOFF_UTC = datetime(2026, 10, 6, 21, 5, 14, tzinfo=UTC)  # commit 0c66cbc
+SIGNOFF_UTC = datetime(2026, 10, 6, 21, 5, 14, tzinfo=UTC)  # commit b9c4d78
 DEADLINE_UTC = SIGNOFF_UTC + timedelta(days=7)  # no new paid work starts after this
 RETRIEVAL_ATTEMPTS = 3  # the third by tar over ssh (§8.7)
 IDLE_POD_MINUTES = 20

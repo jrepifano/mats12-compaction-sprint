@@ -142,7 +142,7 @@ These four sources bear most directly on whether informed selection can beat ran
 ## 7. External check (2025 – 14 Oct 2026)
 
 Full record: [lit-external.md](lit-external.md). A sub-agent ran it in about 70 minutes.
-- **Captured:** 11 new sources, as INDEX rows 99–109, pushed to main in commit `414c763a`.
+- **Captured:** 11 new sources, as INDEX rows 99–109, pushed to main in commit `b8ae6ebe`.
 - **Read verbatim:** the key sections of each captured source. Each row's status column says which sections.
 - **Incomplete:**
   - Semantic Scholar rate-limited the Phantom Transfer citation list.

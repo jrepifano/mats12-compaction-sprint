@@ -274,7 +274,7 @@ def write_readout(cfg: dict, raw: Path, out: Path) -> dict:
         "Quotes exclude imported task-1 records and distinguish visible text from reasoning. Matches are lexical candidates and require interpretation; absent reasoning is not evidence of absent reasoning.\n",
     ]
     lines.append(
-        "3c patterns ported verbatim from `scripts/week2_user_no_fluent.py` at `adc31487`; hidden-test mentions are separate. Candidate run counts: `"
+        "3c patterns ported verbatim from `scripts/week2_user_no_fluent.py` at `35162edb`; hidden-test mentions are separate. Candidate run counts: `"
         + json.dumps(result["secondary_counts"])
         + "`.\n"
     )

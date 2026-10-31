@@ -325,7 +325,7 @@ def main() -> int:
     ap.add_argument("--host", default=None)
     ap.add_argument("--cpus", type=float, default=2.0, help="cx/agy: each task container's CPUs")
     ap.add_argument("--capacity", type=int, default=8, help="cx/agy: containers on the host")
-    ap.add_argument("--launch-rev", default="3457d31b", help="cc --running: the launch commit")
+    ap.add_argument("--launch-rev", default="d549fc07", help="cc --running: the launch commit")
     a = ap.parse_args()
     host = None if a.host in (None, "", "local") else a.host
     if a.harness == "ds":

@@ -3,7 +3,7 @@ Antigravity with Flash and with Sonnet (same harness, different model), Claude C
 and with Sonnet. Exploratory (J call, 29 Oct; Research Advisor). The two-panel pi/Antigravity
 version is week2_summary_decay_agy.py; this one adds the sides as their labels land.
 
-Every side is labelled by week2_summary_rot.py's coder unchanged at e9a4c51f (name matching,
+Every side is labelled by week2_summary_rot.py's coder unchanged at 90bd555f (name matching,
 else Claude Opus 5.5; week2-build ran it on its arms) and read at a pinned commit; a side whose
 commit is not set yet is left out. Safety-relevant flags are gpt-6-astra's
 (week2_summary_safety_labels.py; one label set per arrival, same prompt). The shares, retention
@@ -33,9 +33,9 @@ RA = "bulk/summary_rot/attributions.jsonl"
 SIDES = (
     ("pi", "pi (DeepSeek V4.1 Flash)", None, SRS.rel(D.ATTR), "main"),
     ("agy", "Antigravity (Gemini 3.8 Flash)", A.REF_AGY, A.AGY_ATTR, "main"),
-    ("agy_sonnet", "Antigravity (Sonnet 5.5)", "d92212c5", f"{CB}/agy_sonnet/{RA}", "agy_sonnet"),
-    ("cc", "Claude Code (Haiku 5.5)", "adf728ff", f"{CB}/claude_code/{RA}", "cc"),
-    ("cc_sonnet", "Claude Code (Sonnet 5.5)", "7df56fc1", f"{CB}/claude_code_sonnet/{RA}", "cc_sonnet"),
+    ("agy_sonnet", "Antigravity (Sonnet 5.5)", "787e6820", f"{CB}/agy_sonnet/{RA}", "agy_sonnet"),
+    ("cc", "Claude Code (Haiku 5.5)", "2101859a", f"{CB}/claude_code/{RA}", "cc"),
+    ("cc_sonnet", "Claude Code (Sonnet 5.5)", "74e9366c", f"{CB}/claude_code_sonnet/{RA}", "cc_sonnet"),
 )
 FLAGS = A.OUT / "safety_labels"
 SHORT = {"pi": "pi", "agy": "Antigravity+Flash", "agy_sonnet": "Antigravity+Sonnet",
@@ -166,7 +166,7 @@ def main() -> None:
         ("**Caption (slide notes):** the same four unrelated chains (u1–u4; two for the Sonnet "
          "runs). Antigravity with Flash and with Sonnet share a harness and differ in model; "
          "summary style suggests Antigravity's summarizer follows the session model (probe "
-         "a9a6d023: 3/3 vs 0/3; suggestive, the summarizer's identity is not recorded). "
+         "c3ca3e06: 3/3 vs 0/3; suggestive, the summarizer's identity is not recorded). "
          "Claude Code with Haiku and with Sonnet likewise share a harness and differ in model. "
          "Antigravity+Sonnet and Claude Code+Sonnet share a model and differ in harness. "
          "Other pairs differ in model and harness together. Antigravity and Codex also carry "

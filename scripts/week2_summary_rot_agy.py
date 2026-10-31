@@ -2,8 +2,8 @@
 
 Reads week2-build's agy readout at a pinned commit (git show, nothing copied): agy's cells are
 `composition.cells.final`, pi's are `pi.rot.cells.final` (pi's u1–u4 subset recomputed from this
-branch's attributions at e9a4c51f; the readout's `recompute_check` compares it with shares.json).
-Both sides were labelled by week2_summary_rot.py's coder unchanged at e9a4c51f (code, then Claude
+branch's attributions at 90bd555f; the readout's `recompute_check` compares it with shares.json).
+Both sides were labelled by week2_summary_rot.py's coder unchanged at 90bd555f (code, then Claude
 Opus 5.5). Plotting only; no model calls.
 
     uv run python scripts/week2_summary_rot_agy.py
@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import week2_summary_rot as R
 
-REF = "55d08ed4"  # sprint/week2-build: agy five-task chains, summary rot with this coder
+REF = "ef0e074d"  # sprint/week2-build: agy five-task chains, summary rot with this coder
 SRC = "results/sprint/week2/agy_chain5/agy/bulk/readout.json"
 OUT = R.OUT / "agy_vs_pi"
 SIDES = (("pi", "pi (DeepSeek V4.1 Flash)"), ("agy", "Antigravity (Gemini 3.8 Flash, low)"))
@@ -76,12 +76,12 @@ def main() -> None:
         f"## summary_rot_agy_vs_pi: {title}", "", "![summary_rot_agy_vs_pi](summary_rot_agy_vs_pi.png)",
         "",
         ("**Source:** agy, `composition.cells.final.<k>`; pi, `pi.rot.cells.final.<k>` (pi's "
-         "u1–u4 subset, recomputed from `e9a4c51f:results/sprint/week2/chain_stress/summary_rot/"
+         "u1–u4 subset, recomputed from `90bd555f:results/sprint/week2/chain_stress/summary_rot/"
          f"attributions.jsonl`; matches shares.json on {chk['n_values']} values, max difference "
          f"{chk['max_abs_diff']})."), "",
         ("**Caption (slide notes, not on the figure):** agy (Gemini 3.8 Flash, low) against pi "
          "(DeepSeek V4.1 Flash) on the same four chains (u1–u4), labelled by the same coder "
-         "(`scripts/week2_summary_rot.py` at e9a4c51f: name matching, else Claude Opus 5.5). Model "
+         "(`scripts/week2_summary_rot.py` at 90bd555f: name matching, else Claude Opus 5.5). Model "
          "and harness differ together, so this does not separate the two. agy keeps the earlier "
          "tasks only as the user's verbatim requests, outside its summary; those kept requests are "
          "not counted here."), "",

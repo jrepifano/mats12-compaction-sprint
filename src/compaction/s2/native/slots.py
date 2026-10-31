@@ -221,7 +221,7 @@ def set_limits(pairs: list[str], *, path: Path = LIMITS, lock: Path = LOCK) -> d
 def hold(host: str, owner: str, *, n: int, prefix: str, pid: int, state: Path = STATE,
          lock: Path = LOCK) -> str:
     """Register `n` slots for a running process that predates the ledger (e.g. the Haiku bulk
-    launched from 3457d31b; astra ds-build r2 B1), without an admission check: its histories,
+    launched from d549fc07; astra ds-build r2 B1), without an admission check: its histories,
     starting or between tasks, may have no visible containers. The entry carries the process's
     pid, so it is dropped when that process ends, like any reservation."""
     if not _alive(pid):

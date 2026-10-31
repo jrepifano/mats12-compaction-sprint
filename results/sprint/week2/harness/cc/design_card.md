@@ -1,7 +1,7 @@
 # Design card: Claude Code (harness replication)
 
-Generated 2026-10-28T18:42:16Z at 8046f0b1 by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
-Launch: `uv run --with fastmcp==4.1.3 python scripts/week2_harness_cc.py bulk --go-from-jacob  [launch code: yes (script from 3457d31b)]`
+Generated 2026-10-28T18:42:16Z at f6980fdb by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
+Launch: `uv run --with fastmcp==4.1.3 python scripts/week2_harness_cc.py bulk --go-from-jacob  [launch code: yes (script from d549fc07)]`
 
 | Parameter | Value |
 |---|---|

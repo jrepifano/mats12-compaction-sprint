@@ -4,6 +4,7 @@
 - proposal: docs/sprint/plans/week2-precedent.md (built against 733055c2dbd2f5f1952a2150daf5fe8b4d87151d485563bba6be98a21b1d2f6e)
 - kind: precedent, stage SPRINT-S2-PRECEDENT, 2 phases, seed 20261027
 - written: 2026-10-27 16:13 UTC
+- code: commit e1eaf52e (`sprint/week2-build`), checked out on the runner when the bulk launched (deployed 2026-10-27 17:54 UTC, from the runner checkout's git reflog)
 
 ## Runs
 

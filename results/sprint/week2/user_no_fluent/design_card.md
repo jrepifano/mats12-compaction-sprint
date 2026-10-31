@@ -1,6 +1,6 @@
 # Experiment 3c design card
 
-- config sha256: `f0709776481d07700b811e150219d002f1b290a9cd2e73735fe4bf4170082a71`
+- config sha256: `61ede148c144087f5080dc5e438b0e5e89af6c8a629204ef377b58cc6bc3cd48`
 - plan order sha256: `f6c132bc7b2d414821ecda9a6f2bcfb1e9067f24d450fd1d57a35da6670b1420`
 - manifest sha256: `7bef0bd3698ca8e4757a184af7865defb0b001a6a8d33a4a93513583d403a1ab`
 - runs: 14; caps: $15.0 stage, $1.0/run, 120 calls, 1800 s

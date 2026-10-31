@@ -381,10 +381,10 @@ Jacob asked whether to use SWE-Interact tasks, in which a simulated maintainer r
 `docs/sprint/next-experiments/lit_chain_stress.md` (27 Oct); it marks which sources were read verbatim.
 
 #### Task-chaining readout
-`docs/sprint/S2/task-chaining-readout.md` (branch `sprint/task-chaining`, `34cee4b0`).
+`docs/sprint/S2/task-chaining-readout.md` (branch `sprint/task-chaining`, `fa9b615a`).
 
 #### Task-chaining runbook
-`docs/sprint/S2/task-chaining-runbook.md` (branch `sprint/task-chaining`, `ca0ebf39`), section 7.
+`docs/sprint/S2/task-chaining-runbook.md` (branch `sprint/task-chaining`, `8e1653dc`), section 7.
 
 #### Chain-decay analysis
 `results/sprint/S1/chain_decay/summary.md`; `docs/sprint/figs/chain/README.md`; `docs/sprint/figs/v2/README.md` (the share lost that matters, judge-derived).

@@ -1,6 +1,6 @@
 # P32 note: does V4 Flash's filler uplift shrink as candidate answers are added?
 
-Probe tier, 2026-10-13. Plan: [`plan.md`](plan.md) (on main before any data, 8f2f403b; Jacob's go in chat for wave 4). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **$5.82** of a $20 cap, all OpenRouter. Wall-clock about 1 h 45 min from plan to the last follow-up (14:52–16:33 UTC).
+Probe tier, 2026-10-13. Plan: [`plan.md`](plan.md) (on main before any data, a883119b; Jacob's go in chat for wave 4). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **$5.82** of a $20 cap, all OpenRouter. Wall-clock about 1 h 45 min from plan to the last follow-up (14:52–16:33 UTC).
 
 Model: `deepseek/deepseek-v4-flash` (StreamLake, reasoning off, t = 0, no prefill), in P06's version of Brauer et al.'s prompt format ([Brauer et al. 2026](#brauer-verdun-and-marks-2026)). 500 fresh items per family:
 - **varbind:** Brauer's one-hop system of equations.

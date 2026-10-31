@@ -2,7 +2,7 @@
 
 Every paid call is covered by a reservation taken **before** it starts, under one exclusive
 `fcntl` lock on the shared spend ledger, so parallel processes cannot jointly cross the cap
-(the gap gpt-6-sol found in the Phase 0 runner, logs/reviews/20260929-SW-e5ad305-r1.md).
+(the gap gpt-6-sol found in the Phase 0 runner, logs/reviews/20260929-SW-fe14012-r1.md).
 
 - Spend lines go to `logs/costs.jsonl` in the checkout this module runs from (per-worktree ledgers,
   CLAUDE.md, 2026-10-04; it used to be hard-coded to the main checkout), in the same

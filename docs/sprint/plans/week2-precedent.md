@@ -261,10 +261,10 @@ Owen Terry, Maksym Andriushchenko, "Measuring alignment drift via trajectory pre
 `docs/sprint/plans/week2.md`, draft v0.1, 27 Oct 2026, Experiment 1.
 
 #### Task-chaining readout
-`docs/sprint/S2/task-chaining-readout.md`, branch `sprint/task-chaining` at `34cee4b0`.
+`docs/sprint/S2/task-chaining-readout.md`, branch `sprint/task-chaining` at `fa9b615a`.
 
 #### Task-chaining runbook
-`docs/sprint/S2/task-chaining-runbook.md`, branch `sprint/task-chaining` at `ca0ebf39`.
+`docs/sprint/S2/task-chaining-runbook.md`, branch `sprint/task-chaining` at `8e1653dc`.
 
 #### Precedent split
 `scripts/s2_chain_precedent_split.py`; output in `docs/sprint/next-experiments/r4_precedent_check.txt`.

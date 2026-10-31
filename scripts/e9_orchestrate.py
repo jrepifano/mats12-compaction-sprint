@@ -9,7 +9,7 @@ third by tar; unconditional cleanup; fetch, verify, terminate in that order, as 
 implementation-plan.md (v4) rows F1b/F1a/F2/E2/G1, "E9 admission protocol", "The answer pairs'
 pre-inspection check", "Invalidate-and-replay", "Paid steps", "Failure handling".
 
-Ported in pieces from scripts/e3_orchestrate.py at commit 7b15be1 (Deps injection, the flock
+Ported in pieces from scripts/e3_orchestrate.py at commit 6ca28aa (Deps injection, the flock
 helpers, the bounded runner `emx.e3.budget.run_cmd`, the exclusive STOPPED.json claim, the
 cleanup's terminate -> settle -> close-reservation order, the detached job start verified by
 progress).

@@ -1,7 +1,7 @@
 # Design card: summary_fix
 
-- config: configs/week2/summary_fix.toml (sha256 9aeebc39c580d1358f67f79d859b6dddaea529f7f340b37650aef8f1b09b8cf6)
-- proposal: docs/sprint/plans/week2-summary-fix.md (built against 54e446e9f2e80173208457a00851b30a850e431bc0b514111a4597df79fcb097)
+- config: configs/week2/summary_fix.toml (sha256 54436e960a381674b9effa1df6b873a8b26710dca80bd6107ea30a52f96e1422)
+- proposal: docs/sprint/plans/week2-summary-fix.md (built against 1a29bdb7d60f21c2b5924c3cc4b4129c10e56033b8b8736b18cfffe6a5c776ee)
 - kind: summary_fix, stage SPRINT-S2-SUMMARY-FIX, 2 phases, seed 20261029
 - written: 2026-10-28 21:34 UTC
 

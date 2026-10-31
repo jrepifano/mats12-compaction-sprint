@@ -22,7 +22,7 @@ in this folder, with counts, grades and layouts only.
 
 > **Corrected 25 Oct, ~03:30 UTC.** Before this, `codex.extract_recitation` kept only the longest
 > piece between code fences, so summaries containing code blocks were graded on a fragment. The
-> fix is 23b578c8, with 3 astra rounds. Six of the nine 80k boundaries were affected; they were
+> fix is e84bbd63, with 3 astra rounds. Six of the nine 80k boundaries were affected; they were
 > re-extracted from the saved raw replies ($0) and regraded on Max:
 >
 > - fastapi b1 and vitest b1 kept 2 valid recitations after re-extraction. Each was topped up to

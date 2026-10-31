@@ -138,7 +138,7 @@ def cmd_score(a) -> int:
     run = Path(a.run_dir)
     st = json.loads((run / "state.json").read_text())
     texts = CSS.load_texts()
-    # CSS.load_token_lists at the run's commit (60bedf29) fails on the folder's MANIFEST.json
+    # CSS.load_token_lists at the run's commit (8107c51b) fails on the folder's MANIFEST.json
     want = {p["task"] for c in st["chains"].values() for p in c["phases"]}
     tls = {p.stem: json.loads(p.read_text()) for p in sorted(CSS.TOKEN_DIR.glob("*.json"))
            if p.stem in want}

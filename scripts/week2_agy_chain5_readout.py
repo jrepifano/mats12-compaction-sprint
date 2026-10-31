@@ -103,7 +103,7 @@ def family(harness: str) -> str:
 SIDES = (*HARNESSES, "pi")
 SUMMARY_READABLE = {"agy": True, "claude_code": True, "codex": False, "agy_sonnet": True,
                     "claude_code_sonnet": True}
-PI_REF = "e9a4c51f"  # sprint/week2-build-b, the plan's pinned commit
+PI_REF = "90bd555f"  # sprint/week2-build-b, the plan's pinned commit
 PI_DIR = "results/sprint/week2/chain_stress"
 PI_READOUT = f"{PI_DIR}/readout/code_measures.json"
 PI_ATTR = f"{PI_DIR}/summary_rot/attributions.jsonl"

@@ -1,4 +1,4 @@
-Final review of probe P50's whole branch: code, results and the note. One round (probe tier). Diff: `git diff e75118530daf180ae11e67bce72ffc989caec694..HEAD`.
+Final review of probe P50's whole branch: code, results and the note. One round (probe tier). Diff: `git diff edfa34c0401604634b8d50c4a07923dc851650c1..HEAD`.
 
 Read: probes/P50-rewrite-dose-response/{note.md,plan.md,log.md,probe.toml,run.sh}, p50/*.py, tests/*.py, results/analysis/{summary.md,p50.json}, results/{arms.json,reuse.json}, results/eval/*.summary.json. P48's imported code (unmodified): probes/P48-subliminal-numbers-attribution/p48/*.py. Earlier reviews: logs/reviews/20261016-P50-impl-r1.md and -code-r1.md.
 

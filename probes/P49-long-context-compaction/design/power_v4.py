@@ -1,6 +1,6 @@
 """P49 (offline revision): approximate minimum detectable differences, 80% power, two-sided 0.05.
 
-The v3 version (live world) is in git history (commit f20e5f02).
+The v3 version (live world) is in git history (commit 77abd5fa).
 A pair is one fact type in one trajectory, one wrapper and one summariser, scored at two arms
 (e.g. L vs S1: lost after carry-over yes/no). The paired difference d is in {-1, 0, 1};
 Var(d) ~= discordance (assumed 0.35; 0.25 and 0.45 as sensitivity). Pairs cluster within a

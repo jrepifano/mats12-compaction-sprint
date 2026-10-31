@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # E9 pod job, ON the pod (unit E2; prereg §4.5, §4.6, §4.7 step 2, §4.13, §8.6 GO barrier, §8.7;
 # implementation plan v4 "Frozen in U0": run inventories, DONE/FAILED semantics).
-# Ported from scripts/pod_run_e3.sh at commit 7b15be1 (its bg/step wrappers, signal handling,
+# Ported from scripts/pod_run_e3.sh at commit 6ca28aa (its bg/step wrappers, signal handling,
 # failure staging and anchored tags), reshaped around E9's run directories.
 #
 #   cd /ws/emx && bash scripts/pod_run_e9.sh --run bg-c1:bg:1:cs:data/E9/streams/bg-c1.npy

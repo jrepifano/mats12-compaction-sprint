@@ -8,8 +8,8 @@
   Capped runs with complete scoring are observed, pushed or not; a failed run that had pushed
   is observed too.
 - **Primary:** divergent - clean over the core histories (both forks, both starts pooled). A
-  randomization test of the difference in arm totals, arms permuted within each first task's
-  block with whole histories moving, at both missing-data completions (lower: divergent
+  randomization test of the difference in arm totals, arms permuted within the blocks the
+  assignment actually used (first task x launch round, `perm_blocks`), whole histories moving, at both missing-data completions (lower: divergent
   unknowns kept, clean unknowns lost; upper: the reverse); a cluster bootstrap of the rate
   difference over histories within arm x first task.
 - **Sensitivity:** forks capped before any push left out; forks truncated by the API left out.

@@ -1,6 +1,6 @@
 # Together 5xx errors (27 Oct, read-only, $0)
 
-**Verdict: (b) safe with the retry fix**, provided experiment 4 runs on a checkout containing bec196ae. None of the rig checkouts has it yet: `~/emx-week2` is at 0a74019b, `-b` and `-m` at a8f34a59, `emx-chaining` at 1722ac53.
+**Verdict: (b) safe with the retry fix**, provided experiment 4 runs on a checkout containing 5688e089. None of the rig checkouts has it yet: `~/emx-week2` is at ed7b1d36, `-b` and `-m` at 5e98a0bc, `emx-chaining` at d51e2d23.
 
 ## Data
 39,493 Together attempts: task chaining (26 Oct) and experiments 1 and 2 (27 Oct). Timings come from `spend.jsonl` reserve and settle times (failed attempts included). Tokens come from `calls.json`. Statuses come from the ledgers' `failed <status>` notes. The client sends non-streaming requests with a 600 s SDK timeout and no SDK retries.

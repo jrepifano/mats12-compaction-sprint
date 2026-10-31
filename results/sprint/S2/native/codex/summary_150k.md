@@ -3,7 +3,7 @@
 > **Corrected 25 Oct, ~03:30 UTC.** Before this, `codex.extract_recitation` kept only the longest
 > piece between code fences. Summaries containing code blocks were therefore graded on a fragment,
 > which overstated their losses. Here that affected boa b1 (graded 4,895 of 9,940 chars) and vitest
-> b2 (3,702 of ~7,450). The fix is 23b578c8: a structural outer-fence parse that fails closed, with
+> b2 (3,702 of ~7,450). The fix is e84bbd63: a structural outer-fence parse that fails closed, with
 > 3 astra rounds. Both boundaries were re-extracted from the saved raw replies ($0, no model
 > calls) and regraded on Max. Before → after:
 >

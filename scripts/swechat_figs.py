@@ -116,7 +116,7 @@ def main() -> None:
             "One false line is enough: it may be about a single fix or test run, not the whole task."
         ),
         "",
-        f"**Source:** `{SRC}` at commit c1c224c8 (fields listed per bar).",
+        f"**Source:** `{SRC}` at commit 37f8fd31 (fields listed per bar).",
         "",
         "**Numbers plotted** (k/n, rate, Wilson 95% interval):",
         "",

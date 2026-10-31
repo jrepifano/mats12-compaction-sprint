@@ -5,7 +5,7 @@ Jacob: "the vanishing summary stuff with agy").
 Inputs, read at pinned commits with git show (nothing copied):
 - pi: this branch's attribution (`week2_summary_decay.ATTR`), chains u1–u4.
 - agy: week2-build's attribution of its five-task chains (REF_AGY), labelled by
-  week2_summary_rot.py's coder unchanged at e9a4c51f (name matching, else Claude Opus 5.5).
+  week2_summary_rot.py's coder unchanged at 90bd555f (name matching, else Claude Opus 5.5).
 - Codex: week2-build's chain summaries (REF_CX). Codex's own summary is encrypted; only its
   replacement history (`carried_context`) is readable, so Codex gets no summary shares, only
   which earlier tasks' requests (by ticket id) the carried history holds.
@@ -36,9 +36,9 @@ import week2_summary_decay as D
 
 SRS, K = D.SRS, D.K
 SR = SRS.SR
-REF_AGY = "55d08ed4"  # sprint/week2-build: agy five-task chains, summary rot with this coder
+REF_AGY = "ef0e074d"  # sprint/week2-build: agy five-task chains, summary rot with this coder
 AGY_ATTR = "results/sprint/week2/agy_chain5/agy/bulk/summary_rot/attributions.jsonl"
-REF_CX = "28f8a140"  # sprint/week2-build: Codex five-task chains, compaction export
+REF_CX = "688b726a"  # sprint/week2-build: Codex five-task chains, compaction export
 CX = "results/sprint/week2/agy_chain5/codex/bulk/chain_summaries.jsonl"
 CHAINS = ("u1", "u2", "u3", "u4")
 OUT = D.OUT / "agy"

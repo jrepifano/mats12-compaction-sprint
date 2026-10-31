@@ -52,7 +52,7 @@ v0.2 answers astra harness-plan r1 (4 BLOCKING, 5 MINOR); v0.3 answers r2 (2 BLO
 Each harness's run must match its column. `scripts/week2_harness_card.py <cc|cx|agy>` reads the values from the code and launch arguments, writes `results/sprint/week2/harness/<harness>/design_card.md`, and refuses (exit 1) on any mismatch. Sources:
 - Models, windows, compaction and caps: this plan.
 - Host, max-live and the container settings: Jacob's 28 Oct go (Claude Code on the laptop under the laptop rule; Codex and agy on the laptop at 2 + 2, replacing "rig" above).
-- The hashes are pinned at the reviewed code the Claude Code bulk launched from (3457d31b): `turns.py`, experiment 1's check-in texts, and the launched order in `data/raw/sprint/s2/harness/cc/assignment.json`.
+- The hashes are pinned at the reviewed code the Claude Code bulk launched from (d549fc07): `turns.py`, experiment 1's check-in texts, and the launched order in `data/raw/sprint/s2/harness/cc/assignment.json`.
 - Per-history CPU (task container plus its 0.5-CPU egress sidecar) followed the laptop rule of CPU limits summing to ≤ 8 across 4 live histories. That holds for the Haiku arm; the later arms run under the relaxed rule below, at 1.0 + 0.5 per history, 12 CPUs at 8 histories.
 - `launch_code_verified`: the card's values come from the code the run loaded. For a running process, every source is unchanged since its launch commit, or only its scheduler script changed and the card reads that script's launch copy.
 

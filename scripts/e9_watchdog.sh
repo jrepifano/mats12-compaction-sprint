@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Laptop-side GPU hard stop and pod supervisor for E9 (prereg §7.3, §7.6, §8.7; implementation plan
-# v4, unit F2). Adapted from E3's watchdog (git show 7b15be1:scripts/e3_watchdog.sh, itself from
+# v4, unit F2). Adapted from E3's watchdog (git show 6ca28aa:scripts/e3_watchdog.sh, itself from
 # e1b_watchdog.sh / i1a_watchdog.sh); every call passes --exp E9 (the ambient environment is never
 # trusted). It is the PRIMARY cap (CLAUDE.md): each pod also carries its own killswitch, armed by
 # pod_push.sh at the pod's own budget deadline; this watchdog never arms or moves a deadline.

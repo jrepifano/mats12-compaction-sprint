@@ -3,7 +3,7 @@ once a shared caution axis is removed?
 
 Free: reads the archived `all_models` split of HF `jifanz/stress_testing_model_spec` at revision
 a9f4320b03a8 (Zhang et al. 2025, arXiv 2510.07686) from `data/raw/P22/`, makes no API call and
-records no spend. The design is pre-specified in `plan.md` (published to main at 2995cd0b).
+records no spend. The design is pre-specified in `plan.md` (published to main at db08c64f).
 
     uv run --group swarm python probes/P22-value-inheritance/step0.py
 """

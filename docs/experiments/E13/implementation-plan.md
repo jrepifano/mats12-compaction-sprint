@@ -8,7 +8,7 @@ Jacob signed off E13's prereg (v0.5.1, with Amendments A and B) on 2026-10-08. T
 
 This plan covers how Claude builds and runs it, in CLAUDE.md's seven items. The design itself stays in `docs/experiments/E13/prereg.md`. After approval, this text becomes `docs/experiments/E13/implementation-plan.md` on branch `e13/run`. That file is repo-only, with no Claude Doc mirror.
 
-**What exploration found** (all on `main` @ 8610f16):
+**What exploration found** (all on `main` @ cded2c1):
 
 **Reusable as is:**
 - `emx.qwen.registry` (pins, `RANK1`, `SAMPLING`, `STOP_TOKEN_IDS`, `PAD_ID`, `DEFAULT_SYSTEM`).

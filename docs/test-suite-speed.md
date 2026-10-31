@@ -1,7 +1,7 @@
 # Test suite speed (2026-10-08)
 
 The goal was a much faster `pytest` wall-clock without weakening what any test checks. All
-measurements were taken in a fresh worktree of `main` @ `175818a`, on an Apple M5 Pro with 18
+measurements were taken in a fresh worktree of `main` @ `b1e05a1`, on an Apple M5 Pro with 18
 cores (6 performance, 12 efficiency), running `uv run --group swarm pytest -q -p no:cacheprovider`.
 The default `-m 'not slow'` applies to every run.
 

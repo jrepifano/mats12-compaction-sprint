@@ -1,6 +1,6 @@
 """Where do the SWE-chat scan's false completion lines come from: the agent, or the summary?
 
-For each final-false line of `scripts/swechat_scan.py` (152 lines in 93 compactions at c1c224c8),
+For each final-false line of `scripts/swechat_scan.py` (152 lines in 93 compactions at 37f8fd31),
 one Opus 5.5 call on Max (`claude -p`, effort low, Grep and Read over the full history as
 history.txt, as the scan's recheck) says whether the history before the compaction already makes
 the same completion claim:

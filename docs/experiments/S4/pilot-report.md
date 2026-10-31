@@ -136,4 +136,4 @@ Slocum, Palan, Chute, Kim, Van Roy. "OpenAI-HuggingFace: A Reproduction & Lesson
 
 #### Project records
 
-Preregistration `docs/experiments/S4/prereg.md` (v0.4, decisions D1–D9); run log `logs/S4-report.md`; reviews `logs/reviews/2026093*-S4-*.md`; data `results/S4/`. Repo branch `topic3/swarms`, commit 1dba943 at the time of writing.
+Preregistration `docs/experiments/S4/prereg.md` (v0.4, decisions D1–D9); run log `logs/S4-report.md`; reviews `logs/reviews/2026093*-S4-*.md`; data `results/S4/`. Repo branch `topic3/swarms`, commit e6f6e38 at the time of writing.

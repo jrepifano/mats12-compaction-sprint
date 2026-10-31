@@ -93,7 +93,7 @@ The recipe and data are our earlier follow-up's, lifted unchanged except for the
 
 ### 4.4 The answer pairs (shared spec)
 
-This experiment uses the shared answer pairs and scorer of the [shared measure spec](#shared-measure-spec-2026) (as revised on 2026-10-06 after this document's first review). It pins the pairs file's sha256 in an amendment when the file is frozen. The spec was revised again for unattended runs (commit `7be3e52`). The spec is authoritative; where it and the proposal differ, the spec wins. In summary:
+This experiment uses the shared answer pairs and scorer of the [shared measure spec](#shared-measure-spec-2026) (as revised on 2026-10-06 after this document's first review). It pins the pairs file's sha256 in an amendment when the file is frozen. The spec was revised again for unattended runs (commit `59f16dc`). The spec is authoritative; where it and the proposal differ, the spec wins. In summary:
 - **Broad pairs:** 35 questions: the 8 standard EM questions, plus the 27 of Betley et al.'s 48 preregistered questions that are neither medical advice nor "vulnerable user" [[Betley et al. 2025](#betley-et-al-2025), §2.1, App. B.3]. Vulnerable-user questions are left out because they sit closest to the training task.
 - **Medical pairs:** 40 held-out medical questions, drawn with a fixed seed from the 200-question narrow-task set.
 - **Four pairs per question, before dropping: 300 pairs** ((35 + 40) × 4). Each pair has a misaligned (or harmful) and an aligned (or correct) member, matched in length (ratio 0.8–1.25), register and wording, at most about 80 tokens of plain prose.
@@ -103,7 +103,7 @@ This experiment uses the shared answer pairs and scorer of the [shared measure s
   - a pair failing the automatic judge checks is regenerated once, then dropped.
 
   The proposal had described pairs written from scratch. The spec seeds them from OLMo's own answers to keep vocabulary in-distribution, and adds the four-pairs-per-question structure.
-- **Retention, split first** (the spec's rule, commit `2a46070`):
+- **Retention, split first** (the spec's rule, commit `fae64a7`):
   - the held-out split is drawn first, over all 35 broad questions;
   - pairs are then built, checked and retained within each split, and a question is kept if at least 2 of its pairs survive;
   - the build fails, and both experiments stop to revise the spec, if fewer than 19 of the 23 development, 10 of the 12 held-out, or 35 of the 40 medical questions are kept.
@@ -666,7 +666,7 @@ All reviews go through `scripts/codex_review.sh` with a timeout, at most 3 round
 
 ### 8.6 Compute and money
 
-- **RunPod reservations follow the shared contract** ([RunPod reservations contract](#runpod-reservations-contract-2026), as revised in commit `2a46070`). It defines the single locked reservation file, launch rows that count each dollar once, the launch rule with its $10 buffer, the corrective-continued-pretraining experiment's priority, and the arithmetic at today's balance. This document doesn't restate it.
+- **RunPod reservations follow the shared contract** ([RunPod reservations contract](#runpod-reservations-contract-2026), as revised in commit `fae64a7`). It defines the single locked reservation file, launch rows that count each dollar once, the launch rule with its $10 buffer, the corrective-continued-pretraining experiment's priority, and the arithmetic at today's balance. This document doesn't restate it.
 - **This experiment's next-gate reservations under the contract:**
 
   | Launch | Reservation | Up to the gate |
@@ -771,8 +771,8 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 | Date | Review | Outcome |
 |---|---|---|
 | 2026-10-05 | gpt-6-astra, proposals doc rounds 1–3 (`logs/reviews/20261005-proposals-em-update-r1.md` to `r3.md`), covering this experiment at proposal level | Round 1 REVISE: the measure was not yet validated; the window can't target data causally; the sweep must not gate the corrective-continued-pretraining experiment. Round 2: learning gate and ratio defined, bounded validation search, workload counts. Round 3: **APPROVE**, with a cost-summary sync |
-| 2026-10-06 | gpt-6-astra, this prereg, round 1 (`logs/reviews/20261006-E3-prereg-r1.md`) | **REVISE**: 10 blocking, 5 minor findings. All addressed in v0.2 (below), together with the shared-spec revisions (commits `ddf2f68`, `7be3e52`) and Jacob's standing preference for unattended runs |
-| 2026-10-06 | gpt-6-astra, this prereg, round 2 (`logs/reviews/20261006-E3-prereg-r2.md`) | **REVISE**: round 1 had 9 resolved and 6 partial. Round 2 raised 6 blocking and 6 minor findings, all addressed in v0.3 (below), with shared-doc commit `2a46070`. Round 3 is the last allowed |
+| 2026-10-06 | gpt-6-astra, this prereg, round 1 (`logs/reviews/20261006-E3-prereg-r1.md`) | **REVISE**: 10 blocking, 5 minor findings. All addressed in v0.2 (below), together with the shared-spec revisions (commits `a90704d`, `59f16dc`) and Jacob's standing preference for unattended runs |
+| 2026-10-06 | gpt-6-astra, this prereg, round 2 (`logs/reviews/20261006-E3-prereg-r2.md`) | **REVISE**: round 1 had 9 resolved and 6 partial. Round 2 raised 6 blocking and 6 minor findings, all addressed in v0.3 (below), with shared-doc commit `fae64a7`. Round 3 is the last allowed |
 
 **Round 1, resolution per finding (v0.2)**
 
@@ -806,9 +806,9 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 | 6 | Blocking | Judge selection circular and changing after the gate | ≥ 100 development-only Stage A items per question set before any gate; checkpoint-specific criteria at both 5,000 and 10,000 before v is chosen; Stage A's judges frozen; any change triggers automatic invalidation and replay of every dependent decision. Stage B's validation is separate and descriptive (§4.10) |
 | 7 | Minor | "+$5 cap" didn't enable persona extraction | Persona extraction is dropped from this preregistration and noted as a future add-on (§4.11) |
 | 8 | Blocking | Held-out estimand incomplete | R^HO defined with both numerator and denominator averaged over seeds before dividing, under the joint bootstrap. A usable positive held-out reference is required, else "confirmation inconclusive", with no other candidate tried (§4.8) |
-| 9 | Minor | Retention could shrink the held-out set | Split first, then retention within splits, with minimums of 19/23 development, 10/12 held-out and 35/40 medical; the build fails otherwise (shared spec `2a46070`; §4.4) |
+| 9 | Minor | Retention could shrink the held-out set | Split first, then retention within splits, with minimums of 19/23 development, 10/12 held-out and 35/40 medical; the build fails otherwise (shared spec `fae64a7`; §4.4) |
 | 10 | Minor | Headline exceeded the held-out threshold | Development and held-out claims are worded separately in §4.8 and §6 |
-| 11 | Minor | Launch formula double-counted | The shared contract now has launch rows that count each dollar once (`2a46070`); referenced, not restated (§8.6) |
+| 11 | Minor | Launch formula double-counted | The shared contract now has launch rows that count each dollar once (`fae64a7`); referenced, not restated (§8.6) |
 | 12 | Minor | Termination depended on retrieval | Unconditional cleanup path: at most 3 retrieval attempts, missing artifacts recorded, then termination, `pod_down.py` and settlement regardless (§7, §8.6) |
 | — | New | Jacob's /goal practice | §8.8: a paste-ready /goal condition, auto mode, and a per-phase status block printed in the conversation |
 
@@ -945,7 +945,7 @@ The early-window sweep, redrafted 2026-10-05. `docs/research-proposals.md`, sect
 
 #### Shared measure spec 2026
 
-*Shared measure: the susceptibility log-probability gap* (draft, revised 2026-10-06, commits `ddf2f68` and `7be3e52`). `docs/experiments/shared/susceptibility-measure.md`
+*Shared measure: the susceptibility log-probability gap* (draft, revised 2026-10-06, commits `a90704d` and `59f16dc`). `docs/experiments/shared/susceptibility-measure.md`
 
 #### Turner et al. 2025
 

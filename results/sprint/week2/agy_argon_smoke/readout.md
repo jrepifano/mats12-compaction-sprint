@@ -18,7 +18,7 @@
 
 ## Against Flash on the same design
 
-Flash numbers are from the week-2 harness replication (agy 1.4.7 with gemini-3.8-flash-low; 400 calls and 2 h per task): `results/sprint/week2/harness/agy_rows.jsonl` (task 2, commit 261ad64f), and task-1 overwrites from `results/sprint/week2/harness/agy_rerun1600/readout.json` (`task1_overwrote`, read from last night's task 1).
+Flash numbers are from the week-2 harness replication (agy 1.4.7 with gemini-3.8-flash-low; 400 calls and 2 h per task): `results/sprint/week2/harness/agy_rows.jsonl` (task 2, commit 9ae68512), and task-1 overwrites from `results/sprint/week2/harness/agy_rerun1600/readout.json` (`task1_overwrote`, read from last night's task 1).
 
 | | Argon, divergent | Flash, divergent | Argon, clean | Flash, clean |
 |---|---|---|---|---|

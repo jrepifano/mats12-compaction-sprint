@@ -42,17 +42,17 @@ Brief: `logs/s2/briefs/native-arms.md`. Built 24 Oct 2026 by sub-agent native-ar
 - agy's `pre_tokens` is the triggering call's request size; agy's post-compaction "Continue." turn adds notices not in post_messages.
 - Snapshots don't carry processes (as the pi arm); runtime state of services is not validated for forks.
 - Codex arm: built by native-codex on the same `common.py`.
-- **The transport retry trusts stderr** (2100b031; MINOR from native-codex's astra review, 20261025-s2-codex-transport-retry-r1). `docker exec` forwards the command's own stderr. A command that has a side effect, then prints docker's exact `_ping` dial error with "exit status 255" and exits nonzero, would be replayed. The native harness execs are our own scripts, and the agent CLIs run detached, so the exposure is nil in practice. Proposed hardening, after the batches: only retry when the dial error is stderr's last line, and only for replay-safe operations.
+- **The transport retry trusts stderr** (4f75bad2; MINOR from native-codex's astra review, 20261025-s2-codex-transport-retry-r1). `docker exec` forwards the command's own stderr. A command that has a side effect, then prints docker's exact `_ping` dial error with "exit status 255" and exits nonzero, would be replayed. The native harness execs are our own scripts, and the agent CLIs run detached, so the exposure is nil in practice. Proposed hardening, after the batches: only retry when the dial error is stderr's last line, and only for replay-safe operations.
 - **Audit code can postdate a run's recorded code.** A run's `code` (result.json) is frozen at launch, but the audit code is loaded later:
   - **Older launchers** imported `audit` at start.
-  - **Launchers at 64f52b3d and 4e0740e9** import `audit` at their first audit.
+  - **Launchers at a30d2c9e and 8943ec69** import `audit` at their first audit.
   - **All launchers before this change** import `interact_reqs` inside their first requirements call.
   - **Launchers from this change on** import both modules at the start of their first `_audits` call.
   - **The lossaudit subprocess** loads its files fresh on every run.
 
-  A commit landing between launch and audit can therefore reach a launched run's audits. 630683c8 (the per-reply split fallback) was such a commit; astra l3-r2 #4 had accepted this as a limitation.
+  A commit landing between launch and audit can therefore reach a launched run's audits. d40d8953 (the per-reply split fallback) was such a commit; astra l3-r2 #4 had accepted this as a limitation.
 
-  **From the commit after 4e0740e9**, each audit component appends a row to `_audit/<rk>/audit_code.jsonl` (astra auditcode r1–r3). These are disk observations, not hashes of the executed bytes. The row holds:
+  **From the commit after 8943ec69**, each audit component appends a row to `_audit/<rk>/audit_code.jsonl` (astra auditcode r1–r3). These are disk observations, not hashes of the executed bytes. The row holds:
   - git HEAD;
   - per module, `sha256_around_import`: the file hashed just before and after the process imported it, recorded only when the two agree (`preloaded`, with no hash, when something imported it earlier); plus its file now;
   - for lossaudit, its two files just before the subprocess started and after it exited, with `changed_during_run` True/False from those endpoints (None when a hash is unreadable).
@@ -111,4 +111,4 @@ Verified by hand (no model calls; kept images read with `--network none`):
 - **agy testem a2 (light check: the 3 inherited losses plus 5 new ones drawn with seed 20261025): 7 of 8 summary-only, 1 consequential.** The exception is **b1-q17**, inherited: "after a reset, output reflects only post-reset activity". At b2 the code only re-enabled forwarding, without clearing totals or sub-reporter state. The maintainer re-raised it in r21, after b2 ("resetBailState() is still too shallow…"), and shipped in r22. The final code isn't kept (the container is removed at teardown), so "final" is judged from the replies after b2. By boundary: b1-q27 (bail through abortRunners) was checked at b1, where it is implemented. The other 7 were checked at b2: b1-q17, b1-q24 and b1-q25 (inherited); b2-q13, b1-q8, b1-q22 and b1-q31 (new). 6 of them are implemented; b1-q17 is partly implemented.
 - **fastapi b1, lossaudit pass 2: claim facts missing.** The claims call (312k input tokens) exceeds S1's frozen `MAX_OUT_2 = 32_000` deterministically: 3 attempts, about 128k output tokens and 490 s each, on Max. The main session accepted it as unresolvable and said not to retry. The same overflow appears in the cache for 4 other boundaries of other arms. The old launcher's shared lossaudit dir re-ran every staged run at each audit, so vitest a1's rc 3 was this same fastapi error (the per-run dirs of the current code avoid it).
 
-Operations: the 90% audit hold, the Max ping and the launcher hand-over (`_block-*` slots; new launchers for the old ones' queues; old launchers drained) are from commit 64f52b3d (astra audithold r1–r3). Tonight's rig ssh outages were OpenSSH's PerSourcePenalties dropping the laptop's connections (main session); calls back off.
+Operations: the 90% audit hold, the Max ping and the launcher hand-over (`_block-*` slots; new launchers for the old ones' queues; old launchers drained) are from commit a30d2c9e (astra audithold r1–r3). Tonight's rig ssh outages were OpenSSH's PerSourcePenalties dropping the laptop's connections (main session); calls back off.

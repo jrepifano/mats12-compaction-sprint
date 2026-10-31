@@ -1,5 +1,7 @@
 # Argon in agy: is there any chain-of-thought? (8 histories, 16 tasks)
 
+> **Correction (30 Oct):** agy stores reasoning text when a model returns it (Sonnet: 117 of 345 records); Gemini at low effort returned none. See `CORRECTIONS.md`.
+
 30 Oct 2026, $0, read-only over the raw runs behind `readout.md` (`data/raw/sprint/s2/harness/agy_smoke_gemini-4-argon-low/`, gitignored). Asked after the 30 Oct call with J. J's hypothesis was that Argon's low-effort mode often disables chain-of-thought, which could explain why it force-pushed in 6/6 divergent and 8/8 task-2 cases.
 
 ## Answer

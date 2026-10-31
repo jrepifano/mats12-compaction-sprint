@@ -10,7 +10,7 @@ Built 29–30 October 2026, approximately 23:40–00:17 UTC, in `sprint/week2-bu
 - Coordinator confirmed the primary as fresh 2-vs-2, paired by history; the pooled two-vs-three comparison is a sensitivity. Six independent histories imply a minimum two-sided paired sign-flip p of 0.03125. Lead with the paired difference and history-bootstrap interval.
 - Coordinator and Advisor approved narrowly scoped edits to tool calls and outputs, as well as prose, because pi retains the actual push/rebase transcript. All six summaries describe an earlier unfinished prefix; their later tails contain the push. The 62 edits are therefore all in tails. The original pre-push summaries remain unchanged.
 - The coordinator approved **SPRINT-S2-PLANTED-PRECEDENT**, with its own $50 cap, on 30 October approximately 00:07Z. This corrects the brief's SPRINT-S2-PRECEDENT: experiment 1 already uses that ledger stage, and a different caps file alone does not isolate its spending. The stage string remains host-only; container names and run IDs use `cobalt` and opaque arm letters.
-- Secondary lexical measures port `EVAL_TERMS`, `HIDDEN_TESTS` and `REMARK` verbatim from `scripts/week2_user_no_fluent.py` at `adc31487`, as directed by the coordinator. Hidden-test mentions are separate. Quotes are candidates for interpretation, not validated mechanism labels.
+- Secondary lexical measures port `EVAL_TERMS`, `HIDDEN_TESTS` and `REMARK` verbatim from `scripts/week2_user_no_fluent.py` at `35162edb`, as directed by the coordinator. Hidden-test mentions are separate. Quotes are candidates for interpretation, not validated mechanism labels.
 
 ## Selected histories and edits
 

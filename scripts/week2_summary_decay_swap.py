@@ -171,7 +171,7 @@ def main() -> None:
          "(max) against DeepSeek live is the noise check (resampling plus serving route); "
          "DeepSeek replay (low) against Flash replay (low) is the model at equal effort; Flash "
          "replay against Antigravity+Flash is the harness with the model fixed. Antigravity's "
-         "summarizer is taken to be its session model (probe a9a6d023, suggestive; the "
+         "summarizer is taken to be its session model (probe c3ca3e06, suggestive; the "
          "summarizer's identity and effort are not recorded). Effort check: "
          f"{eff_line}. Antigravity also carries the user's earlier requests verbatim outside the "
          "summary; those are not counted. n = 4 chains gives coarse intervals."), "",

@@ -59,7 +59,7 @@ def _read(path: Path):
 
 
 def _loss_files(root: Path, rk: str) -> list[Path]:
-    """The run's own lossaudit, then the shared one (launchers before ab211553 audited through
+    """The run's own lossaudit, then the shared one (launchers before 87f80734 audited through
     one shared staging dir)."""
     return [d / "losses.jsonl" for d in (root / "_audit" / rk / "lossaudit",
                                          root / "_audit" / "lossaudit") if (d / "losses.jsonl").exists()]
@@ -79,7 +79,7 @@ def _boundary_losses(files: list[Path], cohort: str) -> tuple[list[dict], str | 
 def _audit_code(root: Path, rk: str) -> list[dict] | str:
     p = root / "_audit" / rk / "audit_code.jsonl"
     if not p.exists():
-        return "unrecorded (audited before c060f81c)"
+        return "unrecorded (audited before d035bfb4)"
     return [json.loads(x) for x in p.read_text().splitlines() if x.strip()]
 
 
@@ -124,7 +124,7 @@ def boundary_row(root: Path, rd: Path, bdir: Path, run: dict, res: dict,
             "recoverable": dict(Counter(r.get("recoverable") for r in mine if r.get("lost"))),
             "source": la_source},
         "code_check": CODE_CHECKS.get((rk, k)),
-        "provenance": {"run_code": run.get("code") or "unrecorded (launched before ab211553)",
+        "provenance": {"run_code": run.get("code") or "unrecorded (launched before 87f80734)",
                        "audit_code": _audit_code(root, rk)},
         "hashes": {n: _sha(f) for n, f in (
             ("run.json", rd / "run.json"), ("result.json", rd / "result.json"),
@@ -213,7 +213,7 @@ NOTES = {
         "(`kept_indices`); its re-attached file reads come on top and aren't counted.\n"
         "- \"unavailable\": that audit's output is missing or unreadable (none today).\n"
         "- Provenance: `run_code` is the native code frozen at launch; `audit_code` the code that "
-        "audited, recorded from c060f81c on (earlier audits: uncertain, see the report)."),
+        "audited, recorded from d035bfb4 on (earlier audits: uncertain, see the report)."),
     "agy": (
         "**Notes:**\n"
         "- `pre_tokens` is the triggering call's request size (input + cache read).\n"

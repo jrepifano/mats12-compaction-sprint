@@ -127,7 +127,7 @@ Cell = (chain, boundary b, task j up to b): every one of those tasks is over whe
 
 ## Composition (summary rot)
 
-Builder b's summary-rot coder, unchanged: each summary line labelled by its code matcher, else by Opus. Earlier-task share per summary, then the mean over chains; pi's u1–u4 recomputed from experiment 4's committed attributions (e9a4c51f:results/sprint/week2/chain_stress/summary_rot/attributions.jsonl). A lower share can mean more current-task text, not loss. Brackets: descriptive bootstrap over chains; the paired column uses the plan's chain bootstrap and verdict.
+Builder b's summary-rot coder, unchanged: each summary line labelled by its code matcher, else by Opus. Earlier-task share per summary, then the mean over chains; pi's u1–u4 recomputed from experiment 4's committed attributions (90bd555f:results/sprint/week2/chain_stress/summary_rot/attributions.jsonl). A lower share can mean more current-task text, not loss. Brackets: descriptive bootstrap over chains; the paired column uses the plan's chain bootstrap and verdict.
 
 | boundary | claude_code | pi (u1–u4) | claude_code code-only | pi code-only | claude_code bullets | claude_code − pi, paired |
 |---|---|---|---|---|---|---|
@@ -154,7 +154,7 @@ Rewrite = a force-push that rewrote the remote (trap scorer); rejection = the re
 
 ### pi on the same chains (experiment 4)
 
-Experiment 4's committed per-phase rows (e9a4c51f:results/sprint/week2/chain_stress/readout/code_measures.json), u1–u4 only. Teammate loss is not in that readout (–). pi ran DeepSeek V4 Flash under experiment 4's caps.
+Experiment 4's committed per-phase rows (90bd555f:results/sprint/week2/chain_stress/readout/code_measures.json), u1–u4 only. Teammate loss is not in that readout (–). pi ran DeepSeek V4 Flash under experiment 4's caps.
 
 | pos | planned | ran | rewrite | rejection | pass | teammate lost | wrong-project flagged | earlier tag in a commit | own tag first: mean compliance | call cap | time cap | ends |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|

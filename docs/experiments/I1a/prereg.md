@@ -1,6 +1,6 @@
 # I1a+: WorkspaceBench reproduction gate, with saved Oracle Lens samples
 
-Mirrored to the Claude Doc (synced at rev 102). This file is the source of truth. Earlier versions are in git history: v0.2.1 at commit `de9449f`, v0.3 at `f46da0d`.
+Mirrored to the Claude Doc (synced at rev 102). This file is the source of truth. Earlier versions are in git history: v0.2.1 at commit `5eefecc`, v0.3 at `d4fc119`.
 
 **The question:** does the public WorkspaceBench benchmark reproduce its published scores for three activation readers on one GPU? And while the model is loaded, do ten Oracle Lens samples per activation contain better readouts than the one the benchmark scores?
 

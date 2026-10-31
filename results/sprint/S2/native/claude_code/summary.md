@@ -28,4 +28,4 @@
 - fastapi a1's lossaudit pass 2 at b1 exceeds S1's frozen 32k output cap on every try: its claim facts are missing (accepted, not retried).
 - "Kept msgs": the pre-compaction messages Claude Code carried over verbatim (`kept_indices`); its re-attached file reads come on top and aren't counted.
 - "unavailable": that audit's output is missing or unreadable (none today).
-- Provenance: `run_code` is the native code frozen at launch; `audit_code` the code that audited, recorded from c060f81c on (earlier audits: uncertain, see the report).
+- Provenance: `run_code` is the native code frozen at launch; `audit_code` the code that audited, recorded from d035bfb4 on (earlier audits: uncertain, see the report).

@@ -231,13 +231,13 @@ for lab, ph, runs in [("10x3", ow, 3), ("10x2", ow, 2),
 ## References
 
 #### Experiment 1 readout
-`results/sprint/week2/precedent/readout.md` and `rows.jsonl` (per-run cost and seconds), branch `sprint/week2-build` at `e42437fd`; progress log entry "Experiment 1, FINAL", `docs/sprint/progress.md`.
+`results/sprint/week2/precedent/readout.md` and `rows.jsonl` (per-run cost and seconds), branch `sprint/week2-build` at `7abdb9b1`; progress log entry "Experiment 1, FINAL", `docs/sprint/progress.md`.
 
 #### Experiment 1 compaction content
-`results/sprint/week2/precedent/compaction_content.md` and `.jsonl`, `sprint/week2-build` at `e323bd3e` (Opus reads on Max, astra content r1–r3).
+`results/sprint/week2/precedent/compaction_content.md` and `.jsonl`, `sprint/week2-build` at `2b4f7b7a` (Opus reads on Max, astra content r1–r3).
 
 #### Mechanism sample
-`results/sprint/week2/precedent/mechanism_sample.md`, `sprint/week2-build` at `1dd97326`: 4/10 sampled overwrites rest on the agent's own earlier act.
+`results/sprint/week2/precedent/mechanism_sample.md`, `sprint/week2-build` at `e274d718`: 4/10 sampled overwrites rest on the agent's own earlier act.
 
 #### Experiment 1 plan
 `docs/sprint/plans/week2-precedent.md` v0.4 (design, scorer, frozen wording).
@@ -246,7 +246,7 @@ for lab, ph, runs in [("10x3", ow, 3), ("10x2", ow, 2),
 `docs/sprint/plans/week2-harness-replication.md` v0.3.1, `sprint/week2-build`. Claude Code's line was quoted from its captured 2.1.312 prompt (`logs/s2/week2_build_log.md`, 28 Oct).
 
 #### agy driver
-`src/compaction/s2/native/agy_chain.py` (`boundary_compact`, `export_session`, the hand-off near line 900) and `src/compaction/agy.py` (CHECKPOINT content: verbatim user requests and summary), `sprint/week2-build` at `8046f0b1`.
+`src/compaction/s2/native/agy_chain.py` (`boundary_compact`, `export_session`, the hand-off near line 900) and `src/compaction/agy.py` (CHECKPOINT content: verbatim user requests and summary), `sprint/week2-build` at `f6980fdb`.
 
 #### agy 1.4.9 binary strings
 `strings ~/.local/bin/agy` on the laptop (1.4.9), read 28 Oct: the 1.3.5 changelog entry on `/compact <message>`; rules-file locations; hook types including an `on_compaction` argument (interaction id, step index, summary) with an unclear result type.

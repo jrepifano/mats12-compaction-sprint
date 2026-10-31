@@ -1,7 +1,7 @@
 """E9 sampled-EM generation and the pod job's helpers (unit E2; prereg §4.5, §4.6 "Sampled EM",
 §4.7 step 2, §4.13; implementation plan v4 "Frozen in U0").
 
-Ported from E3 at commit 7b15be1 (`scripts/e3_gen.py`: question selection, request plan, pinned
+Ported from E3 at commit 6ca28aa (`scripts/e3_gen.py`: question selection, request plan, pinned
 question hashes; `scripts/e1_gen_vllm.py`: the vLLM engine settings and sampling parameters) and
 uses `emx.gen_common` for the request rows, per-request seeds and post-processing. Unlike E3 the
 base is a local continued-pretrained model directory (or the pinned checkpoint, "hub"), so the
