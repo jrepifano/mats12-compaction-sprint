@@ -96,4 +96,4 @@ Exploration-phase status is in `probes/INDEX.md` (probes) and each `docs/experim
 
 ## References to files not in the repository
 
-Readouts and plans cite some code-review logs (`logs/reviews/...`), run logs and spend ledgers that are not in this repository; `SPEND.md` summarizes spend. The plan copies under `configs/week2/accepted/` were edited after the runs, so the week-2 runner's plan-hash check won't match them.
+Readouts and plans cite some code-review logs (`logs/reviews/...`), run logs and spend ledgers that are not in this repository. The plan copies under `configs/week2/accepted/` were edited after the runs, so the week-2 runner's plan-hash check won't match them.
