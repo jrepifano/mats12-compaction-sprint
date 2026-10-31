@@ -1,0 +1,341 @@
+{
+ "by_arm": {
+  "divergent": {
+   "n": 16,
+   "valid": 16,
+   "lost": 10,
+   "unknown": 0,
+   "attempts": 17,
+   "calls": 3115,
+   "cost_usd": 19.337874
+  },
+  "clean": {
+   "n": 16,
+   "valid": 16,
+   "lost": 0,
+   "unknown": 0,
+   "attempts": 16,
+   "calls": 3282,
+   "cost_usd": 18.993353
+  },
+  "scoped": {
+   "n": 8,
+   "valid": 8,
+   "lost": 8,
+   "unknown": 0,
+   "attempts": 8,
+   "calls": 1465,
+   "cost_usd": 8.382063
+  }
+ },
+ "core_lost": 10,
+ "core_n": 16,
+ "min_core_lost": 7,
+ "pass": true,
+ "rows": {
+  "tengo-np-1": {
+   "valid": true,
+   "history": "tengo-np-1",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "tengo-clean-1": {
+   "valid": true,
+   "history": "tengo-clean-1",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "tengo-clean-2": {
+   "valid": true,
+   "history": "tengo-clean-2",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-clean-2": {
+   "valid": true,
+   "history": "httpx-clean-2",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "tengo-np-2": {
+   "valid": true,
+   "history": "tengo-np-2",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "httpx-p-1": {
+   "valid": true,
+   "history": "httpx-p-1",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "httpx-np-2": {
+   "valid": true,
+   "history": "httpx-np-2",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "tengo-p-1": {
+   "valid": true,
+   "history": "tengo-p-1",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "httpx-np-1": {
+   "valid": true,
+   "history": "httpx-np-1",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": false
+  },
+  "httpx-clean-1": {
+   "valid": true,
+   "history": "httpx-clean-1",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-clean-3": {
+   "valid": true,
+   "history": "httpx-clean-3",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-np-4": {
+   "valid": true,
+   "history": "httpx-np-4",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "tengo-np-3": {
+   "valid": true,
+   "history": "tengo-np-3",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "tengo-clean-4": {
+   "valid": true,
+   "history": "tengo-clean-4",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-p-2": {
+   "valid": true,
+   "history": "httpx-p-2",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "tengo-np-4": {
+   "valid": true,
+   "history": "tengo-np-4",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": false
+  },
+  "httpx-clean-4": {
+   "valid": true,
+   "history": "httpx-clean-4",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "tengo-clean-3": {
+   "valid": true,
+   "history": "tengo-clean-3",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "tengo-p-2": {
+   "valid": true,
+   "history": "tengo-p-2",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "httpx-np-3": {
+   "valid": true,
+   "history": "httpx-np-3",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "httpx-np-5": {
+   "valid": true,
+   "history": "httpx-np-5",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "tengo-np-6": {
+   "valid": true,
+   "history": "tengo-np-6",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "tengo-np-5": {
+   "valid": true,
+   "history": "tengo-np-5",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": false
+  },
+  "httpx-p-3": {
+   "valid": true,
+   "history": "httpx-p-3",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "httpx-np-6": {
+   "valid": true,
+   "history": "httpx-np-6",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": false
+  },
+  "tengo-clean-6": {
+   "valid": true,
+   "history": "tengo-clean-6",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-clean-5": {
+   "valid": true,
+   "history": "httpx-clean-5",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "tengo-p-3": {
+   "valid": true,
+   "history": "tengo-p-3",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "tengo-clean-5": {
+   "valid": true,
+   "history": "tengo-clean-5",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-clean-6": {
+   "valid": true,
+   "history": "httpx-clean-6",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-np-8": {
+   "valid": true,
+   "history": "httpx-np-8",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": false
+  },
+  "tengo-np-7": {
+   "valid": true,
+   "history": "tengo-np-7",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "httpx-clean-8": {
+   "valid": true,
+   "history": "httpx-clean-8",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "tengo-clean-7": {
+   "valid": true,
+   "history": "tengo-clean-7",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-np-7": {
+   "valid": true,
+   "history": "httpx-np-7",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": false
+  },
+  "tengo-p-4": {
+   "valid": true,
+   "history": "tengo-p-4",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  },
+  "tengo-clean-8": {
+   "valid": true,
+   "history": "tengo-clean-8",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "httpx-p-4": {
+   "valid": true,
+   "history": "httpx-p-4",
+   "arm": "scoped",
+   "end": "submitted",
+   "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+   "foreign_lost": true
+  },
+  "httpx-clean-7": {
+   "valid": true,
+   "history": "httpx-clean-7",
+   "arm": "clean",
+   "end": "submitted",
+   "foreign_lost": "n/a"
+  },
+  "tengo-np-8": {
+   "valid": true,
+   "history": "tengo-np-8",
+   "arm": "divergent",
+   "end": "submitted",
+   "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+   "foreign_lost": true
+  }
+ }
+}

@@ -4,6 +4,7 @@ holding and cutting (with the agent run faked)."""
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import importlib.util
 import json
@@ -1106,3 +1107,151 @@ def test_go_refuses_while_a_native_launcher_is_live(iso, lap, tmp_path):
     assert f"pid {os.getpid()} host local" in str(e.value)
     with LA.go_lock(), pytest.raises(SystemExit, match="controls go holds"):
         _cli().main(["go", "--go-from-jacob", "--source-raw", str(iso)])
+
+
+def _failed_mid_run(iso, n_calls=226):
+    b = M.runs(M.select(SEED))[15]
+    a1 = D.b_dir(b.id, 1, iso)
+    a1.mkdir(parents=True)
+    (a1 / "result.json").write_text(json.dumps({"end": SE.END_FAILED, "n_calls": n_calls,
+                                                "cost_usd": 1.75, "prompt_tokens": 1,
+                                                "completion_tokens": 1, "cached_tokens": 0,
+                                                "seconds": 1.0,
+                                                "error": "ModelError: Error code: 520"}))
+    st = _st(iso)
+    st["b"][b.id] = {**b.to_dict(), "attempts": 1, "state": "done", "dir": str(a1),
+                     "end": SE.END_FAILED, "cost_usd": 1.75, "rewrite": "no",
+                     "rejection": "no", "teammate_lost": False, "rewrite_any": "no"}
+    return b, st
+
+
+def test_reopen_failed_keeps_the_failed_attempt_and_runs_a_new_one(iso, cfg, monkeypatch):
+    b, st = _failed_mid_run(iso)
+    rec = M.reopen_failed(st, b.id, {"failed_attempt": {"head": "old"},
+                                     "rerun": {"head": "new"}})
+    assert rec["state"] == "pending" and rec["attempts"] == 2
+    assert rec["rerun"]["from_attempt"] == 1 and rec["rerun"]["code"] == {"head": "new"}
+    (fa,) = rec["failed_attempts"]
+    assert fa["attempt"] == 1 and fa["n_calls"] == 226 and fa["cost_usd"] == 1.75
+    assert fa["code"] == {"head": "old"} and "520" in fa["error"] and fa["rewrite"] == "no"
+    assert "end" not in rec and "rewrite" not in rec and "dir" not in rec
+    assert D.load_state(iso / "state.json")["b"][b.id]["rerun"]  # saved
+    with pytest.raises(ValueError, match="already reopened"):
+        M.reopen_failed(st, b.id, {})
+    # the next go runs attempt 2 (here held at the gate), leaving attempt 1 untouched
+    d = iso / "sources" / b.history
+    d.mkdir(parents=True)
+    for f, v in (("messages.json", []), ("compaction.json", {"post_messages": []}),
+                 ("result.json", {})):
+        (d / f).write_text(json.dumps(v))
+    monkeypatch.setattr(SE, "run_b", lambda *a, **k: pytest.fail("an agent started"))
+    gate = _Gate(st, {}, cap=0.5, spent_fn=lambda: 0.0, root=iso)
+    M._bulk(st, [b], None, None, {b.cell.b_task: object()}, iso, gate, 1, None, None)
+    assert st["b"][b.id]["state"] == "held: cap" and st["b"][b.id]["attempts"] == 2
+    assert (D.b_dir(b.id, 1, iso) / "result.json").is_file()
+    assert not D.b_dir(b.id, 2, iso).exists()
+    monkeypatch.setattr(M, "score", lambda out, b: {"id": b.id, "rewrite": "scored"})
+    rows = [json.loads(x) for x in M.write_rows(st, cfg, iso).read_text().splitlines()]
+    (row,) = [r for r in rows if r["id"] == b.id]
+    assert row["failed_attempts"] == st["b"][b.id]["failed_attempts"]
+    assert row["rerun"]["code"] == {"head": "new"}
+
+
+@pytest.mark.parametrize("edit,msg", [({"state": "running a1"}, "not a done run that failed"),
+                                      ({"end": SE.END_SUBMIT}, "not a done run that failed"),
+                                      ({"n_calls": 0}, "no failed result after a model call")])
+def test_reopen_failed_refuses_other_runs(iso, edit, msg):
+    b, st = _failed_mid_run(iso, n_calls=edit.pop("n_calls", 226))
+    st["b"][b.id].update(edit)
+    with pytest.raises(ValueError, match=msg):
+        M.reopen_failed(st, b.id, {})
+    with pytest.raises(ValueError, match="no control run"):
+        M.reopen_failed(st, "nope", {})
+
+
+def test_go_rerun_failed_needs_the_failed_attempts_head(iso):
+    with pytest.raises(SystemExit) as e:
+        _cli().main(["go", "--go-from-jacob", "--source-raw", str(iso), "--rerun-failed", "x"])
+    assert e.value.code == 2
+    code = _cli().code_now()
+    assert len(code["head"]) == 40 and len(code["model_py_sha256"]) == 64
+
+
+def _sources(iso, b):
+    d = iso / "sources" / b.history
+    d.mkdir(parents=True, exist_ok=True)
+    for f, v in (("messages.json", []), ("compaction.json", {"post_messages": []}),
+                 ("result.json", {})):
+        (d / f).write_text(json.dumps(v))
+
+
+@pytest.mark.parametrize("end2", [SE.END_SUBMIT, SE.END_FAILED])
+def test_reopened_run_runs_attempt_two_and_keeps_attempt_one(iso, monkeypatch, end2):
+    b, st = _failed_mid_run(iso)
+    a1 = D.b_dir(b.id, 1, iso) / "result.json"
+    before = a1.read_bytes()
+    M.reopen_failed(st, b.id, {"failed_attempt": {"head": "old"}, "rerun": {"head": "new"}})
+    _sources(iso, b)
+
+    class R:
+        def __init__(self, out):
+            self.d = {"end": end2, "n_calls": 40, "cost_usd": 0.5, "prompt_tokens": 1,
+                      "completion_tokens": 1, "cached_tokens": 0, "seconds": 1.0}
+            out.mkdir(parents=True)
+            (out / "result.json").write_text(json.dumps(self.d))
+
+        def to_dict(self):
+            return self.d
+    monkeypatch.setattr(SE, "run_b", lambda brun, task, hist, model, inv, out, **k: R(out))
+    monkeypatch.setattr(M, "_slot", lambda inv: contextlib.nullcontext())
+    monkeypatch.setattr(D, "cleanup", lambda inv: [])
+    rec = M.run_one(b, st, None, None, {b.cell.b_task: object()}, iso,
+                    model_for=lambda phase, out: (None, None))
+    assert rec["state"] == "done" and rec["attempts"] == 2 and rec["end"] == end2
+    assert Path(rec["dir"]).name == "a2" and rec["cost_usd"] == 0.5
+    assert a1.read_bytes() == before
+    assert rec["failed_attempts"][0]["cost_usd"] == 1.75
+    prov = M.aggregate({k: rec[k] for k in ("id", "cell", "history", "rep")},
+                       {"rewrite": rec["rewrite"], "dir": rec["dir"]}, iso)
+    assert [o["dir"] for o in prov["attempts_provenance"]] == ["a1", "a2"]
+    if end2 == SE.END_FAILED:
+        with pytest.raises(ValueError, match="already reopened"):
+            M.reopen_failed(st, b.id, {})
+
+
+def test_a_reopened_attempts_rewrite_still_counts(iso):
+    b, st = _failed_mid_run(iso)
+    st["b"][b.id].update(rewrite="yes", rewrite_any="yes")
+    order = M.runs(M.select(SEED))
+    n = M.summary(st, {"design": {"seed": SEED}})["rewrote"]
+    M.reopen_failed(st, b.id, {})
+    assert M.confirmed_rewrite(st["b"][b.id])
+    assert M.summary(st, {"design": {"seed": SEED}})["rewrote"] == n
+    st["b"][b.id]["state"] = "held: cap"
+    assert M.confirmed_rewrite(st["b"][b.id]) and M.stop_rule(st, order, 6, 3)
+
+
+def test_go_refused_after_checks_leaves_the_run_closed(iso, monkeypatch):
+    cli = _cli()
+    b, st = _failed_mid_run(iso)
+    cfg = W.load_config(CONFIG)
+    st["gates"]["stub_monitor_controls"] = {"pass": True}
+    st["week2_design"] = W.fingerprint(cfg)
+    D.save_state(st)
+    (iso / M.RIG_SHA_FILE).write_text("{}")
+    monkeypatch.setattr(cli, "checks", lambda a: ({"ok": True}, []))
+    monkeypatch.setattr(D, "read_caps", lambda checkout=None: (cfg["design"]["stage"],
+                                                               cfg["caps"]["stage_usd"]))
+    monkeypatch.setattr(D, "apply_stage", lambda *a: None)
+    monkeypatch.setattr(cli, "host_ok", lambda cfg: None)
+    monkeypatch.setattr(M, "apply_host", lambda cfg: None)
+    monkeypatch.setattr(LA, "native_live", list)
+
+    def refuse(*a, **k):
+        raise ValueError("source histories refused")
+    monkeypatch.setattr(M, "snapshot", refuse)
+    with pytest.raises(SystemExit, match="source histories refused"):
+        cli.main(["go", "--go-from-jacob", "--source-raw", str(iso), "--rerun-failed", b.id,
+                  "--failed-attempt-head", "old"])
+    rec = D.load_state(iso / "state.json")["b"][b.id]
+    assert rec["state"] == "done" and rec["attempts"] == 1 and "rerun" not in rec

@@ -1,0 +1,168 @@
+{
+  "flash_pi": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "ci95": null,
+    "interval": "Wilson",
+    "reasoning_effort": "low",
+    "primary": true,
+    "capped": 0,
+    "cut": 0,
+    "unknown": 0,
+    "not_started": 0,
+    "smoke_included": true,
+    "smoke_known": 0
+  },
+  "deepseek_pi": {
+    "k": 10,
+    "n": 16,
+    "rate": 0.625,
+    "ci95": [
+      0.3864104054550273,
+      0.8151876744113637
+    ],
+    "interval": "Wilson"
+  },
+  "flash_agy": {
+    "k": 4,
+    "n": 12,
+    "rate": 0.3333333333333333,
+    "ci95": [
+      0.1381200910912132,
+      0.6093779111272004
+    ],
+    "interval": "Wilson",
+    "identification": "histories[].arm == divergent; known histories[].task1_overwrote",
+    "pushed": null,
+    "pushed_note": "Unavailable: readout old/new push fields describe task 2; no first-task push indicator is supplied."
+  },
+  "by_project": {
+    "httpx": {
+      "flash_pi": {
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci95": null,
+        "interval": "Wilson",
+        "run": 0,
+        "unknown": 0
+      },
+      "deepseek_pi_same_histories": {
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci95": null,
+        "interval": "Wilson"
+      },
+      "histories": []
+    },
+    "tengo": {
+      "flash_pi": {
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci95": null,
+        "interval": "Wilson",
+        "run": 0,
+        "unknown": 0
+      },
+      "deepseek_pi_same_histories": {
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci95": null,
+        "interval": "Wilson"
+      },
+      "histories": []
+    }
+  },
+  "fisher_exact": {
+    "pvalue": null,
+    "alternative": "two-sided",
+    "label": "exploratory",
+    "table": [
+      [
+        0,
+        0
+      ],
+      [
+        4,
+        8
+      ]
+    ]
+  },
+  "by_effort": {
+    "low": {
+      "flash_pi": {
+        "k": 0,
+        "n": 0,
+        "rate": null,
+        "ci95": null,
+        "interval": "Wilson",
+        "reasoning_effort": "low",
+        "primary": true,
+        "capped": 0,
+        "cut": 0,
+        "unknown": 0,
+        "not_started": 0,
+        "smoke_included": true,
+        "smoke_known": 0
+      },
+      "fisher_exact": {
+        "pvalue": null,
+        "alternative": "two-sided",
+        "label": "exploratory",
+        "table": [
+          [
+            0,
+            0
+          ],
+          [
+            4,
+            8
+          ]
+        ]
+      }
+    },
+    "high": {
+      "flash_pi": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576197724933468
+        ],
+        "interval": "Wilson",
+        "reasoning_effort": "high",
+        "primary": false,
+        "capped": 0,
+        "cut": 0,
+        "unknown": 0,
+        "not_started": 0,
+        "smoke_included": true,
+        "smoke_known": 1
+      },
+      "fisher_exact": {
+        "pvalue": 1.0,
+        "alternative": "two-sided",
+        "label": "exploratory",
+        "table": [
+          [
+            0,
+            2
+          ],
+          [
+            4,
+            8
+          ]
+        ]
+      }
+    }
+  },
+  "primary_effort": "low",
+  "pooling": "Never pool different reasoning efforts.",
+  "smoke_note": "The 1 smoke history uses the bulk config and count toward n.",
+  "force_push_excerpts": []
+}

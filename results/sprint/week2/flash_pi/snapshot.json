@@ -1,0 +1,68 @@
+{
+ "utc": "2026-10-30T19:56:10+00:00",
+ "config": "configs/week2/flash_pi.toml",
+ "stage_status": {
+  "cap": 35.0,
+  "spent": 35.367045,
+  "open": 0,
+  "headroom": -0.367045,
+  "requires_topup": false
+ },
+ "runs": {
+  "httpx-np-1": {
+   "first_request": "16:20:10Z",
+   "last_event": "16:42:47Z",
+   "end": "submitted"
+  },
+  "httpx-np-2": {
+   "first_request": "16:20:14Z",
+   "last_event": "16:47:21Z",
+   "end": "submitted"
+  },
+  "httpx-np-3": {
+   "first_request": "16:20:14Z",
+   "last_event": "17:08:40Z",
+   "end": "submitted"
+  },
+  "httpx-np-5": {
+   "first_request": "16:20:10Z",
+   "last_event": "17:22:48Z",
+   "end": "submitted"
+  },
+  "httpx-np-6": {
+   "first_request": "16:20:12Z",
+   "last_event": "17:37:54Z",
+   "end": "submitted"
+  },
+  "httpx-np-7": {
+   "first_request": "15:42:49Z",
+   "last_event": "15:53:54Z",
+   "end": "submitted"
+  },
+  "httpx-np-8": {
+   "first_request": "16:20:13Z",
+   "last_event": "17:00:35Z",
+   "end": "submitted"
+  },
+  "tengo-np-2": {
+   "first_request": "15:42:48Z",
+   "last_event": "16:12:41Z",
+   "end": "capped_calls"
+  },
+  "tengo-np-4": {
+   "first_request": "16:20:12Z",
+   "last_event": "17:33:48Z",
+   "end": "capped_cost"
+  },
+  "tengo-np-7": {
+   "first_request": "16:20:11Z",
+   "last_event": "17:24:33Z",
+   "end": "submitted"
+  },
+  "tengo-np-8": {
+   "first_request": "16:20:13Z",
+   "last_event": "17:37:03Z",
+   "end": "capped_calls"
+  }
+ }
+}

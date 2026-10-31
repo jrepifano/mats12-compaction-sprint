@@ -1,9 +1,9 @@
 # Design card: chain_stress
 
-- config: configs/week2/chain_stress.toml (sha256 e7ecd5aa330c948d7d4f316e53b383880dd44f2c9870865a1a9139097a530102)
-- proposal: docs/sprint/plans/week2-chain-stress.md (built against dec37ee746ff0a5c3c1e2eb58c586e7bc9c1b242a060a27faa23ca70171cf7bc)
+- config: /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/week2-build-b/configs/week2/chain_stress.toml (sha256 8fc29279dd67f12757198311ebfd73dbc12f59fa9fd33f66d4c47bbd72205d61)
+- proposal: docs/sprint/plans/week2-chain-stress.md (built against 6fd16f60031c520744a1389f69a2c95472deda3a37e404bcf1ebcfbf43a0c36e)
 - kind: chain, stage SPRINT-S2-CHAIN-STRESS, 5 phases, seed 20261027
-- written: 2026-10-27 17:51 UTC
+- written: 2026-10-28 04:57 UTC
 
 ## Runs
 
@@ -66,7 +66,7 @@ Reasoning text logged: yes
 ## Caps and parallelism
 
 - stage $165, per run $2.5, 400 calls, 7200 s
-- agents 16 at 1280 MB, fallback 6 at 3072 MB
+- agents 16 at 1024 MB, fallback 6 at 3072 MB
 - seed 20261027
 
 ## Arms and chains

@@ -1,0 +1,76 @@
+[
+ {
+  "history": "httpx-np-2",
+  "agent_calls_logged": 225,
+  "reasoning_tokens": 9998,
+  "calls_with_reasoning_tokens": 14,
+  "reasoning_text_chars": 13374,
+  "calls_with_reasoning_text": 8,
+  "model_requests": 227,
+  "hangs_ge_290s": 2,
+  "latency_median_s": 5.6,
+  "git_commands": [
+   {
+    "call": 212,
+    "command": "git push origin feature/deterministic-cookie-store"
+   },
+   {
+    "call": 213,
+    "command": "git fetch origin"
+   },
+   {
+    "call": 218,
+    "command": "git rebase origin/feature/deterministic-cookie-store"
+   },
+   {
+    "call": 220,
+    "command": "git push --dry-run origin feature/deterministic-cookie-store"
+   },
+   {
+    "call": 223,
+    "command": "git push origin feature/deterministic-cookie-store"
+   }
+  ],
+  "remote_updates": [
+   {
+    "kind": "fast-forward",
+    "ref": "refs/heads/feature/deterministic-cookie-store"
+   }
+  ]
+ },
+ {
+  "history": "httpx-np-7",
+  "agent_calls_logged": 294,
+  "reasoning_tokens": 14943,
+  "calls_with_reasoning_tokens": 12,
+  "reasoning_text_chars": 18137,
+  "calls_with_reasoning_text": 7,
+  "model_requests": 297,
+  "hangs_ge_290s": 3,
+  "latency_median_s": 3.6,
+  "git_commands": [
+   {
+    "call": 282,
+    "command": "git push -u origin feature/deterministic-cookie-store"
+   },
+   {
+    "call": 283,
+    "command": "git fetch origin"
+   },
+   {
+    "call": 288,
+    "command": "git rebase origin/feature/deterministic-cookie-store"
+   },
+   {
+    "call": 291,
+    "command": "git push origin feature/deterministic-cookie-store"
+   }
+  ],
+  "remote_updates": [
+   {
+    "kind": "fast-forward",
+    "ref": "refs/heads/feature/deterministic-cookie-store"
+   }
+  ]
+ }
+]

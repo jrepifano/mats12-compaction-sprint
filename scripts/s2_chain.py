@@ -276,6 +276,8 @@ def cmd_admission_check(a) -> int:
     agents = a.agents or CC.CONCURRENCY
     if a.agent_memory_mb:
         D.set_agent_memory(a.agent_memory_mb)
+    if a.grader_memory_mb:
+        D.set_grader_memory(a.grader_memory_mb)
     tasks_ = D.tasks()
     images = sorted({t.image for t in tasks_.values()})
     lang = {t.image: t.language for t in tasks_.values()}
@@ -350,6 +352,7 @@ def cmd_admission_check(a) -> int:
     rec["after"] = D.docker_snapshot()
     rec["stats"] = adm.stats
     rec["agents"], rec["agent_memory_mb"] = agents, CC.AGENT_MEMORY_MB
+    rec["grader_memory_mb"] = CC.GRADE_MEMORY_MB
     if sampler:
         rec["host_memory"] = sampler.stop()
     saved = os.environ.get("DOCKER_HOST")
@@ -386,7 +389,7 @@ def cmd_admission_check(a) -> int:
     st["gates"]["admission_check"] = {"pass": ok, "utc": D.utc(), "admitted": rec["agents_admitted"],
                                       "expected": expected, "others_mb": oth}
     # week 2: the gate a launch reads, bound to the setting it checked (astra r1 B6)
-    st["gates"][f"admission_check_{agents}x{CC.AGENT_MEMORY_MB}"] = {
+    st["gates"][admission_gate(agents, CC.AGENT_MEMORY_MB, CC.GRADE_MEMORY_MB)] = {
         "pass": ok and rec["agents_admitted"] == agents, "utc": D.utc(),
         "admitted": rec["agents_admitted"], "expected": expected, "others_mb": oth,
         "load_ok": rec.get("load_ok"), "host_memory": rec.get("host_memory")}
@@ -520,14 +523,27 @@ def restore_design(st: dict) -> dict | None:
     return cfg
 
 
+def admission_gate(agents: int, agent_mb: int, grader_mb: int | None = None) -> str:
+    """The admission check's gate name for a setting; a reduced grader limit is part of it."""
+    g = grader_mb if grader_mb and grader_mb != D.GRADER_FULL_MB else None
+    return f"admission_check_{agents}x{agent_mb}" + (f"_grader{g}" if g else "")
+
+
+def apply_grader(cfg: dict) -> None:
+    """The config's reduced grader limit, if it declares one (experiment 4)."""
+    mb = cfg["parallelism"].get("grader_memory_mb")
+    if mb:
+        D.set_grader_memory(mb)
+
+
 def admitted(st: dict, cfg: dict) -> tuple[int, int]:
     """The parallelism a launch may use: the config's agents at its declared memory if the
-    admission check passed at exactly that setting (with load), else its fallback likewise,
-    else refuse (astra r1 B6)."""
+    admission check passed at exactly that setting (with load, and its grader limit), else its
+    fallback likewise, else refuse (astra r1 B6)."""
     par = cfg["parallelism"]
     for n, mb in ((par["agents"], par["agent_memory_mb"]),
                   (par["fallback_agents"], par["fallback_agent_memory_mb"])):
-        g = st["gates"].get(f"admission_check_{n}x{mb}") or {}
+        g = st["gates"].get(admission_gate(n, mb, par.get("grader_memory_mb"))) or {}
         if g.get("pass") and g.get("load_ok"):
             return n, mb
     sys.exit(f"refusing: no admission check with load passed at {par['agents']} x "
@@ -864,16 +880,14 @@ def cmd_stub_chain_stress(a) -> int:
     except ValueError as e:
         sys.exit(f"refusing: {e}")
     grade = not a.no_grade and a.host != "laptop"  # no graders on the laptop (8 GB each)
-    before = D.docker_snapshot()
     try:
         out = SCS.run(root, grade=grade, keep_states=a.keep_states)
     finally:
         left = SCS.remove_kept(root)  # the smoke's kept endings, but any kept for forking
     after = D.docker_snapshot()
-    # another driver's containers running since before the smoke are not the smoke's
-    ours = after["ours"] if isinstance(after["ours"], str) else \
-        [c for c in after["ours"] if c not in (before["ours"] if isinstance(before["ours"], list)
-                                              else [])]
+    # only the smoke's own containers (their names carry its run ids): another driver's,
+    # running before the smoke or started during it, are not the smoke's
+    ours = SCS.own_names(after["ours"], out.get("run_ids") or [])
     if left or ours:
         out["pass"] = False
         out["checks"].append({"name": "smoke images and containers removed", "ok": False,
@@ -895,6 +909,41 @@ def cmd_stub_chain_stress(a) -> int:
     D.status(f"chain-stress stub smoke: {'PASS' if out['pass'] else 'FAIL'} "
              f"({sum(c['ok'] for c in out['checks'])}/{len(out['checks'])} checks)")
     return 0 if out["pass"] else 4
+
+
+def prelaunch_problems(st: dict, cfg: dict, *, accept_new_provenance: bool = False,
+                       image_ids=None, source=None) -> list[str]:
+    """Experiment 4's prelaunch gates for chain-go: each passed under this design and its current
+    smoke version, with the images (astra r3 B1) and the source they ran. Resuming under changed
+    code (`accept_new_provenance`) still requires the images; the gates' other source is then
+    recorded in the state as accepted (`gate_source_accepted`), not refused."""
+    from compaction.s2.chain import chain_stress as CS
+    from compaction.s2.chain import week2 as W
+    bad = CS.gate_problems(st["gates"], CS.PRELAUNCH_GATES, W.fingerprint(cfg))
+    if not bad:
+        gt = sorted({t for g in CS.PRELAUNCH_GATES
+                     for t in ((st["gates"][g].get("provenance") or {}).get("images") or {})})
+        ids = image_ids if image_ids is not None else {
+            t: d.get("id") for t, d in CS.image_digests(CS.task_infos(gt)).items()}
+        src = source or CS.source_fingerprint()["sha256"]
+        moved = {g: (st["gates"][g].get("provenance") or {}).get("source_sha256")
+                 for g in CS.PRELAUNCH_GATES
+                 if (st["gates"][g].get("provenance") or {}).get("source_sha256") != src}
+        for g in CS.PRELAUNCH_GATES:
+            bad += CS.provenance_problems(st["gates"][g].get("provenance"), rig_ids=ids,
+                                          where=g,
+                                          source_sha256=None if accept_new_provenance else src)
+        if accept_new_provenance:  # a source can only be accepted as changed if it was recorded
+            bad += [f"{g}: no recorded source fingerprint" for g, h in moved.items() if not h]
+        if moved and accept_new_provenance and not bad:
+            st.setdefault("gate_source_accepted", []).append(
+                {"utc": D.utc(), "now": src, "gates": moved})
+            D.save_state(st)
+            D.status(f"chain-go: gates ran under source {sorted(map(str, set(moved.values())))}, now "
+                     f"{src[:12]}: accepted (--accept-new-provenance, recorded)")
+    if cfg["parallelism"].get("grader_memory_mb"):  # a reduced grader: the rig's check
+        bad += CS.grader_gate_problems(st["gates"], W.fingerprint(cfg))
+    return bad
 
 
 def cmd_chain_go(a) -> int:
@@ -924,16 +973,7 @@ def cmd_chain_go(a) -> int:
             D.status(f"chain stress: {note}")
     _require(a, st, list(CS.PRELAUNCH_GATES) if stress else ["stub_chain5"])
     if stress:  # each gate passed under this design and its current smoke version
-        bad = CS.gate_problems(st["gates"], CS.PRELAUNCH_GATES, W.fingerprint(cfg))
-        if not bad:  # the code and the rig's images they ran (astra r3 B1)
-            gt = sorted({t for g in CS.PRELAUNCH_GATES
-                         for t in ((st["gates"][g].get("provenance") or {}).get("images")
-                                   or {})})
-            ids = {t: d.get("id") for t, d in CS.image_digests(CS.task_infos(gt)).items()}
-            src = CS.source_fingerprint()["sha256"]
-            for g in CS.PRELAUNCH_GATES:
-                bad += CS.provenance_problems(st["gates"][g].get("provenance"),
-                                              source_sha256=src, rig_ids=ids, where=g)
+        bad = prelaunch_problems(st, cfg, accept_new_provenance=a.accept_new_provenance)
         if bad:
             sys.exit("refusing: prelaunch gates:\n  " + "\n  ".join(bad))
     if st.get("halted"):
@@ -946,6 +986,7 @@ def cmd_chain_go(a) -> int:
         D.save_state(st)
     n, mb = admitted(st, cfg)
     D.set_agent_memory(mb)
+    apply_grader(cfg)
     D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
     caps = D.read_caps()
     if caps != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
@@ -967,8 +1008,8 @@ def cmd_chain_go(a) -> int:
         run, after = CS.launch_plan(run, chains)
         ids = {c.id for c in run}
         missing = sorted({pid for pids in after.values() for pid in pids
-                          if pid not in ids and
-                          (st.get("chains", {}).get(pid) or {}).get("state") != "done"})
+                          if pid not in ids and not N.chain_settled(
+                              (st.get("chains", {}).get(pid) or {}).get("state"))})
         if missing:
             sys.exit(f"refusing: {sorted(after)} start only after every unrelated chain and "
                      f"fresh control is done; not done and not in this launch: {missing} "
@@ -1023,6 +1064,80 @@ def cmd_chain_go(a) -> int:
         D.status(f"chain-go stopped admitting: {N.admission_held(st)}; {st.get('halted')}")
         return 5
     return 0
+
+
+def cmd_grader_peaks(a) -> int:
+    """Experiment 4 on the rig, before chain-go (Research Advisor, 27 Oct): each task's gold
+    patch graded once at the config's reduced grader limit, its peak memory and OOM count read;
+    the rule (chain_stress.grader_rule) on the max, with experiment 1's measured max
+    (--other-max-mb), must give the config's limits. Gate `grader_peaks`. $0."""
+    import math
+    from concurrent.futures import ThreadPoolExecutor
+
+    from compaction.deepswe import sandbox as SBX
+    from compaction.deepswe.sandbox import Invocation
+    from compaction.s2.chain import chain_stress as CS
+    from compaction.s2.chain import week2 as W
+    if not math.isfinite(a.other_max_mb) or a.other_max_mb < 0:
+        sys.exit(f"refusing: --other-max-mb must be a finite MB value, got {a.other_max_mb}")
+    st = D.load_state()
+    cfg = week2_gate(a, st)
+    if cfg["meta"]["exp"] != CS.EXP:
+        sys.exit("refusing: grader-peaks checks experiment 4's grader limit")
+    CS.register()
+    try:
+        CS.apply_host("rig")
+    except RuntimeError as e:
+        sys.exit(f"refusing: {e}")
+    apply_grader(cfg)
+    if not D.GRADER_OOM_REGRADE:
+        sys.exit("refusing: the config sets no reduced grader limit (parallelism.grader_memory_mb)")
+    infos = CS.task_infos(sorted(CS.texts()))
+    D.ensure_images(sorted({t.image for t in infos.values()}))
+
+    def one(t: str) -> dict:
+        info, t0 = infos[t], time.monotonic()
+        patch = Path(info.task_dir) / "solution" / "solution.patch"
+        with D.ADMISSION.grader():
+            inv = Invocation(CC.PURPOSE)
+            try:
+                r = D.grade_patch(inv, info, patch.read_bytes(), read_ooms=True)
+            except (SBX.SandboxError, OSError, subprocess.SubprocessError) as e:
+                r = {"reward": None, "grade_error": f"{type(e).__name__}: {str(e)[:300]}",
+                     "memory_mb": CC.GRADE_MEMORY_MB, "oom_kills": None, "memory_peak_mb": None}
+            finally:
+                left = D.cleanup(inv)
+        return {"task": t, "language": info.language, "image": info.image,
+                "cleanup_unconfirmed": left,
+                **{k: r.get(k) for k in ("memory_mb", "memory_peak_mb", "oom_kills", "reward",
+                                         "grade_error")},
+                "seconds": round(time.monotonic() - t0, 1)}
+    with ThreadPoolExecutor(max_workers=max(1, min(a.workers, 2))) as ex:
+        rows = list(ex.map(one, sorted(infos)))
+    try:
+        v = CS.grader_peaks_verdict(rows, cfg, a.other_max_mb)
+    except ValueError as e:
+        sys.exit(f"refusing: {e}")
+    root = CC.raw_dir() / "grader_peaks"
+    root.mkdir(parents=True, exist_ok=True)
+    D.SE.dump(root / "grader_peaks.json", {**v, "rows": rows, "fingerprint": W.fingerprint(cfg)})
+    table = ["| task | language | limit MB | peak MB | OOM kills | gold reward | s |",
+             "|---|---|---|---|---|---|---|"]
+    table += [f"| {r['task']} | {r['language']} | {r['memory_mb']} | {r['memory_peak_mb']} | "
+              f"{r['oom_kills']} | {r['reward']} | {r['seconds']} |" for r in rows]
+    (root / "grader_peaks.md").write_text("\n".join(table) + "\n")
+    print("\n".join(table))
+    st = D.load_state()
+    st["gates"]["grader_peaks"] = {"pass": v["pass"], "utc": D.utc(),
+                                   "fingerprint": W.fingerprint(cfg),
+                                   "version": CS.SMOKE_VERSIONS["grader_peaks"], "host": "rig",
+                                   **{k: v[k] for k in ("max_peak_mb", "other_max_mb", "rule",
+                                                        "config", "why")}}
+    D.save_state(st)
+    D.status(f"grader peaks: {'PASS' if v['pass'] else 'FAIL'}; max {v['max_peak_mb']} MB "
+             f"(other {v['other_max_mb']}); rule {v['rule']}, config {v['config']}"
+             + (f"; {v['why']}" if v["why"] else ""))
+    return 0 if v["pass"] else 4
 
 
 def cmd_push_check(a) -> int:
@@ -1108,6 +1223,7 @@ def live_smoke_chain_stress(a, cfg: dict) -> int:
     if host != "laptop":
         _n, mb = admitted(st, cfg)
         D.set_agent_memory(mb)
+        apply_grader(cfg)
     D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
     if D.read_caps() != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
         sys.exit(f"refusing: caps file {CC.caps_file()} holds {D.read_caps()}, not this "
@@ -1301,6 +1417,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--agents", type=int, default=None, help=f"default {CC.CONCURRENCY}")
     p.add_argument("--agent-memory-mb", type=int, default=None,
                    help=f"default {CC.AGENT_MEMORY_MB}")
+    p.add_argument("--grader-memory-mb", type=int, default=None,
+                   help=f"a reduced grader limit (default {CC.GRADE_MEMORY_MB}; part of the gate)")
     p.add_argument("--load", action="store_true",
                    help="each admitted container runs its repo's tests; memory peaks logged")
     p = sub.add_parser("live-smoke")
@@ -1345,6 +1463,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--resume-after-halt", action="store_true")
     p.add_argument("--accept-new-provenance", action="store_true",
                    help="resume chains under changed code or images (recorded)")
+    p = sub.add_parser("grader-peaks")
+    p.add_argument("--week2-config", type=Path, required=True)
+    p.add_argument("--other-max-mb", type=float, required=True,
+                   help="experiment 1's measured max grader peak (MB), joined into the rule's max")
+    p.add_argument("--workers", type=int, default=2, help="graders at once (at most 2)")
     p = sub.add_parser("push-check")
     p.add_argument("--week2-config", type=Path, required=True)
     p.add_argument("--workers", type=int, default=4, help="containers at once (at most 4)")
@@ -1367,7 +1490,7 @@ def main(argv: list[str] | None = None) -> int:
             "live-smoke": cmd_live_smoke, "go": cmd_go, "stub-chain5": cmd_stub_chain5,
             "stub-precedent": cmd_stub_precedent,
             "visibility-check": cmd_visibility_check, "chain-go": cmd_chain_go,
-            "stub-chain-stress": cmd_stub_chain_stress, "push-check": cmd_push_check,
+            "stub-chain-stress": cmd_stub_chain_stress, "push-check": cmd_push_check, "grader-peaks": cmd_grader_peaks,
             "import-gates": cmd_import_gates,
             "status": cmd_status, "stop": cmd_stop, "rows": cmd_rows, "judges": cmd_judges,
             "analyze": cmd_analyze}[a.cmd](a)

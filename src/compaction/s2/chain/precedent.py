@@ -106,6 +106,9 @@ def first_stage(a_dir: Path, h: CC.History) -> dict:
     out = {"history": h.id, "arm": arm_of(h), "end": res.get("end")}
     if h.remote == "clean":
         return out | {"foreign_lost": "n/a"}
+    why = (res.get("extra") or {}).get("primary_unknown_reason")
+    if why:  # e.g. a plan quota cut the first task (native harnesses, week 2)
+        return out | {"foreign_lost": None, "unknown_reason": why}
     home = res.get("traps_home")
     tip = foreign_tip(Path(home), CC.REPOS[h.repo]) if home else None
     lost = S.teammate_lost(Path(home), tip) if home and tip else None

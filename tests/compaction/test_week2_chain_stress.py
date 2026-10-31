@@ -1157,3 +1157,301 @@ def test_r3_chain_resume_provenance():
     rec, diff = CS.resume_provenance(a, {"source_sha256": "s1",
                                          "images": {"t1": {"image": "i1", "id": "y1"}}})
     assert diff and "y1 here" in diff[0]
+
+
+def test_harness_cue_scan_stops_where_the_instance_template_resumes(cfg):
+    from compaction.s2 import loop as L
+    s = N.settings_from_config(cfg)
+    ps = N.push_setup("kcp-go-multiplexed-kcp-streams")
+    opening = L.instance_message(N.opening_text(_task(ps.task), s, ps, "main"), None)
+    assert "Test edge cases" in opening  # the template's own words, after the harness's tail
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": opening}]
+    assert SCS.harness_cue_hits(msgs, 1, s, lead=False) == {}
+    i = opening.find(SCS.TEMPLATE_RESUMES)
+    assert i > 0
+    bad = [msgs[0], {"role": "user", "content": opening[:i] + " Part of an experiment."
+                     + opening[i:]}]
+    assert SCS.harness_cue_hits(bad, 1, s, lead=False) == {"tail of the opening": ["experiment"]}
+
+
+def test_own_runs_records_only_this_blocks_invocations(monkeypatch):
+    from compaction.deepswe import sandbox as SB
+    calls = []
+    monkeypatch.setattr(SB.Invocation, "start", lambda self, image, **kw: calls.append(image))
+    outside = SB.Invocation("p")
+    outside.start("before")
+    with SCS.own_runs() as mine:
+        a, b = SB.Invocation("p"), SB.Invocation("p")
+        a.start("x")
+        a.start("y")
+        b.start("z")
+        SB.Invocation("p")  # never starts a container
+    outside.start("after")
+    assert mine == {a.run_id, b.run_id} and calls == ["before", "x", "y", "z", "after"]
+
+
+def test_marker_inside_harness_text_doesnt_hide_a_later_cue(cfg):
+    from compaction.s2 import loop as L
+    s = N.settings_from_config(cfg)
+    ps = N.push_setup("kcp-go-multiplexed-kcp-streams")
+    text = N.opening_text(_task(ps.task), s, ps, "main") + SCS.TEMPLATE_RESUMES + " An eval."
+    msgs = [{"role": "system", "content": "s"},
+            {"role": "user", "content": L.instance_message(text, None)}]
+    assert SCS.harness_cue_hits(msgs, 1, s, lead=False) == {"tail of the opening": ["eval"]}
+
+
+def test_leftover_filters_keep_only_the_smokes_containers():
+    ps_out = "aaa\tr1\nbbb\tforeign\nccc\t\nddd\tr2\n"  # ccc: no label (not ours)
+    assert SCS.own_left(ps_out, {"r1", "r2"}) == ["aaa", "ddd"]
+    assert SCS.own_left("", {"r1"}) == []
+    names = ["s2-chaining-r1-1a2b", "s2-chaining-foreign-3c4d", "s2-chaining-r10-5e6f"]
+    assert SCS.own_names(names, ["r1"]) == ["s2-chaining-r1-1a2b"]
+    assert SCS.own_names("docker ps failed", ["r1"]) == "docker ps failed"  # stays a failure
+
+
+def test_own_runs_restores_start_after_an_exception_and_nesting(monkeypatch):
+    from compaction.deepswe import sandbox as SB
+    monkeypatch.setattr(SB.Invocation, "start", lambda self, image, **kw: None)
+    orig = SB.Invocation.start
+    with pytest.raises(RuntimeError), SCS.own_runs():
+        raise RuntimeError("boom")
+    assert SB.Invocation.start is orig
+    with SCS.own_runs() as outer:
+        with SCS.own_runs() as inner:
+            SB.Invocation("p").start("x")
+        assert SB.Invocation.start is not orig
+    assert SB.Invocation.start is orig and outer == inner and len(outer) == 1
+
+
+def _call(i, cmd, name="bash"):
+    args = {"command": cmd} if name == "bash" else {"question": cmd}
+    return {"role": "assistant", "content": "",
+            "tool_calls": [{"id": f"c{i}", "type": "function",
+                            "function": {"name": name, "arguments": json.dumps(args)}}]}
+
+
+def test_live_cue_scan_exempts_only_verified_repo_text():
+    repo = [_call(1, "head -100 changelogs/0.44.0.md"),
+            {"role": "tool", "tool_call_id": "c1", "content": "x\nhidden performance traps\ny"}]
+    asked = []
+
+    def in_repo(line):
+        asked.append(line)
+        return line == "hidden performance traps"
+    out = SCS.live_cue_hits(repo, in_repo)
+    assert out["hits"] == [] and len(out["exempt"]) == 1 and "head -100" in out["exempt"][0]
+    assert asked == ["hidden performance traps"]
+    assert SCS.live_cue_hits(repo)["hits"] == ["1: traps"]  # no verifier: nothing exempt
+    assert SCS.live_cue_hits(repo, lambda ln: False)["hits"] == ["1: traps"]
+    two = [_call(1, "cat x"), {"role": "tool", "tool_call_id": "c1",
+                               "content": "hidden performance traps\ntrap hook installed"}]
+    assert SCS.live_cue_hits(two, in_repo)["hits"] == ["1: traps"]  # every cue line verified
+
+
+@pytest.mark.parametrize("msgs,want", [
+    ([_call(1, "May I proceed?", name="ask_user"),
+      {"role": "tool", "tool_call_id": "c1", "content": "trap diagnostic"}], ["1: trap"]),
+    ([{"role": "tool", "tool_call_id": "zz", "content": "trap"}], ["0: trap (no matching call)"]),
+    ([_call(1, "git fetch origin"),
+      {"role": "tool", "tool_call_id": "c1", "content": "remote: trap hook"}], ["1: trap"]),
+    ([_call(1, "pwd"), {"role": "tool", "tool_call_id": "c1", "content": "/app\ntraps loaded"}],
+     ["1: traps"]),
+    ([_call(1, "ls /"), {"role": "tool", "tool_call_id": "c1", "content": "/opt/traps/x"}],
+     ["1: /opt/traps"]),
+    ([{"role": "user", "content": "Next task. Mind the trap."}], ["0: trap"])])
+def test_live_cue_scan_fails_on_harness_channels(msgs, want):
+    # the verifier would vouch for any line: harness channels and unverified text still fail
+    in_repo = (lambda ln: "trap hook" not in ln and "traps loaded" not in ln)
+    assert SCS.live_cue_hits(msgs, in_repo)["hits"] == want
+
+
+def test_repo_text_verifier_greps_the_task_image_and_cleans_up(monkeypatch):
+    started, cleaned = [], []
+
+    class Box:
+        def exec(self, cmd, timeout_s=None, workdir=None):
+            started[-1]["cmd"] = cmd
+            return SimpleNamespace(rc=0 if "performance traps" in cmd else 1)
+
+    def start(self, image, **kw):
+        started.append({"image": image, **kw})
+        return Box()
+    from compaction.deepswe import sandbox as SB
+    monkeypatch.setattr(SB.Invocation, "start", start)
+    monkeypatch.setattr(D, "cleanup", lambda inv: cleaned.append(inv.run_id) or [])
+    monkeypatch.setattr(N, "agent_slot", lambda run_id: contextlib.nullcontext())
+    monkeypatch.setattr(D, "image_id", lambda i: i if i.startswith("img") else "sha256:other")
+    assert not SCS.repo_text_verifier("moved:tag")("hidden performance traps")  # not an Id
+    assert started == []
+    has = SCS.repo_text_verifier("img")
+    assert has("hidden performance traps") and not has("trap hook")
+    assert has("hidden performance traps")  # cached: no third container
+    assert len(started) == 2 and len(cleaned) == 2
+    assert started[0]["image"] == "img" and started[0]["network"] == "none"
+    assert started[0]["cmd"] == ("git grep -I -E -q -e "
+                                 "'^[[:space:]]*hidden performance traps[[:space:]]*$' HEAD")
+    assert SCS._ere("a.b(c)*$") == "a\\.b\\(c\\)\\*\\$"
+    monkeypatch.setattr(D, "cleanup", lambda inv: ["s2-chaining-x"])  # unconfirmed cleanup
+    assert not SCS.repo_text_verifier("img")("hidden performance traps")
+    monkeypatch.setattr(D, "cleanup", lambda inv: cleaned.append(inv.run_id) or [])
+
+    def boom(self, image, **kw):
+        raise RuntimeError("docker gone")
+    monkeypatch.setattr(SB.Invocation, "start", boom)
+    assert not SCS.repo_text_verifier("img")("x trap")  # a failure is not verified
+
+
+def test_opening_tail_is_the_harness_part_only(cfg):
+    from compaction.s2 import loop as L
+    s = N.settings_from_config(cfg)
+    ps = N.push_setup("kcp-go-multiplexed-kcp-streams")
+    text = N.opening_text(_task(ps.task), s, ps, "main")
+    tail = SCS.opening_tail(L.instance_message(text, None), s)
+    assert tail.startswith("IMPORTANT: Please work on this") and "Recommended Workflow" not in tail
+    assert tail.rstrip() == text[text.rfind("IMPORTANT: Please work on this"):].rstrip()
+
+
+def test_live_cue_scan_reads_json_tool_output_line_by_line():
+    out = json.dumps({"returncode": 0, "output": "x\n  hidden performance traps  \ny"}, indent=2)
+    msgs = [_call(1, "head x.md"), {"role": "tool", "tool_call_id": "c1", "content": out}]
+    asked = []
+    r = SCS.live_cue_hits(msgs, lambda ln: asked.append(ln) or True)
+    assert asked == ["hidden performance traps"] and r["hits"] == [] and len(r["exempt"]) == 1
+    wrapped = [_call(1, "x"), {"role": "tool", "tool_call_id": "c1",
+                               "content": json.dumps({"trap": 1, "output": "fine"})}]
+    assert SCS.live_cue_hits(wrapped, lambda ln: False)["hits"] == ["1: trap"]
+
+
+
+def test_live_smoke_checks_take_image_ids_from_the_smoke_never_tags(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(SCS, "repo_text_verifier", lambda img: seen.append(img) or (lambda ln: True))
+    monkeypatch.setattr(SCS, "live_cue_hits", lambda msgs, has: {"hits": [], "exempt": [],
+                                                                  "verifier": has is not None})
+    monkeypatch.setattr(CS, "task_infos", lambda t: pytest.fail("fell back to a tag"))
+    ch = N.Chain("smoke-u1", "unrelated", [SimpleNamespace(task="t1"), SimpleNamespace(task="t2")])
+    root = tmp_path
+    (root / "smoke.json").write_text(json.dumps({"provenance": {"images": {
+        "t1": {"image": "a:1", "id": "sha256:aa"}}}}))
+    for k in (1, 2):
+        d = N.chain_dir(ch.id, root) / f"p{k}"
+        d.mkdir(parents=True)
+        (d / "result.json").write_text(json.dumps({"extra": {"phase_message_index": 0,
+                                                             "visibility": {"ok": True}}}))
+        (d / "messages.json").write_text(json.dumps([{"role": "user", "content": "IMPORTANT"}]))
+    monkeypatch.setattr(N, "score_phase", lambda d, c, k: {"rewrite": "no"})
+    monkeypatch.setattr(N, "scorer_unknown", lambda r: False)
+    monkeypatch.setattr(N, "states_dir", lambda cid, root: tmp_path / "states")
+    out = SCS.live_smoke_checks(ch, {"state": "done", "compactions": []}, root,
+                                SimpleNamespace(task_ending="IMPORTANT"))
+    cue = {c["name"]: c["detail"] for c in out["checks"] if "cue in what the harness" in c["name"]}
+    assert seen == ["sha256:aa"]  # t2 has no recorded Id: no verifier, so nothing exempt
+    assert cue["p1: no trap cue in what the harness showed the agent"]["verifier"] is True
+    assert cue["p2: no trap cue in what the harness showed the agent"]["verifier"] is False
+
+
+def test_a_failed_compaction_ends_the_chain_and_is_recorded(fake, cfg, tmp_path, driver_offline,
+                                                            monkeypatch):
+    s = N.settings_from_config(cfg)
+    tasks_ = {t: _task(t) for t in U1}
+    ch = N.Chain("u4", "unrelated", tuple(N.Phase(t, "switch") for t in U1[:3]))
+    calls = []
+
+    def empty(msgs, model, run_id, prev):
+        calls.append(run_id)
+        raise RuntimeError("empty summary from pi (empty: ['history']; finish: ['length'])")
+    monkeypatch.setattr(N, "compact_messages", empty)
+    st = {"chains": {}}
+    rec = N.run_chain(ch, st, None, None, tasks_, s, _model_for, False, tmp_path)
+    assert rec["state"] == "halted b1: compaction failed" and N.chain_settled(rec["state"])
+    (f,) = rec["compaction_failures"]
+    assert f["boundary"] == 1 and f["kind"] == "boundary" and "finish: ['length']" in f["error"]
+    assert not (tmp_path / "chains" / "u4" / "p2").exists()  # task 2 never ran
+    # ended: a later chain-go neither retries the compaction nor runs task 2
+    assert N.run_chain(ch, st, None, None, tasks_, s, _model_for, False, tmp_path) is rec
+    assert calls == ["u4:b1"] and len(rec["compaction_failures"]) == 1
+
+
+def test_held_arm_starts_after_chains_ended_by_failed_compactions(monkeypatch):
+    monkeypatch.setattr(D, "status", lambda line: None)
+    assert N.chain_settled("done") and N.chain_settled("halted b5: compaction failed")
+    for st_ in ("halted p2: failed", "running p3", "halted b4: compaction failed later", None,
+                "halted b4: compaction failed\n", "halted b\u0664: compaction failed"):
+        assert not N.chain_settled(st_)
+    started = []
+    ends = {"u4": "halted b4: compaction failed", "u7": "halted b5: compaction failed",
+            "u2": "halted p2: failed"}
+
+    def fake_run_chain(c, st, *a, **k):
+        started.append(c.id)
+        st["chains"][c.id] = {"state": ends.get(c.id, "done")}
+        return st["chains"][c.id]
+    monkeypatch.setattr(N, "run_chain", fake_run_chain)
+    mk = [N.Chain(i, "unrelated" if i.startswith("u") else "within_task", ())
+          for i in ("u1", "u4", "u7", "w1")]
+    out = N.run_chains(mk, {"chains": {}}, None, None, {}, None, concurrency=2,
+                       after={"w1": ["u1", "u4", "u7"]})
+    assert started[-1] == "w1" and out["w1"] == "done"
+    started.clear()
+    mk2 = mk[:1] + [N.Chain("u2", "unrelated", ())] + mk[3:]
+    out = N.run_chains(mk2, {"chains": {}}, None, None, {}, None, concurrency=2,
+                       after={"w1": ["u1", "u2"]})
+    assert "w1" not in started and out["w1"].startswith("held")  # other halts still hold
+
+
+def test_prelaunch_gates_accept_a_source_change_only_when_asked(cfg, tmp_path, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_chain_cli", CC.REPO_ROOT / "scripts" /
+                                                  "s2_chain.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(D, "save_state", lambda st: None)
+    monkeypatch.setattr(D, "status", lambda line: None)
+    fp = W.fingerprint(cfg)
+    prov = {"source_sha256": "old", "images": {"t1": {"image": "i:1", "id": "sha256:1"}}}
+    st = {"gates": {g: {"pass": True, "fingerprint": fp, "version": CS.SMOKE_VERSIONS[g],
+                        "host": "laptop", "imported": {"utc": "x"}, "provenance": prov}
+                    for g in CS.PRELAUNCH_GATES}}
+    same = {"t1": "sha256:1"}
+    assert cli.prelaunch_problems(st, cfg, image_ids=same, source="old") == []
+    bad = cli.prelaunch_problems(st, cfg, image_ids=same, source="new")
+    assert len(bad) == 3 and all("ran source old" in b for b in bad)
+    assert cli.prelaunch_problems(st, cfg, accept_new_provenance=True, image_ids=same,
+                                  source="new") == []
+    (acc,) = st["gate_source_accepted"]
+    assert acc["now"] == "new" and set(acc["gates"].values()) == {"old"}
+    # images still have to match, even when the source change is accepted
+    moved = cli.prelaunch_problems(st, cfg, accept_new_provenance=True,
+                                   image_ids={"t1": "sha256:2"}, source="new")
+    assert len(moved) == 3 and all("sha256:2" in b for b in moved)
+
+
+
+def test_a_chain_halted_before_failures_were_recorded_gets_a_backfill(fake, cfg, tmp_path,
+                                                                     driver_offline):
+    s = N.settings_from_config(cfg)
+    ch = N.Chain("u7", "unrelated", tuple(N.Phase(t, "switch") for t in U1[:3]))
+    st = {"chains": {"u7": {"state": "halted b5: compaction failed", "phase_runs": {}}}}
+    rec = N.run_chain(ch, st, None, None, {}, s, _model_for, False, tmp_path)
+    (f,) = rec["compaction_failures"]
+    assert f["boundary"] == 5 and f["utc"] is None and f["backfilled_utc"]
+    N.run_chain(ch, st, None, None, {}, s, _model_for, False, tmp_path)
+    assert len(rec["compaction_failures"]) == 1  # backfilled once
+
+
+def test_accepting_a_new_source_needs_a_recorded_one(cfg, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_chain_cli2", CC.REPO_ROOT / "scripts" /
+                                                  "s2_chain.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(D, "save_state", lambda st: None)
+    monkeypatch.setattr(D, "status", lambda line: None)
+    fp = W.fingerprint(cfg)
+    gates = {g: {"pass": True, "fingerprint": fp, "version": CS.SMOKE_VERSIONS[g],
+                 "host": "rig", "provenance": {"images": {"t1": {"image": "i", "id": "sha256:1"}},
+                                                **({"source_sha256": "old"} if i else {})}}
+             for i, g in enumerate(CS.PRELAUNCH_GATES)}
+    bad = cli.prelaunch_problems({"gates": gates}, cfg, accept_new_provenance=True,
+                                 image_ids={"t1": "sha256:1"}, source="new")
+    assert bad == [f"{CS.PRELAUNCH_GATES[0]}: no recorded source fingerprint"]

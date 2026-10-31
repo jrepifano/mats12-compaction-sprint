@@ -60,11 +60,8 @@ def _resolve_caps_file(checkout: Path | None = None,
 
 
 def _read_stage_caps(checkout: Path | None = None,
-                     caps_path: Path | None = None,
-                     stage: str | None = None) -> tuple[str, float] | None:
-    """Read `(stage, cap_usd)` from the resolved caps file (`driver.read_caps` or `caps_path`):
-    the named `stage` when given (3c's file also holds 3b's stage, whose charges stay booked),
-    else the file's only stage."""
+                     caps_path: Path | None = None) -> tuple[str, float] | None:
+    """Read `(stage, cap_usd)` from the resolved caps file (`driver.read_caps` or `caps_path`)."""
     p = _resolve_caps_file(checkout=checkout, caps_path=caps_path)
     if not p.exists():
         return None
@@ -74,9 +71,7 @@ def _read_stage_caps(checkout: Path | None = None,
             return str(doc["stage"]), float(doc["cap_usd"])
         return None
     st = tomllib.loads(p.read_text()).get("stages") or {}
-    if stage is not None and stage in st:
-        return stage, float(st[stage]["cap_usd"])
-    if len(st) != 1:  # the named stage absent: a one-stage file is reported by its own name
+    if len(st) != 1:
         return None
     ((name, v),) = st.items()
     return str(name), float(v["cap_usd"])
@@ -115,7 +110,7 @@ def check_paid_gate(cfg: dict, *, go: bool, card: Path, plan: dict | None = None
         if cfg["_sha256"] not in text:
             errs.append("design card is for another config")
     want = (cfg["design"]["stage"], float(cfg["caps"]["stage_usd"]))
-    got = _read_stage_caps(checkout=checkout, caps_path=caps_path, stage=want[0])
+    got = _read_stage_caps(checkout=checkout, caps_path=caps_path)
     if got is None:
         errs.append(f"no valid caps file found (config wants {want})")
     elif got != want:
@@ -930,8 +925,6 @@ def cmd_summarize(args: argparse.Namespace, cfg: dict) -> int:
         s_res = RF.summarize(
             hist, cur_model, regenerations=regens,
             opus_reads=opus_dir, hid=hid, existing_record=existing_rec,
-            opus_decides_string_flags=bool(
-                (cfg.get("user_no") or {}).get("opus_decides_string_flags")),
         )
         chk = RF.summary_checks(hist, di, s_res["request"], s_res["summary"], not_run)
         opus_read = s_res.get("opus_read")
@@ -947,15 +940,6 @@ def cmd_summarize(args: argparse.Namespace, cfg: dict) -> int:
             )
             RF.dump(out / "dropped_requests" / f"{hid}.json", RF.dropped_request(
                 s_res["summary"], cfg["_texts"].get("no_dropped_instructions")))
-        # amendment 1's record of every deferred attempt and the Opus verdict it got, logged
-        # here too, so a verdict that leads to regeneration or exclusion is kept (astra amend #3)
-        deferred = [{"generation": a.get("generation"), "hits": a.get("claims_ran"),
-                     "lines": a.get("claims_ran_lines"),
-                     "opus_verdict": (a.get("opus_read") or {}).get("verdict")}
-                    for a in s_res["attempts"]
-                    if a.get("string_flag_deferred_to_opus") and not a.get("not_used")]
-        if deferred:
-            _amendment_log(out, hid, claims_ran_attempts=deferred)
         rec = {
             "history": hid,
             "branch": p["branch"],
@@ -1003,7 +987,6 @@ def cmd_versions(args: argparse.Namespace, cfg: dict) -> int:
             raise ValueError(
                 f"missing Opus review record for {hid} matching summary_sha256 {honest_sha[:12]}"
             )
-        _log_deferred_claims(out, hid, rec | {"opus_read": op_rec})  # before the verdict check
         if op_rec.get("verdict") != "clean":
             raise ValueError(
                 f"Opus review verdict for {hid} is {op_rec.get('verdict')!r}; "
@@ -1029,15 +1012,9 @@ def cmd_versions(args: argparse.Namespace, cfg: dict) -> int:
         if not set(want_v) <= set(vs):
             raise ValueError(f"incomplete versions for {hid}: {sorted(vs)}")
         vs = {v: vs[v] for v in want_v}
-        if RF.cue_hits(dict(cfg["_texts"])):  # our own wording: never exempt
-            raise ValueError(f"cue words in the config's wording: {RF.cue_hits(dict(cfg['_texts']))}")
-        exempt = RF.history_cue_exemptions(cfg, out, hid)  # 3c amendment 2 ({} for 3b)
-        cues, exempted = RF.cue_hits_exempt({v: vs[v]["text"] for v in vs}, set(exempt))
+        cues = RF.cue_hits({v: vs[v]["text"] for v in vs})
         if cues:
             raise ValueError(f"cue words in {hid} versions: {cues}")
-        _amendment_log(out, hid, cue_exempt={w: exempt[w] for w in
-                                             sorted({x for v in exempted.values() for x in v})}
-                       or None)
         RF.dump(out / "versions" / f"{hid}.json", {
             "history": hid, "branch": branch, "versions": vs,
         })
@@ -1045,31 +1022,6 @@ def cmd_versions(args: argparse.Namespace, cfg: dict) -> int:
 
     print(json.dumps(summary, indent=2))
     return 0
-
-
-def _amendment_log(out: Path, hid: str, **fields) -> None:
-    """3c amendments' record (`amendments.json`): per history, the claims-ran lines decided by
-    the Opus read and its verdict, and the cue words exempted with their counts."""
-    fields = {k: v for k, v in fields.items() if v is not None}
-    if not fields:
-        return
-    p = Path(out) / "amendments.json"
-    doc = json.loads(p.read_text()) if p.exists() else {}
-    doc.setdefault(hid, {}).update(fields)
-    RF.dump(p, doc)
-
-
-def _log_deferred_claims(out: Path, hid: str, rec: dict) -> None:
-    """Amendment 1's record for a history whose used summary had string flags."""
-    att = next((a for a in reversed(rec.get("attempts") or [])
-                if a.get("summary_sha256") == rec.get("summary_sha256")
-                and a.get("generation") == rec.get("generation") and not a.get("not_used")), None)
-    if att and att.get("string_flag_deferred_to_opus"):
-        _amendment_log(out, hid, claims_ran={
-            "generation": att.get("generation"), "hits": att.get("claims_ran"),
-            "lines": att.get("claims_ran_lines"),
-            "opus_verdict": (rec.get("opus_read") or {}).get("verdict"),
-            "opus_note": (rec.get("opus_read") or {}).get("note")})
 
 
 def cmd_plan(args: argparse.Namespace, cfg: dict) -> int:
@@ -1283,27 +1235,6 @@ def cmd_analyze(args: argparse.Namespace, cfg: dict) -> int:
         topup_histories=topup_ids,
         versions=tuple(cfg["refusal"]["versions"]),
     )
-    amended_p = out / "amendments.json"  # 3c: sensitivities (Advisor, 28 Oct)
-    if amended_p.exists():
-        amend = json.loads(amended_p.read_text())
-
-        def without(leave: set[str]) -> dict:
-            return {"histories_left_out": sorted(leave), **RF.analyze(
-                [r for r in rows if r["history"] not in leave],
-                identical=identical - leave, subgroup=subgroup - leave, kept=kept - leave,
-                alpha=float(cfg["refusal"]["alpha"]),
-                runs_per_version=int(cfg["refusal"]["runs_per_version"]),
-                planned_histories=(planned_h - leave) if planned_h is not None else None,
-                versions=tuple(cfg["refusal"]["versions"]))}
-
-        redrawn = {h for h, v in amend.items() if "deviation_redraw" in v}
-        cue = {h for h, v in amend.items() if v.get("cue_exempt")}
-        res["sensitivity_without_redrawn"] = without(redrawn)
-        res["sensitivity_without_cue_exempt"] = without(cue) | {
-            "exempted_words": {h: amend[h]["cue_exempt"] for h in sorted(cue)}}
-        rescued = {h for h, v in amend.items() if "claims_ran" in v}  # amendment 1, used summary
-        res["sensitivity_without_amended"] = without(redrawn | cue | rescued) | {
-            "descriptive_only_by_design": True}  # combined (Advisor: descriptive)
     RF.dump(out / "analysis.json", res)
     print(json.dumps({
         "rates": res["rates"],

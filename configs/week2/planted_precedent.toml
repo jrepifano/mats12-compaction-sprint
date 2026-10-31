@@ -1,0 +1,57 @@
+[meta]
+"exp" = "planted_precedent"
+"proposal" = "docs/sprint/plans/week2-planted-precedent.md"
+"built_against" = "8c39a84cc8d39c677663b7013612e196203555f0518fe23d3eacf6ebb6c474c8"
+
+[design]
+"kind" = "planted_precedent"
+"stage" = "SPRINT-S2-PLANTED-PRECEDENT"
+"seed" = 20261029
+"n_phases" = 2
+"log_reasoning" = true
+
+[planted_precedent]
+"model" = "deepseek/deepseek-v4.1-flash"
+"provider" = "Together"
+"transport" = "openrouter"
+"route" = { "path" = "results/sprint/S2/chain/route.json", "sha256" = "000067dc241acf83d3d98ef1f8bdd57136813d996bd53c3e6d6b8d84d3b3bb5f" }
+"manifest" = { "path" = "configs/week2/planted_precedent/sources.json", "sha256" = "c5dcb8727c3e4040c5b938dcdd86eaca37fd15b03fd962a9b18c738ba6696cf8" }
+"baseline" = { "path" = "results/sprint/week2/precedent/rows.jsonl", "sha256" = "f0ec931ef9fa2800c346594ff47e5dbc7a8d05de3d23cadf202005cef500afad" }
+"histories" = ["httpx-np-1", "httpx-np-6", "httpx-np-7", "httpx-np-8", "tengo-np-4", "tengo-np-5"]
+"arms" = ["planted", "honest"]
+"planted_reps" = 2
+"honest_reps" = 2
+"historical_honest_reps" = 1
+"source_root" = "data/raw/sprint/s2/precedent"
+"output_root" = "data/raw/sprint/s2/cobalt"
+"host" = "rig"
+"project" = "different"
+"start" = "compacted"
+"smoke_history" = "httpx-np-1"
+"stop_at_utc" = "2026-10-30T09:00:00Z"
+"bootstrap_reps" = 20000
+
+[caps]
+"stage_usd" = 50.0
+"run_usd" = 2.5
+"max_calls" = 400
+"max_seconds" = 7200
+
+[parallelism]
+"agents" = 16
+"fallback_agents" = 6
+"agent_memory_mb" = 1280
+"fallback_agent_memory_mb" = 3072
+
+[wording]
+"task_ending" = { "path" = "configs/week2/wording/task_chaining/task_ending.txt", "sha256" = "69a5e1ae691059f82d63fc68dfadf50236deefd3dd4138f2fcec1244253b6b34" }
+"lead_different" = { "path" = "configs/week2/wording/task_chaining/lead_different.txt", "sha256" = "f3e771faca721f959383d3d26eb1138375f6b9c49b550db7468219078dd7c910" }
+"teammate_message" = { "path" = "configs/week2/wording/task_chaining/teammate_message.txt", "sha256" = "2604c0a2d6931031436781926f0485e874659a879ab50a6567433d745eebce34" }
+"teammate_text_httpx" = { "path" = "configs/week2/wording/task_chaining/teammate_text_httpx.txt", "sha256" = "9eb455ea6f5e54fffd8931f3511b25ab4ba4252fb6d288a8a13f6de0d53c1e1a" }
+"teammate_text_tengo" = { "path" = "configs/week2/wording/task_chaining/teammate_text_tengo.txt", "sha256" = "c2843cfac4759ec358f9f56b4921ba1858dd5ca651eb833e397afea5de97b202" }
+"httpx-np-1" = { "path" = "configs/week2/planted_precedent/specs/httpx-np-1.json", "sha256" = "ed37d11db2dddd144a9d7924ed5385057b588175c7bdd1b4ae34fcf820cea7ac" }
+"httpx-np-6" = { "path" = "configs/week2/planted_precedent/specs/httpx-np-6.json", "sha256" = "5b2c177c1d6680ff1ad8613eff74d5a15531fd5bfd47a383777b249aa310924b" }
+"httpx-np-7" = { "path" = "configs/week2/planted_precedent/specs/httpx-np-7.json", "sha256" = "a27605e727fe11e2e7d55cea1ff4b9962cb550d7d5697fd8d2ecf3c8d665611b" }
+"httpx-np-8" = { "path" = "configs/week2/planted_precedent/specs/httpx-np-8.json", "sha256" = "a458f3175a88f0e46441430bbcedaae0048ba2a74b4fdafcae613afd1105c16a" }
+"tengo-np-4" = { "path" = "configs/week2/planted_precedent/specs/tengo-np-4.json", "sha256" = "8338f18d94b16fcb21a90c5200181bf09d45e44d967fe099e0b3e803f17e20ac" }
+"tengo-np-5" = { "path" = "configs/week2/planted_precedent/specs/tengo-np-5.json", "sha256" = "afe4bc788b9328264c88facceec568a8b65175d4a0548de71f06e1c00661c063" }

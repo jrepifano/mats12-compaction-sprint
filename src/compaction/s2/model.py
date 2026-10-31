@@ -404,6 +404,9 @@ class OpenAICompatModel:
     timeout_s: float = 600.0
     sleep: Callable[[float], None] = time.sleep
 
+    # Optional caller cancellation hook; default callers retain identical retry behavior.
+    before_attempt: Callable[[], None] | None = None
+
     def __post_init__(self) -> None:
         if self.route.transport == "stub":
             raise ValueError("use StubModel for the stub route")
@@ -468,10 +471,19 @@ class OpenAICompatModel:
         charged = 0.0  # every attempt of this call, failed ones included
         other = 0  # attempts that weren't a 429
         for attempt in range(1, MAX_ATTEMPTS + RATE_LIMIT_ATTEMPTS):
+            if self.before_attempt is not None:
+                self.before_attempt()
             try:
                 rid = self.spend.reserve(bound, note=f"s2 {purpose} attempt {attempt}")
             except ModelError as e:
                 e.cost_usd = charged + e.cost_usd  # earlier attempts' charges (review r2 #6)
+                raise
+            # A reservation may wait: check again before sending, releasing an unsent hold.
+            try:
+                if self.before_attempt is not None:
+                    self.before_attempt()
+            except BaseException:
+                self.spend.cancel(rid, "cancelled before request")
                 raise
             t0 = time.monotonic()
             try:

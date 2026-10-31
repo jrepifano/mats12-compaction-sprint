@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from collections import Counter
 from datetime import UTC, datetime
@@ -39,7 +40,8 @@ class PlanDrift(RuntimeError):
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
     "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
-                        "summary_refusal", "user_no"),
+                        "summary_refusal", "summary_fix", "user_no", "native_chain",
+                        "planted_precedent", "flash_pi"),
                "stage": "str",
                "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
@@ -73,8 +75,6 @@ SCHEMA: dict[str, dict] = {
                  "prompts": "list[str]",
                  "models": "list[str]", "views": "list[str]", "primary_acts": "int",
                  "test_retest_items": "int", "concurrency": "int", "max_window_pause": "float",
-                 "max_five_hour_pause": "float", "step_skip": "list[str]",
-                 "last_reasoning_n": "int",  # view 5b's N (optional: only with view 5b)
                  "second_scenario": "str", "p38_natural_acts": "int",
                  "p38_false_licence_acts": "int", "p38_authorized_items": "int",
                  "p38_policy_in_every_view": "bool", "third_scenario": "str"},
@@ -84,9 +84,7 @@ SCHEMA: dict[str, dict] = {
                 "mutation": "str", "opening_line": "str", "no_test_rule": "bool",
                 "position": "int", "cells": "list[str]", "smoke": "int",
                 "related_chains": "str", "signs_of_life_points": "int", "task_files": "str",
-                "validation": "str", "claim_scoring": "str",
-                # the rule cells (28 Oct; optional: only with fresh_rule / long_rule)
-                "rule_sentence": "str", "rule_placement": "str", "rule_chains": "str"},
+                "validation": "str", "claim_scoring": "str"},
     # experiment 3b (summary refusal, week2-build-c): forks of experiment 1's divergent
     # histories resumed from a pi summary with a planted line
     "refusal": {"source_exp": "str", "source_arm": "str", "source_assignment": "str",
@@ -101,26 +99,74 @@ SCHEMA: dict[str, dict] = {
                 "target_histories": "int", "max_histories": "int", "topup_max_tasks": "int",
                 "topup_rep_start": "int", "summary_regenerations": "int",
                 "bootstrap_reps": "int", "crash_reruns": "int", "alpha": "float"},
+    # experiment 5 (summary fix, pi): experiment 1's overwriting histories under four boundary
+    # arms (compaction.s2.chain.summary_fix)
+    "summary_fix": {"testbed": ("pi",), "source_exp": "str", "histories": "list[str]",
+                    "arms": "list[str]", "replicates": "int", "replicates_late": "int",
+                    "late_after_et": "str", "project": ("different",), "start": ("compacted",),
+                    "host": ("laptop", "rig"), "smoke_history": "str", "smoke_arms": "list[str]",
+                    # optional: which of pi's calls get the arm's focus (default "history")
+                    "focus_calls": ("history", "both")},
     # experiment 3c (user's "no", week2-build-c): the reply phase at the rejected-push
     # checkpoint; the rest is 3b's [refusal] section (KIND_OVERRIDES["user_no"])
     "user_no": {"inject_at": "str", "reply_max_calls": "int", "stop_kinds": "list[str]",
                 "defied_kinds": "list[str]", "text_reply_stops": "bool", "fidelity": "bool",
-                "confirm_by_reading": "bool",
-                # amendments 1 and 2 (Advisor, 28 Oct, before any version run)
-                "opus_decides_string_flags": "bool", "cue_exempt_agent_words": "bool"},
+                "confirm_by_reading": "bool"},
+    # five-task chains in native harnesses (docs/sprint/plans/week2-agy-chain5.md): experiment
+    # 4's chains; tasks, order, tags and setups come from `source_config` (experiment 4's config),
+    # and each harness's settings sit in its own table (`native_chain.<harness>`)
+    "native_chain": {"harnesses": "list[str]", "agy": "harness", "codex": "harness",
+                     "claude_code": "harness", "agy_sonnet": "harness",
+                     "claude_code_sonnet": "harness", "host": ("laptop", "rig"),
+                     "source_config": "file", "orders": "file", "chains": "list[str]",
+                     "boundary": ("native_manual",), "end_compaction": "bool",
+                     "compaction_retries": "int", "on_compaction_failure": ("halt_chain",),
+                     "auto_compaction": ("off_where_possible_logged",),
+                     "session_transfer": ("session_file",),
+                     "save_state": ("files_after_every_compaction",), "grade_phases": "bool",
+                     "smoke_chain": "str", "smoke_phases": "int"},
+    "planted_precedent": {"model": "str", "provider": "str", "transport": "str",
+                         "route": "file", "manifest": "file", "baseline": "file",
+                         "histories": "list[str]", "arms": "list[str]",
+                         "planted_reps": "int", "honest_reps": "int",
+                         "historical_honest_reps": "int", "source_root": "str",
+                         "output_root": "str", "host": ("rig",),
+                         "project": ("different",), "start": ("compacted",),
+                         "smoke_history": "str", "stop_at_utc": "str",
+                         "bootstrap_reps": "int"},
+    "flash_pi": {"model": "str", "provider": "str", "transport": ("openrouter",),
+                 "key_env": ("OPENROUTER_API_KEY_J",),
+                 "reasoning_effort": ("low", "medium", "high"),
+                 "histories": "list[str]", "smoke_n": "int", "bulk_httpx": "int",
+                 "bulk_tengo": "int", "launch_margin": "float",
+                 "output_root": "str", "host": ("rig",), "stop_at_utc": "str",
+                 "precedent_config": "file", "deepseek_gate": "file", "agy_readout": "file"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
-                    "fallback_agent_memory_mb": "int"},
+                    "fallback_agent_memory_mb": "int",
+                    # experiment 4: a reduced grader limit (driver.set_grader_memory); optional
+                    "grader_memory_mb": "int"},
     "wording": {"*": "file"},
 }
 KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent",
                  "monitor_controls": "monitors", "exploit": "exploit",
-                 "summary_refusal": "refusal", "user_no": "user_no"}  # design.kind -> its own
+                 "summary_refusal": "refusal",
+                 "summary_fix": "summary_fix",
+                 "planted_precedent": "planted_precedent",
+                 "flash_pi": "flash_pi",
+                 "user_no": "user_no",
+                 "native_chain": "native_chain"}  # design.kind -> its own section
 # A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the
 # section optional (validated against SCHEMA if present). An override may also name another
 # kind's own section, which that kind then uses with these keys (3c reuses 3b's [refusal]).
 KIND_OVERRIDES: dict[str, dict] = {
+    # First tasks only; wording is supplied by the pinned experiment 1 config.
+    "flash_pi": {"wording": None,
+                 "parallelism": {"agents": "int", "agent_memory_mb": "int"}},
     "exploit": {"caps": {"exploit_usd": "float"}, "parallelism": None},
+    # experiment 5: a second cap for the 2-replicate case (a pi start after late_after_et)
+    "summary_fix": {"caps": {"stage_usd": "float", "stage_usd_late": "float", "run_usd": "float",
+                             "max_calls": "int", "max_seconds": "int"}},
     # 3b has no phases (design.n_phases left out) and its own caps and laptop/rig limits
     "summary_refusal": {
         "design": {k: t for k, t in SCHEMA["design"].items() if k != "n_phases"},
@@ -144,18 +190,25 @@ KIND_OVERRIDES["user_no"] = {
              "max_seconds": "int", "summary_usd": "float"}}
 # Keys a config may leave out (a later experiment's keys in a shared section); the plan check
 # still reports any the contract lists and the config lacks.
-OPTIONAL = {"monitors": {"last_reasoning_n"},
-            "exploit": {"rule_sentence", "rule_placement", "rule_chains"},
-            "chain": {"unrelated_chains", "within_task_chains", "within_task_auto_compact_tokens",
+OPTIONAL = {"chain": {"unrelated_chains", "within_task_chains", "within_task_auto_compact_tokens",
                       "within_task_orders_from", "related_repeats", "related_repeats_max",
                       "fresh_controls", "ticket_tags", "interim_after_unrelated_chains",
-                      "save_state_after"}}
+                      "save_state_after"},
+            "parallelism": {"grader_memory_mb"},
+            "summary_fix": {"focus_calls"}}
 # Chain arms whose chains may be shorter than design.n_phases: related chains run each repo's
 # tasks (2..n), a fresh control is one task.
 SHORT_ARMS = {"related": (2, None), "fresh": (1, 1)}
 NOT_CONTRACT = ("meta", "_source")  # flatten skips these
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 FILE_KEYS = ("path", "sha256")
+HARNESS_KEYS = ("cli_version", "model", "effort", "stage", "cap_usd", "task_cap_usd",
+                "chains")
+# plan v0.4: the Sonnet pair (agy and Claude Code on claude-sonnet-5-5) runs as two more harnesses
+NATIVE_HARNESSES = ("agy", "codex", "claude_code", "agy_sonnet", "claude_code_sonnet")
+EFFORTS = {"agy": ("low", "medium", "high"),  # agy's model tiers (-low/-medium/-high)
+           "codex": ("minimal", "low", "medium", "high", "xhigh"),
+           "claude_code": ("low", "medium", "high", "xhigh", "max")}
 PHASE_PROJECTS = ("fork", "switch")
 
 
@@ -187,9 +240,18 @@ def _type_ok(v, t) -> str | None:
           "draw_table": lambda: isinstance(v, dict) and set(v) == {"seed", "path"}
           and isinstance(v["seed"], int) and not isinstance(v["seed"], bool)
           and isinstance(v["path"], str),
+          "harness": lambda: isinstance(v, dict) and set(v) == set(HARNESS_KEYS)
+          and all(isinstance(v[k], str) and v[k] for k in ("cli_version", "model", "effort",
+                                                           "stage"))
+          and isinstance(v["chains"], list) and bool(v["chains"])
+          and all(isinstance(x, str) for x in v["chains"])
+          and all(isinstance(v[k], int | float) and not isinstance(v[k], bool)
+                  and math.isfinite(v[k]) and v[k] >= 0 for k in ("cap_usd", "task_cap_usd")),
           "file": lambda: isinstance(v, dict) and set(v) == set(FILE_KEYS)
           and all(isinstance(v[k], str) for k in FILE_KEYS) and bool(SHA_RE.match(v["sha256"]))}
-    return None if ok[t]() else {"file": "a table {path, sha256 (64 hex)}"}.get(t, t)
+    return None if ok[t]() else {"file": "a table {path, sha256 (64 hex)}",
+                                 "harness": f"a table {{{', '.join(HARNESS_KEYS)}}} (strings, "
+                                            "finite costs >= 0)"}.get(t, t)
 
 
 def _check_file(where: str, spec: dict, errors: list[str]) -> Path | None:
@@ -287,11 +349,13 @@ def validate(cfg: dict) -> None:
     if not SHA_RE.match(cfg["meta"]["built_against"]):
         errors.append("meta.built_against: must be a 64-hex sha256")
     n = cfg["design"].get("n_phases", 2)  # absent only where the kind has no phases
-    if n < 2:
+    if kind == "flash_pi" and n != 1:
+        errors.append(f"design.n_phases: must be 1 for flash_pi, got {n}")
+    if kind != "flash_pi" and n < 2:
         errors.append(f"design.n_phases: must be >= 2, got {n}")
     if kind in ("two_phase", "precedent", "monitor_controls") and n != 2:
         errors.append(f"design.n_phases: must be 2 for {kind}, got {n}")
-    for name, spec in cfg["wording"].items():
+    for name, spec in cfg.get("wording", {}).items():
         _check_file(f"wording.{name}", spec, errors)
     if kind == "chain":
         p = _check_file("chain.orders", cfg["chain"]["orders"], errors)
@@ -299,10 +363,169 @@ def validate(cfg: dict) -> None:
             _check_orders(p, cfg, errors)
     if kind == "precedent":
         _check_file("precedent.assignment", cfg["precedent"]["assignment"], errors)
+    if kind == "native_chain":
+        errors += _native_chain_errors(cfg, n)
     if kind == "monitor_controls":
         _check_file("monitors.assignment", cfg["monitors"]["assignment"], errors)
+    if kind == "flash_pi":
+        fp = cfg["flash_pi"]
+        if not fp["output_root"].strip():
+            errors.append("flash_pi.output_root: must be nonempty")
+        elif fp["reasoning_effort"] != "low" and resolve(fp["output_root"]).resolve() == \
+                resolve("data/raw/sprint/s2/flash_pi").resolve():
+            errors.append("flash_pi.output_root: medium/high runs need a separate output root")
+        for key in ("precedent_config", "deepseek_gate", "agy_readout"):
+            _check_file(f"flash_pi.{key}", fp[key], errors)
+        histories = fp["histories"]
+        if not histories or len(set(histories)) != len(histories) or any(
+                not re.fullmatch(r"(?:httpx|tengo)-np-[1-8]", h) for h in histories):
+            errors.append("flash_pi.histories: distinct divergent first-task ids "
+                          "(httpx-np-1..8, tengo-np-1..8)")
+        if not 1 <= fp["smoke_n"] <= len(histories):
+            errors.append("flash_pi.smoke_n: must be in 1..len(histories)")
+        n_proj = {r: sum(h.startswith(r + "-") for h in histories) for r in ("httpx", "tengo")}
+        for r in ("httpx", "tengo"):
+            if not 0 <= fp[f"bulk_{r}"] <= n_proj[r]:
+                errors.append(f"flash_pi.bulk_{r}: must be in 0..{n_proj[r]}")
+        if not math.isfinite(fp["launch_margin"]) or fp["launch_margin"] < 1:
+            errors.append("flash_pi.launch_margin: must be finite and >= 1")
+        try:
+            stop = datetime.fromisoformat(fp["stop_at_utc"])
+            if stop.utcoffset() != UTC.utcoffset(stop):
+                raise ValueError("not UTC")
+        except ValueError:
+            errors.append("flash_pi.stop_at_utc: must be an ISO timestamp in UTC")
+        for key in ("stage_usd", "run_usd"):
+            value = cfg["caps"][key]
+            if not math.isfinite(value) or value <= 0:
+                errors.append(f"caps.{key}: must be finite and > 0")
+        for section, keys in (("caps", ("max_calls", "max_seconds")),
+                              ("parallelism", ("agents", "agent_memory_mb"))):
+            for key in keys:
+                if cfg[section][key] <= 0:
+                    errors.append(f"{section}.{key}: must be > 0")
     if errors:
         raise ValueError("config invalid:\n  " + "\n  ".join(errors))
+
+
+def _native_chain_errors(cfg: dict, n: int) -> list[str]:
+    """A native_chain config against experiment 4's config it names (astra agy-chain5 plan r1
+    B3): parsed, not only hash-checked; the selected chains exist once each in its orders, are
+    unrelated and n long with a switch at every boundary; the wording, orders and call/time caps
+    are its own; counts are in range."""
+    errors: list[str] = []
+    nc = cfg["native_chain"]
+    hs = nc["harnesses"]
+    if not hs or len(set(hs)) != len(hs) or any(h not in NATIVE_HARNESSES for h in hs):
+        errors.append(f"native_chain.harnesses: distinct names from {list(NATIVE_HARNESSES)}")
+    if nc["compaction_retries"] < 0:
+        errors.append("native_chain.compaction_retries: must be >= 0")
+    if not 1 <= nc["smoke_phases"] <= n:
+        errors.append(f"native_chain.smoke_phases: must be in 1..{n}")
+    caps, par = cfg["caps"], cfg["parallelism"]
+    if caps["max_calls"] <= 0 or caps["max_seconds"] <= 0:
+        errors.append("caps.max_calls and caps.max_seconds: must be > 0")
+    for k in ("stage_usd", "run_usd"):
+        if not (math.isfinite(caps[k]) and caps[k] >= 0):
+            errors.append(f"caps.{k}: must be finite and >= 0")
+    # the global caps are the harness tables' (astra plan r2 #5): the stage cap is their sum,
+    # the per-run cap their largest per-task cap
+    tables = [nc[h] for h in hs if h in NATIVE_HARNESSES and isinstance(nc.get(h), dict)]
+    if tables and all(_type_ok(t, "harness") is None for t in tables):
+        if not math.isclose(caps["stage_usd"], sum(t["cap_usd"] for t in tables)):
+            errors.append("caps.stage_usd: must equal the sum of the run harnesses' cap_usd")
+        if not math.isclose(caps["run_usd"], max(t["task_cap_usd"] for t in tables)):
+            errors.append("caps.run_usd: must equal the largest task_cap_usd of the run "
+                          "harnesses")
+    if par["agents"] <= 0 or not 1 <= par["fallback_agents"] <= par["agents"]:
+        errors.append("parallelism: agents > 0 and 1 <= fallback_agents <= agents")
+    if par["agent_memory_mb"] <= 0 or par["fallback_agent_memory_mb"] < par["agent_memory_mb"]:
+        errors.append("parallelism: agent_memory_mb > 0 and fallback_agent_memory_mb >= it")
+    chains = nc["chains"]
+    if not chains or len(set(chains)) != len(chains):
+        errors.append("native_chain.chains: nonempty, no duplicates")
+    if nc["smoke_chain"] not in chains:
+        errors.append("native_chain.smoke_chain: must be one of native_chain.chains")
+    for h in NATIVE_HARNESSES:  # each harness's effort is one its CLI takes (amendment r1 #6)
+        t = nc.get(h)
+        ok = EFFORTS[h.removesuffix("_sonnet")]
+        if isinstance(t, dict) and isinstance(t.get("effort"), str) and t["effort"] not in ok:
+            errors.append(f"native_chain.{h}.effort: one of {list(ok)}")
+    for h in NATIVE_HARNESSES:  # each harness runs a subset of the chains, smoke chain included
+        t = nc.get(h)
+        if isinstance(t, dict) and isinstance(t.get("chains"), list):
+            if len(set(t["chains"])) != len(t["chains"]) or set(t["chains"]) - set(chains):
+                errors.append(f"native_chain.{h}.chains: distinct ids from native_chain.chains")
+            if nc["smoke_chain"] not in t["chains"]:
+                errors.append(f"native_chain.{h}.chains: must include the smoke chain")
+    src_p = _check_file("native_chain.source_config", nc["source_config"], errors)
+    ord_p = _check_file("native_chain.orders", nc["orders"], errors)
+    src = None
+    if src_p is not None:
+        try:
+            src = load_config(src_p)
+        except Exception as e:  # noqa: BLE001 - not a valid week-2 config
+            errors.append(f"native_chain.source_config: not a valid week-2 config: {e}")
+    if src is not None:
+        if src["design"]["kind"] != "chain":
+            errors.append("native_chain.source_config: not a chain experiment's config")
+        else:
+            if nc["orders"] != src["chain"]["orders"]:
+                errors.append("native_chain.orders: differs from source_config's chain.orders")
+            if not src["chain"].get("ticket_tags"):
+                errors.append("native_chain.source_config: ticket_tags off")
+        for k in ("max_calls", "max_seconds"):
+            if caps[k] != src["caps"][k]:
+                errors.append(f"caps.{k}: {caps[k]} differs from source_config's "
+                              f"{src['caps'][k]}")
+        for k in sorted(set(cfg["wording"]) | set(src["wording"])):
+            if k in ("ticket_tag_line", "teammate_texts", "task_ending", "lead_same",
+                     "lead_different") and cfg["wording"].get(k) != src["wording"].get(k):
+                errors.append(f"wording.{k}: differs from source_config's")
+        missing = [k for k in ("ticket_tag_line", "teammate_texts", "task_ending",
+                               "lead_same", "lead_different") if k not in cfg["wording"]]
+        errors += [f"wording.{k}: missing (source_config has it)" for k in missing]
+    if ord_p is not None:
+        by_id = _orders_by_id(ord_p, errors)
+        for cid in chains if by_id is not None else ():
+            c = by_id.get(cid)
+            if c is None:
+                errors.append(f"native_chain.chains: {cid!r} not in the orders")
+                continue
+            ph = c["phases"]
+            if c.get("arm") != "unrelated" or len(ph) != n or any(
+                    p.get("project") != "switch" for p in ph[1:]):
+                errors.append(f"native_chain.chains: {cid!r} is not an unrelated chain of {n} "
+                              "tasks with a switch at every boundary")
+    return errors
+
+
+def _orders_by_id(path: Path, errors: list[str]) -> dict[str, dict] | None:
+    """The orders file as {chain id: chain}, after a shape check (a list of objects with a string
+    id and a list of phase objects with a string task); None, with the errors, otherwise."""
+    try:
+        orders = json.loads(path.read_text())
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"native_chain.orders: not JSON: {e}")
+        return None
+    bad = []
+    if not isinstance(orders, list):
+        bad.append("native_chain.orders: must be a list of chains")
+    else:
+        for i, c in enumerate(orders):
+            where = f"native_chain.orders[{i}]"
+            if not isinstance(c, dict) or not isinstance(c.get("id"), str):
+                bad.append(f"{where}: must be an object with a string id")
+            elif not isinstance(c.get("phases"), list):
+                bad.append(f"{where}.phases: must be a list")
+            else:
+                bad += [f"{where}.phases[{j}]: must be an object with a string task"
+                        for j, p in enumerate(c["phases"])
+                        if not isinstance(p, dict) or not isinstance(p.get("task"), str)]
+    if bad:
+        errors.extend(bad)
+        return None
+    return {c["id"]: c for c in orders}
 
 
 def stage_cap(cfg: dict) -> float:
@@ -362,8 +585,9 @@ def flatten(cfg: dict) -> dict[str, str]:
             continue
         for k, v in body.items():
             if isinstance(v, dict):
-                for kk, vv in v.items():
-                    out[f"{sec}.{k}.{kk}"] = _scalar(vv)
+                for kk, vv in v.items():  # a list in a table (native_chain.<h>.chains) joins
+                    out[f"{sec}.{k}.{kk}"] = (", ".join(_scalar(x) for x in vv)
+                                              if isinstance(vv, list) else _scalar(vv))
             elif isinstance(v, list):
                 # a list of lists (3b's launch_phases) reads "a + b, c": groups by comma
                 out[f"{sec}.{k}"] = ", ".join(" + ".join(_scalar(y) for y in x)
@@ -492,6 +716,14 @@ def plan_check(proposal_path: str | Path, config_path: str | Path,
     flat = flatten(cfg)
     mismatches = [{"parameter": k, "contract": contract[k], "config": flat[k]}
                   for k in flat if k in contract and canon(contract[k]) != canon(flat[k])]
+    # Jacob's 30 Oct addendum authorizes separate effort follow-up configs. Only effort
+    # and output location may differ; the primary config and all hashes/caps stay pinned.
+    allowed_overrides = []
+    if cfg["design"]["kind"] == "flash_pi" and resolve(config_path).resolve() != \
+            resolve("configs/week2/flash_pi.toml").resolve():
+        allowed = {"flash_pi.reasoning_effort", "flash_pi.output_root"}
+        allowed_overrides = [m for m in mismatches if m["parameter"] in allowed]
+        mismatches = [m for m in mismatches if m["parameter"] not in allowed]
     missing_in_config = [k for k in contract if k not in flat]
     missing_in_contract = [k for k in flat if k not in contract]
     built = cfg["meta"]["built_against"]
@@ -500,6 +732,7 @@ def plan_check(proposal_path: str | Path, config_path: str | Path,
     ok = hash_ok and not (mismatches or missing_in_config or missing_in_contract)
     return {"ok": ok, "exp": cfg["meta"]["exp"], "proposal": str(proposal_path),
             "config": str(config_path), "mismatches": mismatches,
+            "allowed_overrides": allowed_overrides,
             "missing_in_config": missing_in_config, "missing_in_contract": missing_in_contract,
             "proposal_sha256": sha, "built_against": built, "hash_ok": hash_ok,
             "changed_sections": changed}
@@ -511,6 +744,9 @@ def report(check: dict) -> str:
             f"({check['proposal']} vs {check['config']})")]
     out += [f"  mismatch {m['parameter']}: contract {m['contract']!r}, config {m['config']!r}"
             for m in check["mismatches"]]
+    out += [f"  allowed follow-up override {m['parameter']}: contract {m['contract']!r}, "
+            f"config {m['config']!r} (Jacob, 30 Oct)"
+            for m in check.get("allowed_overrides", [])]
     out += [f"  in the contract, not in the config: {k}" for k in check["missing_in_config"]]
     out += [f"  in the config, not in the contract: {k}" for k in check["missing_in_contract"]]
     if not check["hash_ok"]:

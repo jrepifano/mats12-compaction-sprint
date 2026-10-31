@@ -377,7 +377,10 @@ def with_note(task_text: str, note: str | None) -> str:
 
 
 def b_context(start: str, project: str, b_repo: CC.Repo, hist: AHistory | None,
-              b_text: str, uname: dict | None, opening_note: str | None = None) -> list[dict]:
+              b_text: str, uname: dict | None, opening_note: str | None = None,
+              lead: str | None = None) -> list[dict]:
+    """B's opening context. `lead` replaces the lead-in line before B's task (week 2,
+    experiment 5's neutral_opening arm); None = CC.lead_in's line, as before."""
     inst = L.instance_message(with_note(b_text, opening_note), uname)
     if start == "fresh":
         return [{"role": "system", "content": L.SYSTEM_PROMPT}, {"role": "user", "content": inst}]
@@ -391,14 +394,15 @@ def b_context(start: str, project: str, b_repo: CC.Repo, hist: AHistory | None,
         prefix = list(hist.compaction["post_messages"])
     else:
         raise ValueError(start)
-    lead = CC.lead_in(project, b_repo, CC.REPOS[hist.repo])
+    if lead is None:
+        lead = CC.lead_in(project, b_repo, CC.REPOS[hist.repo])
     return prefix + [{"role": "user", "content": f"{lead}\n\n{inst}"}]
 
 
 def run_b(brun: CC.BRun, task: TaskInfo, hist: AHistory | None, model: ChatModel,
           inv: Invocation, out: Path, *, stop=None, max_calls: int = CC.MAX_CALLS,
           max_seconds: float = CC.MAX_SECONDS, on_keep=None,
-          opening_note: str | None = None) -> RunResult:
+          opening_note: str | None = None, lead: str | None = None) -> RunResult:
     t0 = time.monotonic()
     cell = brun.cell
     b_repo = CC.REPO_OF_TASK[cell.b_task]
@@ -416,9 +420,11 @@ def run_b(brun: CC.BRun, task: TaskInfo, hist: AHistory | None, model: ChatModel
         res.extra["test_inventory"] = env.base_test_inventory(b_repo.base, task.language)
         text = CC.task_text(task.instruction, b_repo.b_branch)
         ctx = b_context(cell.start, cell.project, b_repo, hist, text, env.uname,
-                        opening_note)
+                        opening_note, lead)
         if opening_note is not None:
             res.extra["opening_note"] = opening_note
+        if lead is not None:
+            res.extra["lead"] = lead
         start_len = len(ctx) - 1  # index of B's opening message
         res.extra["b_message_index"] = start_len
         loop = L.Loop(ctx, model, env, f"B:{brun.id}", stop=stop)
