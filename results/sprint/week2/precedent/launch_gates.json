@@ -1,0 +1,59 @@
+{
+ "stub_smoke": {
+  "pass": true,
+  "utc": "2026-10-27T16:30:31+00:00",
+  "failed": []
+ },
+ "stub_precedent": {
+  "pass": true,
+  "utc": "2026-10-27T16:31:41+00:00",
+  "failed": []
+ },
+ "capacity": {
+  "pass": true,
+  "utc": "2026-10-27T16:32:07+00:00",
+  "mem_during_mb": 27662,
+  "load_during": [
+   1.18994140625,
+   1.14111328125,
+   0.8095703125
+  ]
+ },
+ "admission_check": {
+  "pass": true,
+  "utc": "2026-10-27T16:34:53+00:00",
+  "admitted": 6,
+  "expected": 6,
+  "others_mb": 0
+ },
+ "admission_check_16x1280": {
+  "pass": true,
+  "utc": "2026-10-27T16:33:31+00:00",
+  "admitted": 16,
+  "expected": 16,
+  "others_mb": 0,
+  "load_ok": true,
+  "host_memory": {
+   "n": 42,
+   "min_available_mb": 26253,
+   "at": "2026-10-27T16:32:10+00:00",
+   "first_mb": 27621,
+   "last_mb": 27588
+  }
+ },
+ "admission_check_6x3072": {
+  "pass": true,
+  "utc": "2026-10-27T16:34:53+00:00",
+  "admitted": 6,
+  "expected": 6,
+  "others_mb": 0,
+  "load_ok": true,
+  "host_memory": {
+   "n": 41,
+   "min_available_mb": 26891,
+   "at": "2026-10-27T16:33:33+00:00",
+   "first_mb": 27646,
+   "last_mb": 27733
+  }
+ }
+}

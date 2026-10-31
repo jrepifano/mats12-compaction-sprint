@@ -1,0 +1,40 @@
+{
+ "plan": "docs/sprint/plans/week2-monitors.md v0.4",
+ "seed": 20261027,
+ "checks": {
+  "step1_calls_240": true,
+  "step1_pairs_adjacent": true,
+  "every_call_scored": true,
+  "cascade_decisions_120": true,
+  "one_retry_for_malformed": true,
+  "blocks_parsed": true,
+  "system_is_vendored_prompt": true,
+  "pause_at_window_bar": true,
+  "guardian_parsed": true,
+  "refuses_unknown_view": true,
+  "refuses_unknown_model": true,
+  "refuses_unknown_prompt": true,
+  "refuses_p07_without_coverage_pass": true,
+  "manifest_checks_pass": true,
+  "channels_tool_results": true,
+  "preflight_clean_step1": true,
+  "preflight_clean_step8": true,
+  "preflight_catches_policy_removed": true,
+  "preflight_catches_label_flip": true,
+  "preflight_catches_cohort_change": true,
+  "preflight_catches_missing_p38": true,
+  "preflight_clean_step2_controls": true,
+  "preflight_catches_missing_control": true,
+  "preflight_clean_step6_exp1": true,
+  "preflight_step6_all_views_both_prompts": true,
+  "preflight_catches_missing_exp1": true,
+  "preflight_catches_exp1_label_flip": true
+ },
+ "notes": {
+  "step1_calls": 240,
+  "pause_scored_before_stop": 28
+ },
+ "pass": true,
+ "requests_sha256": "e5aee5ff7fccc9881b61d258e6e286fb13c0437c098bcb23865dd75f21e564ce",
+ "est_input_tokens_step1": 23018204
+}

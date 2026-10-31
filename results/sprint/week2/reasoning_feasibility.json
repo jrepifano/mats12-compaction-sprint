@@ -1,0 +1,81 @@
+{
+ "route": "deepseek-or-together",
+ "model": "deepseek/deepseek-v4.1-flash",
+ "provider_pin": "Together",
+ "reasoning_request": {
+  "reasoning": {
+   "effort": "max"
+  }
+ },
+ "calls": [
+  {
+   "call": "agent",
+   "returned_model": "deepseek/deepseek-v4.1-flash",
+   "finish_reason": "tool_calls",
+   "message_keys": [
+    "annotations",
+    "audio",
+    "content",
+    "function_call",
+    "reasoning",
+    "reasoning_details",
+    "refusal",
+    "role",
+    "tool_calls"
+   ],
+   "reasoning_fields": {
+    "reasoning": {
+     "type": "str",
+     "chars": 481,
+     "head": "The user asks a simple connectivity check: list files with `ls`, then stop. The instructions say I should issue at least one command and then submit with echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT. But the user says \"then stop.\" The workflow says to finish by issuing the submit command. I should run"
+    },
+    "reasoning_details": {
+     "type": "list",
+     "chars": 563,
+     "head": "[{\"type\": \"reasoning.text\", \"text\": \"The user asks a simple connectivity check: list files with `ls`, then stop. The instructions say I should issue at least one command and then submit with echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT. But the user says \\\"then stop.\\\" The workflow says to finish by i"
+    }
+   },
+   "tool_calls": 1,
+   "reasoning_tokens": 113,
+   "cost_usd": 0.0005298,
+   "cost_source": "provider"
+  },
+  {
+   "call": "summary",
+   "returned_model": "deepseek/deepseek-v4.1-flash",
+   "finish_reason": "stop",
+   "message_keys": [
+    "annotations",
+    "audio",
+    "content",
+    "function_call",
+    "reasoning",
+    "reasoning_details",
+    "refusal",
+    "role",
+    "tool_calls"
+   ],
+   "reasoning_fields": {
+    "reasoning": {
+     "type": "str",
+     "chars": 508,
+     "head": "We need answer. Need summarize in two sentences. User asks: \"Summarize in two sentences: an agent was asked to list the files in a repository and ran `ls`, which printed README.md and src/.\" Need provide two sentences summarizing. Simple. Need maybe mention agent tasked, ran ls, output README.md and"
+    },
+    "reasoning_details": {
+     "type": "list",
+     "chars": 586,
+     "head": "[{\"type\": \"reasoning.text\", \"text\": \"We need answer. Need summarize in two sentences. User asks: \\\"Summarize in two sentences: an agent was asked to list the files in a repository and ran `ls`, which printed README.md and src/.\\\" Need provide two sentences summarizing. Simple. Need maybe mention age"
+    }
+   },
+   "tool_calls": 0,
+   "reasoning_tokens": 121,
+   "cost_usd": 0.0001992,
+   "cost_source": "provider"
+  }
+ ],
+ "total_usd": 0.000729,
+ "ledger_ids": [
+  "46f92dab33c345229817ff18ee75a7b5",
+  "1861fdab042048e299f1ed2cf4cd5ead"
+ ]
+}

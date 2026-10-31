@@ -1,0 +1,7 @@
+# Multipart responses: rough notes (WIP)
+
+- Read the boundary from Content-Type
+- Iterate parts lazily when the body is streaming
+- TODO: async variant, malformed framing, preamble/epilogue
+
+Still sketching; I'll pick this up again after the release.
