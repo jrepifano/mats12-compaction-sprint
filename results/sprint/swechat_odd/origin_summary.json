@@ -1,0 +1,89 @@
+{
+  "seed_examples": "swechat-odd:origin:20261029",
+  "model": "claude-opus-5-5",
+  "effort": "low",
+  "fp": "339ffcdd3db30579",
+  "n_lines": 152,
+  "n_compactions": 93,
+  "pending": 0,
+  "provisional": false,
+  "note": "Labels partition the lines; compaction classes partition the compactions by the precedence in cmd_summary. Wilson intervals treat lines (and compactions) as independent; several lines share a compaction and some compactions share a session, so read them as descriptive.",
+  "lines": {
+    "agent_same": {
+      "k": 36,
+      "n": 152,
+      "rate": 0.23684210526315788,
+      "lo": 0.1762646849944096,
+      "hi": 0.31039356286752195
+    },
+    "agent_narrower": {
+      "k": 30,
+      "n": 152,
+      "rate": 0.19736842105263158,
+      "lo": 0.14189466065483167,
+      "hi": 0.2677623243863897
+    },
+    "user_or_tool": {
+      "k": 4,
+      "n": 152,
+      "rate": 0.02631578947368421,
+      "lo": 0.01028006956146572,
+      "hi": 0.06570477659001114
+    },
+    "none": {
+      "k": 82,
+      "n": 152,
+      "rate": 0.5394736842105263,
+      "lo": 0.4602369451490033,
+      "hi": 0.6167643176717069
+    },
+    "cant_tell": {
+      "k": 0,
+      "n": 152,
+      "rate": 0.0,
+      "lo": 0.0,
+      "hi": 0.024650670937670042
+    }
+  },
+  "agent_timing": {
+    "agent_same|same": 3,
+    "agent_narrower|before": 17,
+    "agent_same|before": 19,
+    "agent_same|unknown": 4,
+    "agent_narrower|same": 2,
+    "agent_narrower|after": 5,
+    "agent_narrower|unknown": 6,
+    "agent_same|after": 10
+  },
+  "compactions": {
+    "agent_same": {
+      "k": 21,
+      "n": 93,
+      "rate": 0.22580645161290322,
+      "lo": 0.15270042020646624,
+      "hi": 0.3206663973595384
+    },
+    "summary_inflated": {
+      "k": 23,
+      "n": 93,
+      "rate": 0.24731182795698925,
+      "lo": 0.17082099814063503,
+      "hi": 0.3438503827535262
+    },
+    "summary_introduced": {
+      "k": 46,
+      "n": 93,
+      "rate": 0.4946236559139785,
+      "lo": 0.39525719013807575,
+      "hi": 0.5944166690298852
+    },
+    "other": {
+      "k": 3,
+      "n": 93,
+      "rate": 0.03225806451612903,
+      "lo": 0.011030412935116203,
+      "hi": 0.09059533467748004
+    }
+  },
+  "unconfirmed_source": {}
+}

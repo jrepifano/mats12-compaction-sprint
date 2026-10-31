@@ -1,0 +1,213 @@
+<title>SWE-chat Summary Claims</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: deck tabs, then one reading column of cards; each card = claim, question, then history excerpts and the summary in scroll panes. (Same system as the 26 Oct audit page.) */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1d2430; --muted: #5d6878; --line: #d9dee6;
+  --accent: #2f5d8a; --accent-soft: #e3ecf6; --mark: #ffe08a; --mark-fg: #1d2430; --ok: #2e7d4f;
+  --claim: #fff4e0; --claim-line: #e2b25c;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161c; --panel: #1a2029; --fg: #e3e8ef; --muted: #9aa6b6; --line: #2c3542;
+  --accent: #7fb0e0; --accent-soft: #1f3044; --mark: #8a6d1a; --mark-fg: #fff6da; --ok: #6cc28f;
+  --claim: #2b2416; --claim-line: #a07a2e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12161c; --panel: #1a2029; --fg: #e3e8ef; --muted: #9aa6b6; --line: #2c3542;
+  --accent: #7fb0e0; --accent-soft: #1f3044; --mark: #8a6d1a; --mark-fg: #fff6da; --ok: #6cc28f;
+  --claim: #2b2416; --claim-line: #a07a2e; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 64px; }
+main { max-width: 960px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font-size: 1.5rem; font-weight: 600; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.1rem; font-weight: 600; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.muted { color: var(--muted); }
+.intro { display: grid; gap: 10px; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { font: inherit; font-size: 0.9rem; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.tab[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 500; }
+.bar input { flex: 1 1 220px; min-width: 0; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); }
+.progress { font-variant-numeric: tabular-nums; color: var(--muted); }
+.deckinfo { font-size: 0.9rem; }
+#cards { display: grid; gap: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.card.done { border-color: var(--ok); }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.9rem; color: var(--muted); }
+.meta b { font-weight: 500; color: var(--fg); }
+.claim { background: var(--claim); border-left: 3px solid var(--claim-line); border-radius: 4px; padding: 10px 12px; font-family: var(--mono); font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
+.claimnote { font-size: 0.85rem; color: var(--muted); }
+.q { display: grid; gap: 8px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts label { display: flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.opts input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.opts label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+textarea { font: inherit; width: 100%; box-sizing: border-box; min-height: 60px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); }
+details { border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+summary { cursor: pointer; padding: 8px 12px; font-weight: 500; }
+summary:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+pre { margin: 0; padding: 10px 12px; max-height: 480px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  font-family: var(--mono); font-size: 0.8rem; line-height: 1.45; border-top: 1px solid var(--line); }
+.role { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 0; }
+mark { background: var(--mark); color: var(--mark-fg); border-radius: 2px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { font: inherit; font-size: 0.9rem; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.saved { font-size: 0.85rem; color: var(--ok); }
+.empty { color: var(--muted); padding: 18px; border: 1px dashed var(--line); border-radius: 8px; }
+.fallback textarea { font-family: var(--mono); font-size: 0.8rem; min-height: 90px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<main>
+  <section class="intro">
+    <h1>SWE-chat summary claims</h1>
+    <p>Each card is one claim from a compaction summary in SWE-chat: real users' Claude Code sessions, summarised by the session's own model. The question is whether the claim matches the state of the work in the history the summary replaced. Order is random within each deck.</p>
+    <p class="muted">Read the claim, then the history: the excerpt around the relevant message (its quote highlighted) and the last messages before the compaction, which show the latest state. Mark the claim <b>false</b> if the history shows it isn't so at the compaction (not done, not fixed, not passing, not what was said), <b>true</b> if the history supports it, and <b>can't tell</b> if the history doesn't settle it. The search box searches the current deck. Answers save as you go.</p>
+  </section>
+  <div class="bar">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <input id="search" type="search" placeholder="Search this deck's history and summaries" aria-label="Search this deck's history and summaries">
+    <span class="progress" id="progress"></span>
+  </div>
+  <p class="deckinfo muted" id="deckinfo"></p>
+  <div id="cards"></div>
+  <section class="fallback card">
+    <h2>Copyable answers</h2>
+    <p class="muted">Only needed if saving fails. Copy this and paste it to Claude.</p>
+    <textarea id="dump" readonly aria-label="Copyable answers"></textarea>
+    <div class="tools"><button class="btn" id="copy" type="button">Copy answers</button><span class="saved" id="copied"></span></div>
+  </section>
+</main>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const CARDS = JSON.parse(document.getElementById("data").textContent);
+const DECKS = {
+  A: {label: "Deck A: flagged claims", info: "Claims a reader picked out of an earlier audit sample for a closer look."},
+  B: {label: "Deck B: scan sample", info: "A seeded random sample of completion claims (done, fixed, tests pass, verified) from a scan of all 928 eligible SWE-chat compactions."},
+};
+const OPTIONS = [["false", "Claim false"], ["true", "Claim true"], ["cant_tell", "Can't tell"]];
+const answers = {};
+const chains = {};
+let db = null;
+const decks = Object.keys(DECKS).filter(d => CARDS.some(c => c.deck === d));
+let deck = decks[0] || "A";
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function reEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function marked(text, terms) {
+  const t = terms.filter(x => x && x.length >= 2).map(x => x.length > 200 ? x.slice(0, 200) : x);
+  if (!t.length) return esc(text);
+  const re = new RegExp("(" + t.map(reEsc).join("|") + ")", "gi");
+  return text.split(re).map((part, i) => i % 2 ? "<mark>" + esc(part) + "</mark>" : esc(part)).join("");
+}
+function query() { return document.getElementById("search").value.trim(); }
+function inDeck() { return CARDS.filter(c => c.deck === deck); }
+
+function renderTabs() {
+  const box = document.getElementById("tabs");
+  box.innerHTML = decks.map(d => {
+    const n = CARDS.filter(c => c.deck === d).length;
+    return `<button class="tab" role="tab" type="button" data-deck="${d}" aria-selected="${d === deck}">${esc(DECKS[d].label)} (${n})</button>`;
+  }).join("");
+  box.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { deck = b.dataset.deck; renderTabs(); renderCards(); }));
+  document.getElementById("deckinfo").textContent = DECKS[deck] ? DECKS[deck].info : "";
+}
+
+function renderCards() {
+  const q = query();
+  const root = document.getElementById("cards");
+  root.innerHTML = "";
+  const list = inDeck();
+  if (!list.length) { root.innerHTML = `<div class="empty">No cards in this deck yet.</div>`; updateProgress(); return; }
+  for (const c of list) {
+    const hit = q.length >= 2 && [c.context, c.tail, c.summary, ...c.kept.map(m => m.text)].some(t => t.toLowerCase().includes(q.toLowerCase()));
+    const el = document.createElement("article");
+    el.className = "card"; el.id = "card-" + c.id;
+    const a = answers[c.id] || {};
+    if (a.choice) el.classList.add("done");
+    el.innerHTML = `
+      <h2>Card ${c.n} of ${list.length}</h2>
+      <div class="meta"><span>${esc(c.source)}</span><span>Session model: <b>${esc(c.model)}</b></span><span>Harness: <b>${esc(c.harness)}</b></span><span>History: ${c.n_history} messages</span></div>
+      <div class="claim">${esc(c.claim)}</div>
+      ${c.claim_found ? "" : `<div class="claimnote">This quote is not word for word in the summary; search the summary for its wording.</div>`}
+      <div class="q">
+        <strong>Given the history before the compaction, is this claim false?</strong>
+        <div class="opts" role="radiogroup" aria-label="Answer for card ${c.n}">
+          ${OPTIONS.map(([v, l]) => `<label><input type="radio" name="opt-${c.id}" value="${v}" ${a.choice === v ? "checked" : ""}><span>${l}</span></label>`).join("")}
+        </div>
+        <textarea id="note-${c.id}" placeholder="Note (optional): what the history shows" aria-label="Note for card ${c.n}">${esc(a.note || "")}</textarea>
+        <span class="saved" id="saved-${c.id}"></span>
+      </div>
+      <details open><summary>History around the relevant message${c.quote ? " (quote highlighted)" : ""}</summary><pre>${marked(c.context, [c.quote, q])}</pre></details>
+      <details ${hit ? "open" : ""}><summary>Last messages before the compaction</summary><pre>${marked(c.tail, [q])}</pre></details>
+      <details ${hit ? "open" : ""}><summary>The full summary (${c.summary.length.toLocaleString()} characters; the claim highlighted)</summary><pre>${marked(c.summary, [c.claim, q])}</pre></details>
+      <details><summary>Messages kept beside the summary (${c.kept.length})</summary>
+        ${c.kept.map(m => `<div class="role">${esc(m.role)}</div><pre>${marked(m.text, [q])}</pre>`).join("")}
+      </details>`;
+    root.appendChild(el);
+    el.querySelectorAll(`input[name="opt-${c.id}"]`).forEach(inp => inp.addEventListener("change", () => save(c.id, {choice: inp.value})));
+    const ta = el.querySelector(`#note-${c.id}`);
+    let timer = null;
+    ta.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => save(c.id, {note: ta.value}), 800); });
+    ta.addEventListener("blur", () => { clearTimeout(timer); save(c.id, {note: ta.value}); });
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const list = inDeck();
+  const n = list.filter(c => answers[c.id] && answers[c.id].choice).length;
+  document.getElementById("progress").textContent = `${n} of ${list.length} answered`;
+  document.getElementById("dump").value = JSON.stringify(CARDS.map(c => {
+    const a = answers[c.id] || {};
+    return {card: c.id, deck: c.deck, choice: a.choice || null, note: a.note || ""};
+  }));
+}
+
+async function save(id, patch) {
+  answers[id] = Object.assign({}, answers[id], patch);
+  const el = document.getElementById("card-" + id);
+  if (answers[id].choice && el) el.classList.add("done");
+  updateProgress();
+  const s = document.getElementById("saved-" + id);
+  if (!db) { if (s) s.textContent = "Not saved online; use the copyable answers below."; return; }
+  // One write at a time per card: chain each save after the previous one.
+  chains[id] = (chains[id] || Promise.resolve()).then(async () => {
+    const a = answers[id];
+    const c = CARDS.find(x => x.id === id);
+    try {
+      await db.doc("labels/" + id).set({card: id, deck: c ? c.deck : null, choice: a.choice || null, note: a.note || "", utc: new Date().toISOString()});
+      if (s) s.textContent = "Saved";
+    } catch (e) { if (s) s.textContent = "Couldn't save. Use the copyable answers below."; }
+  });
+}
+
+let st = null;
+document.getElementById("search").addEventListener("input", () => { clearTimeout(st); st = setTimeout(renderCards, 250); });
+document.getElementById("copy").addEventListener("click", async () => {
+  const t = document.getElementById("dump");
+  try { await navigator.clipboard.writeText(t.value); document.getElementById("copied").textContent = "Copied"; }
+  catch (e) { t.select(); document.getElementById("copied").textContent = "Selected; press Cmd+C"; }
+});
+
+renderTabs();
+renderCards();
+(async () => {
+  try {
+    db = await claude.use("db");
+    if (!db) return;
+    for (const c of CARDS) {
+      const snap = await db.doc("labels/" + c.id).get();
+      const d = snap && (snap.data ? snap.data() : snap);
+      if (d && (d.choice || d.note)) answers[c.id] = {choice: d.choice || null, note: d.note || ""};
+    }
+    renderCards();
+  } catch (e) { /* page still works with the copyable answers */ }
+})();
+</script>
